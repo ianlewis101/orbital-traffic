@@ -8,25 +8,31 @@ Run locally or via GitHub Actions.
 import re
 import json
 import sys
+import time
 import urllib.request
 from datetime import datetime, timezone
 
-# CelesTrak bulk TLE group endpoints
+# Correct CelesTrak GP data endpoints (gp.php format)
 CELESTRAK = {
-    "stations":      "https://celestrak.org/SATCAT/TLE.php?GROUP=stations&FORMAT=tle",
-    "navigation":    "https://celestrak.org/SATCAT/TLE.php?GROUP=gps-ops&FORMAT=tle",
-    "science":       "https://celestrak.org/SATCAT/TLE.php?GROUP=science&FORMAT=tle",
-    "geostationary": "https://celestrak.org/SATCAT/TLE.php?GROUP=geo&FORMAT=tle",
-    "starlink":      "https://celestrak.org/SATCAT/TLE.php?GROUP=starlink&FORMAT=tle",
+    "stations":      "https://celestrak.org/NORAD/elements/gp.php?FORMAT=tle&GROUP=stations",
+    "navigation":    "https://celestrak.org/NORAD/elements/gp.php?FORMAT=tle&GROUP=gps-ops",
+    "science":       "https://celestrak.org/NORAD/elements/gp.php?FORMAT=tle&GROUP=science",
+    "geostationary": "https://celestrak.org/NORAD/elements/gp.php?FORMAT=tle&GROUP=geo",
+    "starlink":      "https://celestrak.org/NORAD/elements/gp.php?FORMAT=tle&GROUP=starlink",
+}
+
+HEADERS = {
+    "User-Agent": "OrbitalTraffic/1.0 (https://ianlewis101.github.io/orbital-traffic/)",
+    "Accept": "text/plain",
 }
 
 
 def fetch_tles(group: str, url: str) -> list:
     """Fetch TLE text from a URL and parse into sat objects."""
     print(f"  Fetching {group}...", end=" ", flush=True)
-    req = urllib.request.Request(url, headers={"User-Agent": "OrbitalTraffic/1.0"})
+    req = urllib.request.Request(url, headers=HEADERS)
     try:
-        with urllib.request.urlopen(req, timeout=20) as resp:
+        with urllib.request.urlopen(req, timeout=30) as resp:
             text = resp.read().decode("utf-8", errors="replace")
     except Exception as e:
         print(f"FAILED ({e})")
@@ -54,6 +60,7 @@ def build_sat_json() -> str:
     all_sats = []
     for group, url in CELESTRAK.items():
         all_sats.extend(fetch_tles(group, url))
+        time.sleep(1)  # be polite to CelesTrak between requests
 
     if not all_sats:
         raise RuntimeError("No satellites fetched — aborting to avoid wiping good data.")
