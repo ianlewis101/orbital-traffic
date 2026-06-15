@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+"""
+update_tles.py
+Fetches fresh TLE data from CelesTrak and patches index.html in-place.
+Run locally or via GitHub Actions.
+"""
+
+import re
+import json
+import sys
+import urllib.request
+from datetime import datetime, timezone
+
+# CelesTrak bulk TLE group endpoints
+CELESTRAK = {
+    "stations":      "https://celestrak.org/SATCAT/TLE.php?GROUP=stations&FORMAT=tle",
+    "navigation":    "https://celestrak.org/SATCAT/TLE.php?GROUP=gps-ops&FORMAT=tle",
+    "science":       "https://celestrak.org/SATCAT/TLE.php?GROUP=science&FORMAT=tle",
+    "geostationary": "https://celestrak.org/SATCAT/TLE.php?GROUP=geo&FORMAT=tle",
+    "starlink":      "https://celestrak.org/SATCAT/TLE.php?GROUP=starlink&FORMAT=tle",
+}
+
+
+def fetch_tles(group: str, url: str) -> list:
+    """Fetch TLE text from a URL and parse into sat objects."""
+    print(f"  Fetching {group}...", end=" ", flush=True)
+    req = urllib.request.Request(url, headers={"User-Agent": "OrbitalTraffic/1.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            text = resp.read().decode("utf-8", errors="replace")
+    except Exception as e:
+        print(f"FAILED ({e})")
+        return []
+
+    lines = [l.strip() for l in text.splitlines() if l.strip()]
+    sats = []
+    i = 0
+    while i + 2 < len(lines):
+        name = lines[i]
+        l1   = lines[i + 1]
+        l2   = lines[i + 2]
+        if l1.startswith("1 ") and l2.startswith("2 "):
+            sats.append({"name": name, "l1": l1, "l2": l2, "cat": group})
+            i += 3
+        else:
+            i += 1
+
+    print(f"{len(sats)} satellites")
+    return sats
+
+
+def build_sat_json() -> str:
+    """Fetch all groups and return a compact JSON array string."""
+    all_sats = []
+    for group, url in CELESTRAK.items():
+        all_sats.extend(fetch_tles(group, url))
+
+    if not all_sats:
+        raise RuntimeError("No satellites fetched — aborting to avoid wiping good data.")
+
+    print(f"  Total: {len(all_sats)} satellites")
+    return json.dumps(all_sats, separators=(",", ":"))
+
+
+def patch_html(html_path: str, sat_json: str) -> bool:
+    """
+    Replace the satellite data array inside index.html.
+    Tries three strategies in order:
+      1. Sentinel comments  /* SATS_DATA_START */ [...] /* SATS_DATA_END */
+      2. Original build marker  /*__SATS__*/[...]
+      3. Pattern-match on TLE field signatures
+    """
+    with open(html_path, "r", encoding="utf-8") as f:
+        html = f.read()
+
+    original = html
+
+    # Strategy 1 — sentinel comments (most reliable after first run)
+    s1 = re.compile(r"/\* SATS_DATA_START \*/\[.*?\]/\* SATS_DATA_END \*/", re.DOTALL)
+    if s1.search(html):
+        html = s1.sub(f"/* SATS_DATA_START */{sat_json}/* SATS_DATA_END */", html)
+        print("  Patched via sentinel comments.")
+
+    # Strategy 2 — original build-script marker preserved in file
+    elif re.search(r"/\*__SATS__\*/\[", html):
+        s2 = re.compile(r"/\*__SATS__\*/\[.*?\]", re.DOTALL)
+        html = s2.sub(f"/*__SATS__*/{sat_json}", html)
+        print("  Patched via __SATS__ build marker.")
+
+    # Strategy 3 — locate the TLE array by distinctive field signatures
+    else:
+        s3 = re.compile(
+            r'(\[\{"name":"[^"]+","l1":"1 \d[^"]*","l2":"2 \d[^"]*","cat":"[^"]+"\}.*?\])',
+            re.DOTALL
+        )
+        m = s3.search(html)
+        if m:
+            html = html[:m.start()] + sat_json + html[m.end():]
+            print("  Patched via TLE array pattern match.")
+        else:
+            print("ERROR: Could not locate satellite data in index.html.")
+            print("See README for how to add sentinel comments manually.")
+            return False
+
+    if html == original:
+        print("  Data unchanged — nothing to commit.")
+        return True
+
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(html)
+
+    return True
+
+
+def main():
+    html_path = "index.html"
+    print(f"\n=== Orbital Traffic TLE Update — {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} ===\n")
+    print("Fetching TLE data from CelesTrak:")
+    sat_json = build_sat_json()
+    print(f"\nPatching {html_path}:")
+    ok = patch_html(html_path, sat_json)
+    if ok:
+        print("\n✓ Done.")
+    else:
+        print("\n✗ Patch failed — index.html unchanged.")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
