@@ -754,43 +754,57 @@ function ingest(records){ // [{name,l1,l2,cat}]
   state.sats.forEach(s=>state.cats[s.cat]++);
 }
 
+// ── Worker proxy URL ── update this after running `wrangler deploy` ──────────
+const WORKER_BASE = "https://orbital-traffic.ianlewis101.workers.dev";
+
 async function fetchLive(){
   const btn=$("#refresh"); btn.disabled=true; btn.classList.add("busy");
   setStatus("loading","Syncing…");
-  const base="https://celestrak.org/NORAD/elements/gp.php?FORMAT=tle&GROUP=";
-  const groups=[
-    ["stations","stations"],["visual","other"],["active","other"],
-    ["gps-ops","navigation"],["galileo","navigation"],["glonass","navigation"],["beidou","navigation"],
-    ["science","science"],["geo","geostationary"],["geo-protected","geostationary"],
-    ["weather","science"],["resource","science"],["noaa","science"],["goes","science"],
-    ["oneweb","starlink"],["starlink","starlink"],["planet","other"],["spire","other"]
-  ];
-  // fetch all groups in parallel — much faster than sequential
-  const results = await Promise.allSettled(
-    groups.map(async ([grp,cat])=>{
-      const res=await fetch(base+grp,{cache:"no-store"});
-      if(!res.ok) return [];
-      const txt=await res.text();
-      const lines=txt.split(/\r?\n/).filter(l=>l.trim().length);
-      const recs=[];
-      for(let i=0;i+2<lines.length;i+=3){
-        if(lines[i+1][0]==="1"&&lines[i+2][0]==="2")
-          recs.push({name:lines[i],l1:lines[i+1],l2:lines[i+2],cat});
-      }
-      return recs;
-    })
-  );
-  btn.disabled=false; btn.classList.remove("busy");
-  const recs=results.flatMap(r=>r.status==="fulfilled"?r.value:[]);
-  if(recs.length>0){
-    ingest(recs); buildClouds();
-    state.source="live"; state.srcTime=new Date();
-    setStatus("live","Live"); rebuildLegend(); updateCount();
-    flash($("#count-n"));
-  }else{
-    setStatus(state.source==="live"?"live":"cached",state.source==="live"?"Live":"Cached");
-    toast("Live fetch blocked (network/CORS) — showing cached elements");
+  try {
+    const res = await fetch(WORKER_BASE + "/tle", { cache:"no-store" });
+    if (!res.ok) throw new Error("worker " + res.status);
+    const recs = await res.json();
+    if (recs.length > 0) {
+      ingest(recs); buildClouds();
+      state.source="live"; state.srcTime=new Date();
+      setStatus("live","Live"); rebuildLegend(); updateCount();
+      flash($("#count-n"));
+    } else {
+      throw new Error("empty");
+    }
+  } catch(e) {
+    // fallback: fetch direct from CelesTrak (may be rate-limited)
+    const base="https://celestrak.org/NORAD/elements/gp.php?FORMAT=tle&GROUP=";
+    const groups=[
+      ["stations","stations"],["active","other"],["gps-ops","navigation"],
+      ["galileo","navigation"],["glonass","navigation"],["science","science"],
+      ["geo","geostationary"],["oneweb","starlink"],["starlink","starlink"]
+    ];
+    const results = await Promise.allSettled(
+      groups.map(async ([grp,cat])=>{
+        const r=await fetch(base+grp,{cache:"no-store"});
+        if(!r.ok) return [];
+        const txt=await r.text();
+        const lines=txt.split(/\r?\n/).filter(l=>l.trim());
+        const recs=[];
+        for(let i=0;i+2<lines.length;i+=3)
+          if(lines[i+1][0]==="1"&&lines[i+2][0]==="2")
+            recs.push({name:lines[i],l1:lines[i+1],l2:lines[i+2],cat});
+        return recs;
+      })
+    );
+    const recs=results.flatMap(r=>r.status==="fulfilled"?r.value:[]);
+    if(recs.length>0){
+      ingest(recs); buildClouds();
+      state.source="live"; state.srcTime=new Date();
+      setStatus("live","Live"); rebuildLegend(); updateCount();
+      flash($("#count-n"));
+    } else {
+      setStatus("cached","Cached");
+      toast("Live fetch unavailable — showing cached elements");
+    }
   }
+  btn.disabled=false; btn.classList.remove("busy");
 }
 
 // =====================================================================
@@ -935,13 +949,25 @@ async function fetchAndRenderCrew(s){
   const craft=isISS?"ISS":"Tiangong";
   el.style.display="block";
   el.innerHTML=`<div class="crew-block"><div style="padding:14px;text-align:center;font-size:9.5px;color:var(--ink-faint);letter-spacing:0.1em">Fetching crew…</div></div>`;
-  // fetch crew list
+  // fetch crew from worker (falls back to open-notify directly)
   let crew=[];
   try{
-    const r=await fetch("https://corquaid.github.io/international-space-station-APIs/JSON/people-in-space.json",{cache:"no-store"});
+    const r=await fetch(WORKER_BASE+"/crew",{cache:"no-store"});
     const d=await r.json();
-    crew=(Array.isArray(d)?d:d.people||[]).filter(p=>(p.location||p.craft||"").includes(craft));
+    const people=d.people||[];
+    crew=people.filter(p=>(p.craft||p.location||"").includes(craft));
   }catch(e){}
+
+  // fetch today's activities from worker (sourced from iss-today.json on GitHub)
+  let todayData=null;
+  try{
+    const r=await fetch(WORKER_BASE+"/today",{cache:"no-store"});
+    todayData=await r.json();
+  }catch(e){}
+  const todayItems=(todayData&&todayData.activities||exp.today)
+    .map(t=>`<div class="crew-today-item"><div class="crew-today-dot"></div><div class="crew-today-txt">${t}</div></div>`)
+    .join("");
+  const todayDate=(todayData&&todayData.updated)||exp.todayDate;
   // compute progress
   const launched=new Date(exp.launch), now=new Date();
   const daysIn=Math.max(0,Math.floor((now-launched)/86400000));
@@ -961,7 +987,6 @@ async function fetchAndRenderCrew(s){
     avHTML=`<div style="font-size:10px;color:var(--ink-faint);padding:4px 0;letter-spacing:0.05em">Crew names unavailable</div>`;
   }
   const count=crew.length||"?";
-  const todayItems=exp.today.map(t=>`<div class="crew-today-item"><div class="crew-today-dot"></div><div class="crew-today-txt">${t}</div></div>`).join("");
   el.innerHTML=`
     <div class="crew-block">
       <div class="crew-exp-hd">
@@ -979,7 +1004,7 @@ async function fetchAndRenderCrew(s){
       <div class="crew-mission-body">${exp.mission}</div>
     </div>
     <div class="crew-today">
-      <div class="crew-today-hd"><div class="crew-today-lbl">Today aboard</div><div class="crew-today-dt">${exp.todayDate}</div></div>
+      <div class="crew-today-hd"><div class="crew-today-lbl">Today aboard</div><div class="crew-today-dt">${todayDate}</div></div>
       <div class="crew-today-body">${todayItems}</div>
     </div>`;
 }
