@@ -447,6 +447,8 @@ const CATS = {
   starlink:     {label:"Starlink",      color:0x8fd6ff, px:3.5},
   science:      {label:"Science",       color:0xff8fb0, px:8},
   other:        {label:"Other",         color:0xc3cede, px:8},
+  debris:       {label:"Debris",        color:0x556070, px:3},
+  rocket:       {label:"Rocket Bodies", color:0x7a8899, px:4},
   hazardous:    {label:"Hazardous NEOs",color:0xff4422, px:8},
   cool:         {label:"COOL SHIT",     color:0xa78bfa, px:8},
 };
@@ -671,7 +673,8 @@ function makeShapeTextures(){
     ctx.beginPath(); ctx.arc(cx,cy,s*0.28,0,Math.PI*2); ctx.fill();
   });
   return {stations:circle,navigation:circle,geostationary:circle,
-    starlink:circle,science:circle,other:circle,hazardous:circle,cool:circle};
+    starlink:circle,science:circle,other:circle,hazardous:circle,cool:circle,
+    debris:circle,rocket:circle};
 }
 
 // --- selection orbit trail ---
