@@ -16,6 +16,14 @@ Real-time 3D satellite and near-Earth object tracker. Runs entirely in the brows
 
 ---
 
+## Screenshots
+
+| Desktop | Mobile |
+|---------|--------|
+| ![Desktop view](screenshots/screenshot-desktop.png) | ![Mobile view](screenshots/screenshot-mobile.png) |
+
+---
+
 ## Setup (first time, ~5 minutes)
 
 ### 1. Create a GitHub repo
