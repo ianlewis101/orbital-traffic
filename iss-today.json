@@ -1,9 +1,10 @@
 {
-  "updated": "2026-06-17",
-  "expedition": "Expedition 73",
+  "updated": "2026-06-24",
+  "expedition": "Expedition 74",
   "activities": [
-    "Crew completed preventive maintenance on the Carbon Dioxide Removal Assembly (CDRA) and replaced a molecular sieve bed in the US segment.",
-    "Don Pettit photographed severe weather systems over the Gulf of Mexico for the IMAX Earth observation project.",
-    "Roscosmos crew ran fluid physics experiment runs in the Russian segment's Plasma Crystal-4 facility."
+    "Crew configured spacewalking tools and reviewed EVA procedures ahead of the June 30 excursion to replace a malfunctioning wrist joint on the Canadarm2 robotic arm.",
+    "NASA confirmed Christopher Williams and Jessica Meir as the spacewalking pair for the Canadarm2 wrist joint repair.",
+    "Crew grew cartilage tissue samples in microgravity to study joint-disease treatments and ran advanced materials manufacturing sessions.",
+    "SpaceX's uncrewed Cargo Dragon undocked from the Harmony module and departed the station after completing its resupply mission."
   ]
 }
