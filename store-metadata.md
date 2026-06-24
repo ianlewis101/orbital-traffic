@@ -1,6 +1,6 @@
 **APP NAME:** Orbital Traffic
 
-**SUBTITLE (30 chars max):** Satellite & Space Tracker
+**SUBTITLE (30 chars max):** Live Satellite & Space Tracker
 
 **DESCRIPTION:**
 
