@@ -1776,7 +1776,7 @@ const atmosMat=new THREE.ShaderMaterial({
     void main(){
       vec3 N=normalize(vWorldN);
       vec3 V=normalize(cameraPosition-vWorldPos);
-      float fresnel=pow(1.0-clamp(dot(N,V),0.0,1.0), 3.2);
+      float fresnel=pow(clamp(1.0+dot(N,V),0.0,1.0), 3.2);
       float sunAmt=smoothstep(-0.6,0.6,dot(N,normalize(sunDirWorld)));
       vec3 col=mix(vec3(0.08,0.18,0.35),vec3(0.35,0.62,1.0),sunAmt)*fresnel*1.4;
       col=acesFilmic(col); col=linearToSRGB(col);
