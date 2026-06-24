@@ -2,7 +2,7 @@
   "id": "/",
   "name": "Orbital Traffic",
   "short_name": "Orbital Traffic",
-  "description": "Real-time 3D tracker for every satellite and asteroid near Earth",
+  "description": "3D orbital tracker for 15,000+ satellites and asteroids — updated continuously from CelesTrak",
   "start_url": "/",
   "display": "standalone",
   "orientation": "any",
