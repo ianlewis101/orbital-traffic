@@ -189,6 +189,8 @@
   #info-track{width:100%;font-family:var(--mono);font-size:9.5px;letter-spacing:0.18em;padding:9px 0;text-transform:uppercase;
     color:var(--signal);background:rgba(174,227,255,0.06);border:1px solid rgba(174,227,255,0.28);cursor:pointer;transition:all .12s}
   #info-track:hover{background:rgba(174,227,255,0.13)}
+  #info-attr{font-family:var(--mono);font-size:10px;letter-spacing:0.03em;color:var(--ink-faint);opacity:0.5;padding:0 15px 12px;text-align:center}
+  #info-attr a{color:inherit;text-decoration:underline}
 
   /* ---------- meta ---------- */
   #meta{bottom:24px;right:24px;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:10px;animation:rise .8s both .34s}
@@ -502,6 +504,7 @@
     <div class="passes" id="info-passes"></div>
     <div class="bar"></div>
     <div class="foot"><button id="info-track">◎ Center View</button><a id="info-gallery" href="#" target="_blank" rel="noopener" style="display:none">✦ View Imagery</a></div>
+    <div id="info-attr">Orbital data: <a href="https://celestrak.org" target="_blank" rel="noopener">CelesTrak</a> / Space-Track.org &middot; For informational use only</div>
   </div>
 
   <div id="meta">
