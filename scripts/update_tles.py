@@ -26,6 +26,24 @@ HEADERS = {
     "Accept": "text/plain",
 }
 
+# Primary crewed-station modules that may carry "stations". CelesTrak's
+# GROUP=stations dump includes everything from debris to cubesats to cargo
+# vehicles (Dragon CRS, Progress, Cygnus, Tianzhou) -- only these core
+# module IDs, plus currently-docked crewed vehicles (matched by name),
+# should keep the "stations" category. Everything else gets "other".
+STATION_CORE_IDS = {"25544", "49044", "48274", "53239", "54216"}
+CREW_VEHICLE_RE = re.compile(r"\bCREW\b|SOYUZ[- ]MS|SHENZHOU", re.IGNORECASE)
+
+
+def correct_station_cat(norad_id: str, name: str, cat: str) -> str:
+    if cat != "stations":
+        return cat
+    if norad_id in STATION_CORE_IDS:
+        return "stations"
+    if CREW_VEHICLE_RE.search(name):
+        return "stations"
+    return "other"
+
 
 def fetch_tles(group: str, url: str) -> list:
     """Fetch TLE text from a URL and parse into sat objects."""
@@ -46,7 +64,9 @@ def fetch_tles(group: str, url: str) -> list:
         l1   = lines[i + 1]
         l2   = lines[i + 2]
         if l1.startswith("1 ") and l2.startswith("2 "):
-            sats.append({"name": name, "l1": l1, "l2": l2, "cat": group})
+            norad_id = l1[2:7].strip()
+            cat = correct_station_cat(norad_id, name, group)
+            sats.append({"name": name, "l1": l1, "l2": l2, "cat": cat})
             i += 3
         else:
             i += 1
