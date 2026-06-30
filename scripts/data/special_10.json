@@ -1,0 +1,72 @@
+{
+  "USA 81": {
+    "norad": "21949",
+    "description": "A classified National Reconnaissance Office satellite that has been circling Earth in polar orbit since April 1992 — over 34 years. Launched on a Titan II SLV from Vandenberg (a vehicle used almost exclusively for Defense Meteorological Satellite Program missions), USA 81 orbits at 788 km altitude with an 85° inclination, crossing every latitude twice per day. The US government has never officially described its mission. At over three decades old, it is one of the oldest continuously tracked NRO satellites in low Earth orbit — a Cold War-era asset that has outlasted both the Soviet Union it was built to observe and most of the military satellites launched alongside it.",
+    "agency": "NRO / US",
+    "launched": 1992,
+    "type": "Classified Military (NRO Polar Orbit)"
+  },
+  "LEMUR 2 TOMATOKECHUP": {
+    "norad": "60471",
+    "description": "One of Spire Global's LEMUR-2 constellation — compact 3U CubeSats that do three remarkable things simultaneously from a single spacecraft the size of a shoebox. Each LEMUR-2 collects GPS radio occultation data to probe atmospheric temperature and humidity globally, listens to AIS transponders from ships at sea to track maritime traffic, and monitors ADS-B signals from aircraft. The name TOMATOKECHUP continues Spire's tradition of giving constellation satellites names that are memorable precisely because they're absurd. With hundreds of LEMUR satellites in orbit, Spire has built one of the world's most prolific atmospheric sounding networks — and this is one node in that planetary instrument.",
+    "agency": "Spire Global",
+    "launched": 2024,
+    "type": "Commercial Weather / Maritime / Aviation Monitoring"
+  },
+  "CORAL": {
+    "norad": "67684",
+    "description": "A 2U CubeSat developed by Sapienza University of Rome and deployed from the ISS's Japanese Kibo module via JAXA's J-SSOD #35 small satellite deployer in October 2025. CORAL represents the Italian university space program at its most tangible — student-built hardware ejected from the same airlock that has launched hundreds of CubeSats from 17 countries over the past decade. The ISS Kibo module has become the world's most accessible satellite launch platform, allowing universities to deploy directly from 400 km altitude without booking a dedicated launch. It shares its orbit with the station that built it.",
+    "agency": "Sapienza University of Rome (ROSAP)",
+    "launched": 2025,
+    "type": "Italian University CubeSat (ISS-Deployed)"
+  },
+  "HRC MONOBLOCK CAMERA": {
+    "norad": "66052",
+    "description": "A piece of Russian scientific hardware now drifting in its own orbit after being detached from the exterior of the International Space Station. On October 16, 2025, Roscosmos cosmonauts Kud-Sverchkov and Mikaev exited the ISS and retrieved this HRC (High Resolution Camera) monoblock — part of a compact radio-optical detector system mounted on the station's exterior to test Earth observation and ecological monitoring technology. After removal during the spacewalk, the unit was released from the ISS and catalogued as a separate orbiting object. It is now slowly descending, losing altitude to atmospheric drag until it re-enters. A piece of a telescope, orbiting alone, watching the Earth it was designed to photograph.",
+    "agency": "Roscosmos",
+    "launched": 2025,
+    "type": "ISS-Released Russian Science Hardware"
+  },
+  "DUPLEX": {
+    "norad": "66906",
+    "description": "Russian-origin hardware jettisoned from the International Space Station exterior during a 2025 EVA, now tracking independently in low Earth orbit. Objects like DUPLEX are a recurring artifact of the ISS Russian segment — experiments are mounted externally on Zvezda, Nauka, or Poisk modules, operated for their test duration, then removed during spacewalks and released into free orbit to gradually re-enter. The ISS has spawned hundreds of such tracked objects. DUPLEX, likely named for its dual-function design, has now completed its mission. It is silently descending toward an atmospheric re-entry of its own, a very small piece of a very large space station finding its own path back to Earth.",
+    "agency": "Roscosmos",
+    "launched": 2025,
+    "type": "ISS-Released Russian Experiment Hardware"
+  },
+  "PELICAN-4 300B": {
+    "norad": "65316",
+    "description": "Planet Labs' Pelican-4 — one of the fourth-generation imaging satellites representing Planet's sharpest eyes in orbit. The Pelican constellation is Planet's answer to Maxar and Airbus: a 30 cm resolution system capable of revisiting any location up to 30 times per day with a 32-satellite constellation. Each Pelican carries a Cassegrain telescope with a 4.03-meter effective focal length — capable of distinguishing an object the size of a laptop from 519 km up. Pelican-4 launched August 26, 2025 aboard a SpaceX Falcon-9 NAOS rideshare from Vandenberg. It was commissioned in late 2025 as part of the constellation that helped Planet turn its first profitable year as a company.",
+    "agency": "Planet Labs",
+    "launched": 2025,
+    "type": "Very High Resolution Commercial Imaging (30 cm)"
+  },
+  "ASTEX 1": {
+    "norad": "05560",
+    "description": "A US Air Force Space Test Program satellite launched in 1971 that is still in orbit 55 years later — one of the oldest tracked objects in low Earth orbit that has not re-entered. ASTEX (SESP 1971-2) tested a celestial mapping infrared scanner, a 457-meter flexible roll-up solar array (the largest ever flown at the time), and instruments measuring energetic particle interactions with the ionosphere. The satellite worked until December 20, 1973, when a command telling the transmitter to stop was issued and failed — the transmitter kept broadcasting until it wore itself out. The spacecraft went silent in 1973 but never came down. It circles Earth today at 720 km altitude, a 50-year-old relic of Nixon-era space technology that has outlasted every mission it was ever built to support.",
+    "agency": "USAF Space Test Program",
+    "launched": 1971,
+    "type": "Defunct Technology Demonstrator (Silent Since 1973)"
+  },
+  "SERT 2": {
+    "norad": "04327",
+    "description": "The satellite that proved ion propulsion works in space — and is still up there 56 years later. SERT 2 (Space Electric Rocket Test 2), launched February 3, 1970, carried two mercury ion thrusters and the largest solar arrays NASA had ever flown, operating them for thousands of hours in the first long-duration electric propulsion test in history. One thruster ran 2,011 hours before a grid short stopped it; the second ran 3,781 hours. NASA reactivated the thrusters periodically through 1981, completing over 500 restarts. The technology validated here is the direct ancestor of the ion propulsion systems now used for station-keeping on virtually every commercial geostationary satellite and for deep-space missions like Dawn, Hayabusa, and BepiColombo. The spacecraft itself, now silent, continues to orbit Earth — the great-grandfather of modern electric propulsion, still flying.",
+    "agency": "NASA Lewis Research Center",
+    "launched": 1970,
+    "type": "Ion Propulsion Pioneer (Silent — Still Orbiting After 55 Years)"
+  },
+  "COSMOS 2219": {
+    "norad": "22219",
+    "description": "A Russian military satellite launched in October 1992 — during the tumultuous period when the new Russian Federation was still finding its footing as a space power after the Soviet Union's collapse eight months earlier. COSMOS 2219 carries the Cosmos designation that Russia and the USSR have used since 1962 to cover thousands of military satellite missions under a single civilian-sounding label. The complete Cosmos series encompasses reconnaissance satellites, navigation spacecraft, signals intelligence collectors, and experimental military hardware — all sharing one name that reveals nothing. At 33 years old and still tracked, COSMOS 2219 is an artifact of a specific moment in history when one space power became another overnight.",
+    "agency": "Russian Ministry of Defence",
+    "launched": 1992,
+    "type": "Russian Military (Classified — Cosmos Series)"
+  },
+  "LEMUR 2 DEVERILL-M-T": {
+    "norad": "57391",
+    "description": "Spire Global's LEMUR-2 DEVERILL-M-T is a 3U CubeSat in the LEMUR-2 constellation simultaneously tracking weather, ships, and aircraft from a single compact spacecraft. The '-M-T' suffix indicates a modified variant with enhanced radio frequency capabilities beyond the baseline LEMUR-2 design. Spire names its satellites with anarchic creativity that scales with volume — when you operate hundreds of satellites, you need naming that doesn't run out. DEVERILL-M-T's GPS radio occultation soundings profile the atmosphere from surface to stratosphere, feeding weather forecast models that improve accuracy over oceans where no ground instruments exist and where most of Earth's major storm systems are born.",
+    "agency": "Spire Global",
+    "launched": 2023,
+    "type": "Commercial Weather / Maritime / Aviation Monitoring"
+  }
+}
