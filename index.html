@@ -1135,11 +1135,16 @@ function _initials(name){
   return p.length>=2?(p[0][0]+p[p.length-1][0]).toUpperCase():name.slice(0,2).toUpperCase();
 }
 
+// "Today aboard" is sourced from iss-today.json via the worker's /today
+// endpoint — it's ISS-specific, so only ISS modules should show it. Other
+// stations (e.g. Tiangong) have their own crew/mission but not this feed.
+const ISS_TODAY_IDS=new Set(["25544","49044","27386","28654","37224","37820"]);
 async function fetchAndRenderCrew(s){
   const el=$("#info-crew"); if(!el) return;
   const isISS=s.id==="25544";
   const isTG=/TIANHE|TIANGONG|CSS/.test(s.name.toUpperCase());
   if(!isISS&&!isTG){ el.style.display="none"; el.innerHTML=""; return; }
+  const showToday=ISS_TODAY_IDS.has(s.id);
   const key=isISS?"iss":"tiangong";
   const exp=EXPEDITION_DATA[key];
   const craft=isISS?"ISS":"Tiangong";
@@ -1156,13 +1161,15 @@ async function fetchAndRenderCrew(s){
 
   // fetch today's activities from worker (sourced from iss-today.json on GitHub)
   let todayData=null;
-  try{
-    const r=await fetch(WORKER_BASE+"/today",{cache:"no-store"});
-    todayData=await r.json();
-  }catch(e){}
-  const todayItems=(todayData&&todayData.activities||exp.today)
+  if(showToday){
+    try{
+      const r=await fetch(WORKER_BASE+"/today",{cache:"no-store"});
+      todayData=await r.json();
+    }catch(e){}
+  }
+  const todayItems=showToday?(todayData&&todayData.activities||exp.today)
     .map(t=>`<div class="crew-today-item"><div class="crew-today-dot"></div><div class="crew-today-txt">${t}</div></div>`)
-    .join("");
+    .join(""):"";
   const todayDate=(todayData&&todayData.updated)||exp.todayDate;
   // compute progress
   const launched=new Date(exp.launch), now=new Date();
@@ -1199,10 +1206,10 @@ async function fetchAndRenderCrew(s){
       <div class="crew-mission-hd">Mission</div>
       <div class="crew-mission-body">${exp.mission}</div>
     </div>
-    <div class="crew-today">
+    ${showToday?`<div class="crew-today">
       <div class="crew-today-hd"><div class="crew-today-lbl">Today aboard</div><div class="crew-today-dt">${todayDate}</div></div>
       <div class="crew-today-body">${todayItems}</div>
-    </div>`;
+    </div>`:""}`;
 }
 
 // =====================================================================
@@ -1460,6 +1467,10 @@ function describe(s){
   }
   // --- hero objects with specific descriptions ---
   if(s.id==="25544"||n.includes("ZARYA")) return "The International Space Station — humanity's permanent foothold in space. 109 metres wide, six rooms, six crew. Has been continuously occupied since November 2000.";
+  if(s.id==="49044") return "Russia's Nauka laboratory module — the largest Russian contribution to the ISS. Launched in July 2021 after a 14-year delay, it docked autonomously and provides additional research facilities, a European robotic arm, and a second toilet for the Russian segment.";
+  if(s.id==="27386") return "Node 1 — the first US-built ISS module, launched December 1998. Unity connects the Russian and American segments and has six docking ports.";
+  if(s.id==="28654") return "Node 2 — the primary docking hub for visiting spacecraft including Dragon and HTV. Launched October 2007, it connects the US, European and Japanese lab modules.";
+  if(s.id==="37224") return "Node 3 — houses the life support systems that recycle air and water for the crew. Also home to the Cupola — the seven-window observatory with the best view in the solar system.";
   if(/CSS|TIANHE|TIANGONG|WENTIAN|MENGTIAN/.test(n)) return "China's Tiangong space station — completed in 2022 and permanently crewed. At roughly one-fifth the size of the ISS, it is the world's second active crewed station.";
   if(s.id==="20580"||/HUBBLE|HST/.test(n)) return "The Hubble Space Telescope — launched in 1990 and still operating. Orbits 340 miles up, above the atmosphere's blur, and has produced some of the most iconic images in the history of astronomy.";
   if(/WEBB|JWST/.test(n)) return "The James Webb Space Telescope — located 1 million miles away at the Sun-Earth L2 point. Its 21-foot gold mirror sees the universe in infrared, peering back to the first galaxies formed after the Big Bang.";
