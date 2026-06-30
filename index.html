@@ -906,12 +906,30 @@ function correctDebrisCat(name,cat){
   if(cat==="cool") return cat; // never override hand-curated hero objects
   return isDebrisName(name) ? "debris" : cat;
 }
+// Shared name-pattern regexes — used by both correctOtherCat() (ingest
+// path) and classify() (display path) so the two are always in sync.
+const NAV_NAME_RE     = / GPS | NAVSTAR | GALILEO | GLONASS | BEIDOU /;
+const WEATHER_NAME_RE = / GOES | METEOSAT | HIMAWARI | NOAA | METOP | METEOR | DMSP | ELEKTRO | FENGYUN /;
+const EO_NAME_RE      = / LANDSAT | SENTINEL | TERRA | AQUA | WORLDVIEW | SPOT | DOVE | ICEYE | PLEIADES /;
+// Rescues well-known satellites (AQUA, GOES, NOAA, GALILEO…) that arrive
+// tagged "other" from CelesTrak's "active" group via the Worker. Only
+// runs when cat is already "other" — never overrides a category that was
+// correctly assigned upstream (starlink stays starlink, geo stays geo…).
+// Weather and EO both map to "science" since the legend has no separate
+// weather/eo buckets.
+function correctOtherCat(name,cat){
+  if(cat!=="other") return cat;
+  const n=" "+(name||"").toUpperCase()+" ";
+  if(NAV_NAME_RE.test(n)) return "navigation";
+  if(WEATHER_NAME_RE.test(n)||EO_NAME_RE.test(n)) return "science";
+  return "other";
+}
 function ingest(records){ // [{name,l1,l2,cat}]
   for(const r of records){
     let rec; try{ rec=satellite.twoline2satrec(r.l1,r.l2); }catch(e){ continue; }
     if(!rec || rec.error) continue;
     const id=String(rec.satnum);
-    const cat=correctDebrisCat(r.name, correctStationCat(id,r.name,CATS[r.cat]?r.cat:"other"));
+    const cat=correctOtherCat(r.name, correctDebrisCat(r.name, correctStationCat(id,r.name,CATS[r.cat]?r.cat:"other")));
     const ex=state.byId.get(id);
     if(ex){ ex.rec=rec; ex.name=r.name||ex.name; ex.cat=cat; }
     else{
@@ -1442,9 +1460,9 @@ function classify(s){
   if(/ SOYUZ | PROGRESS | DRAGON | CYGNUS | SHENZHOU | TIANZHOU | STARLINER | ENDEAVOUR | ENDURANCE | RESILIENCE | FREEDOM /.test(n)) return "capsule";
   if(/ STARLINK | ONEWEB /.test(n)) return "starlink";
   if(id==="20580"||/ HUBBLE | HST | KEPLER | SPITZER | TESS | WEBB | JWST | CHANDRA | CXO | FERMI | FGRST | GLAST /.test(n)) return "telescope";
-  if(/ GPS | NAVSTAR | GALILEO | GLONASS | BEIDOU /.test(n)||s.cat==="navigation") return "navigation";
-  if(/ GOES | METEOSAT | HIMAWARI | NOAA | METOP | METEOR | DMSP | ELEKTRO | FENGYUN /.test(n)) return "weather";
-  if(/ LANDSAT | SENTINEL | TERRA | AQUA | WORLDVIEW | SPOT | DOVE | ICEYE | PLEIADES /.test(n)) return "eo";
+  if(NAV_NAME_RE.test(n)||s.cat==="navigation") return "navigation";
+  if(WEATHER_NAME_RE.test(n)) return "weather";
+  if(EO_NAME_RE.test(n)) return "eo";
   if(s.cat==="geostationary") return "geo";
   if(s.cat==="starlink") return "starlink";
   if(s.cat==="science") return "telescope"; // science satellites without specific name match
