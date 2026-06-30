@@ -31,7 +31,11 @@ HEADERS = {
 # vehicles (Dragon CRS, Progress, Cygnus, Tianzhou) -- only these core
 # module IDs, plus currently-docked crewed vehicles (matched by name),
 # should keep the "stations" category. Everything else gets "other".
-STATION_CORE_IDS = {"25544", "49044", "48274", "53239", "54216"}
+# Kept in sync with STATION_CORE_IDS in index.html and worker/index.js.
+STATION_CORE_IDS = {
+    "25544", "49044", "27386", "28654", "37224", "37820",  # ISS modules
+    "48274", "53239", "54216",                              # CSS Tiangong modules
+}
 CREW_VEHICLE_RE = re.compile(r"\bCREW\b|SOYUZ[- ]MS|SHENZHOU", re.IGNORECASE)
 
 

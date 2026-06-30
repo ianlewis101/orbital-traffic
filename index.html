@@ -876,7 +876,7 @@ function updatePositions(date){
 // and cubesats co-orbiting nearby, so we filter those down to "other". This
 // guards every ingestion path (cached bundle, live Worker, CelesTrak
 // fallback) against upstream feeds that lump everything under "stations".
-const STATION_CORE_IDS=new Set(["25544","49044","48274","53239","54216"]);
+const STATION_CORE_IDS=new Set(["25544","49044","27386","28654","37224","37820","48274","53239","54216"]);
 function isDockedCrewVehicle(name){
   return /\bCREW\b/i.test(name)||/SOYUZ[- ]MS/i.test(name)||/SHENZHOU/i.test(name);
 }
@@ -892,9 +892,15 @@ function correctStationCat(id,name,cat){
 // stragglers under "active" or "other" — so this reclassifies by name
 // regardless of which group/cat the record arrived under.
 const DEBRIS_NAME_RE = / DEB | DEBRIS | FRAGMENT | FRAG | R\/B | ROCKET BODY | ROCKET | STAGE | ARIANE | DELTA | ATLAS | TITAN /;
+// Hardware released or jettisoned from a crewed station (cameras,
+// experiment housings, unidentified ISS-origin objects) that CelesTrak
+// still lists under "stations" but which are inert and decaying — debris,
+// not payloads. Kept narrow so it can't catch co-orbiting cubesats
+// (KNACKSAT, GXIBA-1, …) or cargo vehicles (PROGRESS, CYGNUS, TIANZHOU).
+const ISS_HARDWARE_RE = / MONOBLOCK | DUPLEX | ISS OBJECT /;
 function isDebrisName(name){
   const n=" "+(name||"").toUpperCase()+" ";
-  return DEBRIS_NAME_RE.test(n) || n.includes("CZ-") || n.includes("SL-") || n.includes("PSLV R/B");
+  return DEBRIS_NAME_RE.test(n) || ISS_HARDWARE_RE.test(n) || n.includes("CZ-") || n.includes("SL-") || n.includes("PSLV R/B");
 }
 function correctDebrisCat(name,cat){
   if(cat==="cool") return cat; // never override hand-curated hero objects
