@@ -60,7 +60,7 @@ const DEBRIS_NAME_RE = / DEB | DEBRIS | FRAGMENT | FRAG | R\/B | ROCKET BODY | R
 // still lists under "stations" but which are inert and decaying — debris,
 // not payloads. Kept narrow so it can't catch co-orbiting cubesats
 // (KNACKSAT, GXIBA-1, …) or cargo vehicles (PROGRESS, CYGNUS, TIANZHOU).
-const ISS_HARDWARE_RE = / MONOBLOCK | DUPLEX | ISS OBJECT /;
+const ISS_HARDWARE_RE = / MONOBLOCK | DUPLEX | ISS OBJECT | SZ-\d+ MODULE /;
 function isDebrisName(name) {
   const n = " " + (name || "").toUpperCase() + " ";
   return DEBRIS_NAME_RE.test(n) || ISS_HARDWARE_RE.test(n) || n.includes("CZ-") || n.includes("SL-") || n.includes("PSLV R/B");
@@ -80,8 +80,8 @@ function classifyByName(name, cat) {
 // by the debris name check above). Without this, /tle tags dozens of
 // unrelated objects as stations.
 const STATION_CORE_IDS = new Set([
-  "25544", "49044", "27386", "28654", "37224", "37820", // ISS modules
-  "48274", "53239", "54216",                             // CSS Tiangong modules
+  "25544", "49044", "27386", "28654", "37224", "37820", "36086", // ISS modules
+  "48274", "53239", "54216",                                      // CSS Tiangong modules
 ]);
 function isDockedCrewVehicle(name) {
   return /\bCREW\b/i.test(name) || /SOYUZ[- ]MS/i.test(name) || /SHENZHOU/i.test(name);

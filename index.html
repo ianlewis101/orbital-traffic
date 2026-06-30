@@ -876,7 +876,7 @@ function updatePositions(date){
 // and cubesats co-orbiting nearby, so we filter those down to "other". This
 // guards every ingestion path (cached bundle, live Worker, CelesTrak
 // fallback) against upstream feeds that lump everything under "stations".
-const STATION_CORE_IDS=new Set(["25544","49044","27386","28654","37224","37820","48274","53239","54216"]);
+const STATION_CORE_IDS=new Set(["25544","49044","27386","28654","37224","37820","36086","48274","53239","54216"]);
 function isDockedCrewVehicle(name){
   return /\bCREW\b/i.test(name)||/SOYUZ[- ]MS/i.test(name)||/SHENZHOU/i.test(name);
 }
@@ -893,11 +893,12 @@ function correctStationCat(id,name,cat){
 // regardless of which group/cat the record arrived under.
 const DEBRIS_NAME_RE = / DEB | DEBRIS | FRAGMENT | FRAG | R\/B | ROCKET BODY | ROCKET | STAGE | ARIANE | DELTA | ATLAS | TITAN /;
 // Hardware released or jettisoned from a crewed station (cameras,
-// experiment housings, unidentified ISS-origin objects) that CelesTrak
-// still lists under "stations" but which are inert and decaying — debris,
-// not payloads. Kept narrow so it can't catch co-orbiting cubesats
+// experiment housings, unidentified ISS-origin objects, and Shenzhou
+// orbital modules left behind after crew return) that CelesTrak still
+// lists under "stations" but which are inert and decaying — debris, not
+// payloads. Kept narrow so it can't catch co-orbiting cubesats
 // (KNACKSAT, GXIBA-1, …) or cargo vehicles (PROGRESS, CYGNUS, TIANZHOU).
-const ISS_HARDWARE_RE = / MONOBLOCK | DUPLEX | ISS OBJECT /;
+const ISS_HARDWARE_RE = / MONOBLOCK | DUPLEX | ISS OBJECT | SZ-\d+ MODULE /;
 function isDebrisName(name){
   const n=" "+(name||"").toUpperCase()+" ";
   return DEBRIS_NAME_RE.test(n) || ISS_HARDWARE_RE.test(n) || n.includes("CZ-") || n.includes("SL-") || n.includes("PSLV R/B");
@@ -911,14 +912,22 @@ function correctDebrisCat(name,cat){
 const NAV_NAME_RE     = / GPS | NAVSTAR | GALILEO | GLONASS | BEIDOU /;
 const WEATHER_NAME_RE = / GOES | METEOSAT | HIMAWARI | NOAA | METOP | METEOR | DMSP | ELEKTRO | FENGYUN /;
 const EO_NAME_RE      = / LANDSAT | SENTINEL | TERRA | AQUA | WORLDVIEW | SPOT | DOVE | ICEYE | PLEIADES /;
+// ISS-deployed educational/research CubeSats (batch 67683-67688) that
+// arrive via the "stations" GROUP and fall to "other" after the station
+// allowlist filter. No shared name pattern exists for them, so they are
+// listed by NORAD ID. CORAL (67684) is already in science via CelesTrak's
+// own science group; the remaining five are listed here.
+const SCIENCE_IDS=new Set(["67683","67685","67686","67687","67688"]);
 // Rescues well-known satellites (AQUA, GOES, NOAA, GALILEO…) that arrive
-// tagged "other" from CelesTrak's "active" group via the Worker. Only
-// runs when cat is already "other" — never overrides a category that was
+// tagged "other" from CelesTrak's "active" group via the Worker. Also
+// promotes ISS-deployed CubeSats by ID (SCIENCE_IDS above). Only runs
+// when cat is already "other" — never overrides a category that was
 // correctly assigned upstream (starlink stays starlink, geo stays geo…).
 // Weather and EO both map to "science" since the legend has no separate
 // weather/eo buckets.
-function correctOtherCat(name,cat){
+function correctOtherCat(id,name,cat){
   if(cat!=="other") return cat;
+  if(SCIENCE_IDS.has(id)) return "science";
   const n=" "+(name||"").toUpperCase()+" ";
   if(NAV_NAME_RE.test(n)) return "navigation";
   if(WEATHER_NAME_RE.test(n)||EO_NAME_RE.test(n)) return "science";
@@ -929,7 +938,7 @@ function ingest(records){ // [{name,l1,l2,cat}]
     let rec; try{ rec=satellite.twoline2satrec(r.l1,r.l2); }catch(e){ continue; }
     if(!rec || rec.error) continue;
     const id=String(rec.satnum);
-    const cat=correctOtherCat(r.name, correctDebrisCat(r.name, correctStationCat(id,r.name,CATS[r.cat]?r.cat:"other")));
+    const cat=correctOtherCat(id, r.name, correctDebrisCat(r.name, correctStationCat(id,r.name,CATS[r.cat]?r.cat:"other")));
     const ex=state.byId.get(id);
     if(ex){ ex.rec=rec; ex.name=r.name||ex.name; ex.cat=cat; }
     else{
