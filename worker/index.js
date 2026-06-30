@@ -63,6 +63,30 @@ function classifyByName(name, cat) {
   return isDebrisName(name) ? "debris" : cat;
 }
 
+// Mirrors correctStationCat()/isDockedCrewVehicle() in index.html and
+// correct_station_cat() in scripts/update_tles.py. CelesTrak's
+// GROUP=stations dump is far more than the crewed modules — it lumps in
+// ISS-released hardware, cubesats, debris, and cargo vehicles (Dragon
+// CRS, Progress, Cygnus, Tianzhou) co-orbiting nearby. Only the core
+// crewed-station module IDs, plus currently-docked crewed vehicles
+// (matched by name), keep the "stations" category; everything else the
+// feed mislabels falls through to "other" (and may then be reclassified
+// by the debris name check above). Without this, /tle tags dozens of
+// unrelated objects as stations.
+const STATION_CORE_IDS = new Set([
+  "25544", "49044", "27386", "28654", "37224", "37820", // ISS modules
+  "48274", "53239", "54216",                             // CSS Tiangong modules
+]);
+function isDockedCrewVehicle(name) {
+  return /\bCREW\b/i.test(name) || /SOYUZ[- ]MS/i.test(name) || /SHENZHOU/i.test(name);
+}
+function correctStationCat(id, name, cat) {
+  if (cat !== "stations") return cat;
+  if (STATION_CORE_IDS.has(id)) return "stations";
+  if (isDockedCrewVehicle(name)) return "stations";
+  return "other";
+}
+
 function noradId(l1) {
   return l1.slice(2, 7).trim();
 }
@@ -73,7 +97,15 @@ function parseTLE(text, cat) {
   for (let i = 0; i + 2 < lines.length; i += 3) {
     if (lines[i + 1][0] === "1" && lines[i + 2][0] === "2") {
       const name = lines[i].trim();
-      recs.push({ name, l1: lines[i + 1], l2: lines[i + 2], cat: classifyByName(name, cat) });
+      const id = noradId(lines[i + 1]);
+      // Station allowlist first (drops the feed's bogus "stations" tags to
+      // "other"), then the debris name backstop — same order as
+      // index.html's ingest(): correctDebrisCat(correctStationCat(...)).
+      // This runs at parse time, before buildTLERecords() merges and
+      // before the 20-minute cache stores the response, so corrupted
+      // station classifications never get cached.
+      const finalCat = classifyByName(name, correctStationCat(id, name, cat));
+      recs.push({ name, l1: lines[i + 1], l2: lines[i + 2], cat: finalCat });
     }
   }
   return recs;
