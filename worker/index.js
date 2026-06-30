@@ -55,9 +55,15 @@ const GROUPS = [
 // "active" dump buries plenty of spent rocket stages under generic
 // categories, so name matching catches what the group tag misses.
 const DEBRIS_NAME_RE = / DEB | DEBRIS | FRAGMENT | FRAG | R\/B | ROCKET BODY | ROCKET | STAGE | ARIANE | DELTA | ATLAS | TITAN /;
+// Hardware released or jettisoned from a crewed station (cameras,
+// experiment housings, unidentified ISS-origin objects) that CelesTrak
+// still lists under "stations" but which are inert and decaying — debris,
+// not payloads. Kept narrow so it can't catch co-orbiting cubesats
+// (KNACKSAT, GXIBA-1, …) or cargo vehicles (PROGRESS, CYGNUS, TIANZHOU).
+const ISS_HARDWARE_RE = / MONOBLOCK | DUPLEX | ISS OBJECT /;
 function isDebrisName(name) {
   const n = " " + (name || "").toUpperCase() + " ";
-  return DEBRIS_NAME_RE.test(n) || n.includes("CZ-") || n.includes("SL-") || n.includes("PSLV R/B");
+  return DEBRIS_NAME_RE.test(n) || ISS_HARDWARE_RE.test(n) || n.includes("CZ-") || n.includes("SL-") || n.includes("PSLV R/B");
 }
 function classifyByName(name, cat) {
   return isDebrisName(name) ? "debris" : cat;
