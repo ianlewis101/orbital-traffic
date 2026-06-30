@@ -89,40 +89,101 @@ def build_sat_json() -> str:
     return json.dumps(all_sats, separators=(",", ":"))
 
 
+def _find_matching_bracket(text: str, open_idx: int) -> int:
+    """
+    Given the index of an opening '[' in `text`, return the index of its
+    matching ']', correctly skipping over '[' / ']' characters that occur
+    inside JSON string values (e.g. satellite names like
+    "STARLINK-11075 [DTC]"). A naive non-string-aware regex/scan can stop
+    at such an embedded bracket instead of the array's true end.
+    Returns -1 if no match is found.
+    """
+    depth = 0
+    in_string = False
+    escape = False
+    for i in range(open_idx, len(text)):
+        c = text[i]
+        if escape:
+            escape = False
+            continue
+        if in_string:
+            if c == "\\":
+                escape = True
+            elif c == '"':
+                in_string = False
+            continue
+        if c == '"':
+            in_string = True
+        elif c == "[":
+            depth += 1
+        elif c == "]":
+            depth -= 1
+            if depth == 0:
+                return i
+    return -1
+
+
 def patch_html(html_path: str, sat_json: str) -> bool:
     """
     Replace the satellite data array inside index.html.
-    Tries three strategies in order:
+    Tries strategies in order:
+      0. The live <script type="application/json" id="d-sats"> tag that the
+         app itself reads from — most reliable, since it targets the real
+         data container by id rather than pattern-matching its contents.
       1. Sentinel comments  /* SATS_DATA_START */ [...] /* SATS_DATA_END */
       2. Original build marker  /*__SATS__*/[...]
-      3. Pattern-match on TLE field signatures
+      3. Pattern-match on TLE field signatures, with bracket-depth-aware
+         array-end detection (NOT a lazy regex — satellite names can
+         contain literal '[' / ']', e.g. "STARLINK-11075 [DTC]", which
+         would make a lazy `.*?]` stop short of the array's true end).
     """
     with open(html_path, "r", encoding="utf-8") as f:
         html = f.read()
 
     original = html
 
+    # Strategy 0 — the actual <script id="d-sats"> JSON data island
+    tag = re.search(r'<script type="application/json" id="d-sats">', html)
+    if tag:
+        content_start = tag.end()
+        if html[content_start] != "[":
+            print("ERROR: d-sats script tag does not start with '['.")
+            return False
+        array_end = _find_matching_bracket(html, content_start)
+        if array_end == -1:
+            print("ERROR: could not find matching ']' for d-sats array.")
+            return False
+        close_tag = html.index("</script>", array_end)
+        html = html[:content_start] + sat_json + html[close_tag:]
+        print("  Patched via d-sats script tag.")
+
     # Strategy 1 — sentinel comments (most reliable after first run)
-    s1 = re.compile(r"/\* SATS_DATA_START \*/\[.*?\]/\* SATS_DATA_END \*/", re.DOTALL)
-    if s1.search(html):
-        html = s1.sub(f"/* SATS_DATA_START */{sat_json}/* SATS_DATA_END */", html)
+    elif re.search(r"/\* SATS_DATA_START \*/\[", html):
+        start = html.index("/* SATS_DATA_START */") + len("/* SATS_DATA_START */")
+        array_end = _find_matching_bracket(html, start)
+        end = html.index("/* SATS_DATA_END */", array_end)
+        html = html[:start] + sat_json + html[end:]
         print("  Patched via sentinel comments.")
 
     # Strategy 2 — original build-script marker preserved in file
     elif re.search(r"/\*__SATS__\*/\[", html):
-        s2 = re.compile(r"/\*__SATS__\*/\[.*?\]", re.DOTALL)
-        html = s2.sub(f"/*__SATS__*/{sat_json}", html)
+        start = html.index("/*__SATS__*/") + len("/*__SATS__*/")
+        array_end = _find_matching_bracket(html, start)
+        if array_end == -1:
+            print("ERROR: could not find matching ']' for __SATS__ array.")
+            return False
+        html = html[:start] + sat_json + html[array_end + 1:]
         print("  Patched via __SATS__ build marker.")
 
     # Strategy 3 — locate the TLE array by distinctive field signatures
     else:
-        s3 = re.compile(
-            r'(\[\{"name":"[^"]+","l1":"1 \d[^"]*","l2":"2 \d[^"]*","cat":"[^"]+"\}.*?\])',
-            re.DOTALL
-        )
-        m = s3.search(html)
+        m = re.search(r'\[\{"name":"[^"]+","l1":"1 \d[^"]*","l2":"2 \d[^"]*","cat":"[^"]+"\}', html)
         if m:
-            html = html[:m.start()] + sat_json + html[m.end():]
+            array_end = _find_matching_bracket(html, m.start())
+            if array_end == -1:
+                print("ERROR: could not find matching ']' for TLE array.")
+                return False
+            html = html[:m.start()] + sat_json + html[array_end + 1:]
             print("  Patched via TLE array pattern match.")
         else:
             print("ERROR: Could not locate satellite data in index.html.")
