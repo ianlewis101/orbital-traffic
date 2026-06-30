@@ -593,14 +593,13 @@ const CATS = {
   communications:{label:"Communications", color:0xff8c00, px:4},
   science:       {label:"Science",        color:0xff8fb0, px:4},
   other:         {label:"Other",          color:0xc3cede, px:4},
-  debris:        {label:"Debris",         color:0x556070, px:4},
-  rocket:        {label:"Rocket Bodies",  color:0x7a8899, px:4},
+  debris:        {label:"DEBRIS",         color:0x7a8899, px:4},
   hazardous:     {label:"Hazardous NEOs", color:0xff4422, px:5},
   cool:          {label:"COOL SHIT",      color:0xa78bfa, px:4},
 };
 // ---------- state ----------
 const state = {
-  sats:[], byId:new Map(), cats:{}, hidden:new Set(),
+  sats:[], byId:new Map(), cats:{}, hidden:new Set(["debris"]),
   simNow: Date.now(), rate:1, lastWall: performance.now(),
   selected:null, tracking:false, hovered:null, cardCollapsed:false,
   lastProp:0, source:"cached", srcTime:null
@@ -806,7 +805,7 @@ function makeShapeTextures(){
   });
   return {stations:circle,navigation:circle,geostationary:circle,
     starlink:circle,kuiper:circle,communications:circle,science:circle,
-    other:circle,hazardous:circle,cool:circle,debris:circle,rocket:circle};
+    other:circle,hazardous:circle,cool:circle,debris:circle};
 }
 
 // --- selection orbit trail ---
@@ -887,12 +886,26 @@ function correctStationCat(id,name,cat){
   if(isDockedCrewVehicle(name)) return "stations";
   return "other";
 }
+// Rocket bodies and debris fragments are merged into one "debris" category
+// (see CATS above). Upstream feeds tag these inconsistently — some groups
+// carry dedicated debris GROUPs (e.g. cosmos-2251-debris), others bury
+// stragglers under "active" or "other" — so this reclassifies by name
+// regardless of which group/cat the record arrived under.
+const DEBRIS_NAME_RE = / DEB | DEBRIS | FRAGMENT | FRAG | R\/B | ROCKET BODY | ROCKET | STAGE | ARIANE | DELTA | ATLAS | TITAN /;
+function isDebrisName(name){
+  const n=" "+(name||"").toUpperCase()+" ";
+  return DEBRIS_NAME_RE.test(n) || n.includes("CZ-") || n.includes("SL-") || n.includes("PSLV R/B");
+}
+function correctDebrisCat(name,cat){
+  if(cat==="cool") return cat; // never override hand-curated hero objects
+  return isDebrisName(name) ? "debris" : cat;
+}
 function ingest(records){ // [{name,l1,l2,cat}]
   for(const r of records){
     let rec; try{ rec=satellite.twoline2satrec(r.l1,r.l2); }catch(e){ continue; }
     if(!rec || rec.error) continue;
     const id=String(rec.satnum);
-    const cat=correctStationCat(id,r.name,CATS[r.cat]?r.cat:"other");
+    const cat=correctDebrisCat(r.name, correctStationCat(id,r.name,CATS[r.cat]?r.cat:"other"));
     const ex=state.byId.get(id);
     if(ex){ ex.rec=rec; ex.name=r.name||ex.name; ex.cat=cat; }
     else{
@@ -929,7 +942,8 @@ async function fetchLive(){
     const groups=[
       ["stations","stations"],["active","other"],["gps-ops","navigation"],
       ["galileo","navigation"],["glonass","navigation"],["science","science"],
-      ["geo","geostationary"],["oneweb","starlink"],["starlink","starlink"]
+      ["geo","geostationary"],["oneweb","starlink"],["starlink","starlink"],
+      ["cosmos-2251-debris","debris"],["iridium-33-debris","debris"],["fengyun-1c-debris","debris"]
     ];
     const results = await Promise.allSettled(
       groups.map(async ([grp,cat])=>{
@@ -1415,8 +1429,7 @@ function enrichSatcat(s){
 }
 function classify(s){
   const n=" "+s.name.toUpperCase()+" ", id=s.id, t=(s.objType||"");
-  if(t==="DEB"||/ DEB | DEBRIS | FRAGMENT /.test(n)) return "debris";
-  if(t==="R/B"||/ R\/B | ROCKET /.test(n)) return "rocket";
+  if(t==="DEB"||t==="R/B"||isDebrisName(s.name)) return "debris";
   if(/ OBJECT | TBA | UNIDENTIFIED | UNKNOWN /.test(n)) return "unknown";
   if(s.cat==="cool") return "telescope"; // hero objects — described individually
   if(id==="25544"||/ ZARYA | TIANHE | TIANGONG | WENTIAN | MENGTIAN /.test(n)) return "station";
@@ -1499,8 +1512,7 @@ function describe(s){
     case "eo":         return "An Earth-observation satellite mapping the planet's land, oceans and changing environment.";
     case "telescope":  return "A space telescope — studying the cosmos from above the blur and filtering of Earth's atmosphere.";
     case "geo":        return "A geostationary satellite — locked in orbit at 22,236 miles up, hovering motionless over one fixed point above the equator.";
-    case "rocket":     return "A spent rocket body — the discarded upper stage of a launch vehicle, now one of the larger pieces of debris in orbit.";
-    case "debris":     return "A fragment of orbital debris — a remnant of a past satellite, rocket, or collision tracked by space-surveillance networks.";
+    case "debris":     return "A piece of orbital debris — either a spent rocket body (the discarded upper stage of a launch vehicle) or a fragment from a past collision or breakup, tracked by space-surveillance networks.";
     case "unknown":    return "An object tracked by space-surveillance networks, not yet publicly identified.";
     default:           return "A satellite in Earth orbit, catalogued by the world's space-surveillance networks.";
   }
@@ -1577,9 +1589,6 @@ function svgFor(s){
     `<rect x="84" y="40" width="74" height="48" rx="12" fill="url(#bg)" stroke="#7f8b9c" stroke-width="1.4"/>`+
     `<ellipse cx="158" cy="64" rx="7" ry="24" fill="#0c1019" stroke="${st}" stroke-width="1.2"/><ellipse cx="158" cy="64" rx="3" ry="12" fill="#1b2740"/>`+
     `<rect x="92" y="50" width="40" height="28" rx="4" fill="none" stroke="${st}" stroke-width=".6"/><line x1="120" y1="40" x2="120" y2="30" stroke="${st}" stroke-width="1.4"/>`);
-  if(c==="rocket") return wrap(`<rect x="60" y="50" width="108" height="30" rx="15" fill="url(#bg)" stroke="#7f8b9c" stroke-width="1.4"/>`+
-    `<line x1="86" y1="50" x2="86" y2="80" stroke="#7f8b9c" stroke-width=".6"/><line x1="118" y1="50" x2="118" y2="80" stroke="#7f8b9c" stroke-width=".6"/><line x1="150" y1="50" x2="150" y2="80" stroke="#7f8b9c" stroke-width=".6"/>`+
-    `<path d="M168 50 l22 8 0 14 -22 8 z" fill="#9aa6b6" stroke="#7f8b9c" stroke-width="1.2"/><ellipse cx="60" cy="65" rx="5" ry="15" fill="#10151f" stroke="${st}" stroke-width="1"/>`);
   if(c==="debris"||c==="unknown") return wrap(`<path d="M92 46 l28 -8 22 10 12 24 -14 22 -30 4 -22 -16 -4 -24 z" fill="url(#bg)" stroke="#7f8b9c" stroke-width="1.4" stroke-linejoin="round"/>`+
     `<path d="M108 58 l18 -4 10 14 -8 14 -18 -2 -6 -12 z" fill="none" stroke="${st}" stroke-width=".7"/>`+
     `<line x1="120" y1="38" x2="124" y2="30" stroke="${st}" stroke-width="1"/><circle cx="158" cy="48" r="3" fill="${st}"/><circle cx="86" cy="92" r="2.4" fill="${st}"/><circle cx="152" cy="98" r="1.8" fill="${st}"/>`);
