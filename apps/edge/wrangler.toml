@@ -1,0 +1,7 @@
+name = "orbital-traffic"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+# Maps to https://orbital-traffic.<account>.workers.dev — the URL the web
+# client calls via VITE_WORKER_BASE / WORKER_BASE.
+workers_dev = true

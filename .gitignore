@@ -1,4 +1,32 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build outputs
+dist/
+.output/
+.turbo/
+*.tsbuildinfo
+
+# test / coverage
+coverage/
+playwright-report/
+test-results/
+
+# capacitor native projects (generated)
+apps/web/ios/
+apps/web/android/
+
+# editor / os
+.DS_Store
+*.local
+.vscode/*
+!.vscode/extensions.json
+
+# python (legacy data scripts)
 __pycache__/
 *.pyc
-worker/node_modules/
-worker/.wrangler/
+
+# cloudflare
+.wrangler/
+.dev.vars

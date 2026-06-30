@@ -1,0 +1,56 @@
+/* "Deep Field" design tokens as CSS custom properties.
+   Keep in sync with ./index.ts (the TS source of truth for JS/Three.js). */
+:root {
+  --c-bg: #05060b;
+  --c-bg-elevated: #0a0d16;
+  --c-surface: rgba(16, 20, 32, 0.72);
+  --c-surface-solid: #10141f;
+  --c-surface-hover: rgba(28, 34, 50, 0.82);
+
+  --c-border: rgba(148, 163, 184, 0.16);
+  --c-border-strong: rgba(148, 163, 184, 0.32);
+
+  --c-text: #eef2fb;
+  --c-text-dim: #9aa3b8;
+  --c-text-faint: #626b80;
+
+  --c-primary: #38bdf8;
+  --c-primary-dim: #0ea5e9;
+  --c-primary-soft: rgba(56, 189, 248, 0.14);
+  --c-accent: #fbbf24;
+  --c-accent-soft: rgba(251, 191, 36, 0.14);
+
+  --c-good: #34d399;
+  --c-warn: #fbbf24;
+  --c-bad: #fb7185;
+
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --r-xl: 24px;
+  --r-pill: 999px;
+
+  --f-sans: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --f-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --shadow-panel: 0 18px 50px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --shadow-pop: 0 8px 28px rgba(0, 0, 0, 0.45);
+
+  --m-fast: 120ms;
+  --m-base: 220ms;
+  --m-slow: 420ms;
+  --m-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  --z-scene: 0;
+  --z-hud: 10;
+  --z-panel: 20;
+  --z-overlay: 40;
+  --z-tooltip: 60;
+  --z-splash: 80;
+
+  /* Respect the device safe-area (notches) for the Capacitor build. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}

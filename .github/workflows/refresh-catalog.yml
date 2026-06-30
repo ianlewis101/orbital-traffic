@@ -1,0 +1,32 @@
+name: Refresh Satellite Catalog
+
+on:
+  schedule:
+    # Daily at 06:00 UTC — fresh elements for the morning.
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Fetch + classify fresh TLEs
+        run: pnpm data:refresh
+
+      - name: Commit updated catalog (if changed)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add apps/web/public/data/catalog.json
+          git diff --cached --quiet || git commit -m "chore: refresh satellite catalog $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git push

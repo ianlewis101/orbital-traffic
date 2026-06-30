@@ -1,0 +1,19 @@
+{
+  "iss": "imagery/iss.jpg",
+  "hubble": "imagery/hubble.jpg",
+  "jwst": "imagery/jwst.jpg",
+  "dragon": "imagery/dragon.jpg",
+  "soyuz": "imagery/soyuz.jpg",
+  "cygnus": "imagery/cygnus.jpg",
+  "station_generic": "imagery/station_generic.jpg",
+  "capsule_generic": "imagery/capsule_generic.jpg",
+  "satellite_generic": "imagery/satellite_generic.jpg",
+  "asteroid_geographos": "imagery/asteroid_geographos.jpg",
+  "asteroid_apollo": "imagery/asteroid_apollo.jpg",
+  "asteroid_phaethon": "imagery/asteroid_phaethon.jpg",
+  "asteroid_toutatis": "imagery/asteroid_toutatis.jpg",
+  "asteroid_florence": "imagery/asteroid_florence.jpg",
+  "navigation_generic": "imagery/navigation_generic.jpg",
+  "geo_generic": "imagery/geo_generic.jpg",
+  "science_generic": "imagery/science_generic.jpg"
+}
