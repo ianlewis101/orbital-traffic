@@ -1,4 +1,21 @@
-__pycache__/
-*.pyc
-worker/node_modules/
-worker/.wrangler/
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Worker
+.wrangler/
+.dev.vars
+
+# Test
+coverage/
+
+# Tooling caches
+.eslintcache
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.local

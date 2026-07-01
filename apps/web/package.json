@@ -1,0 +1,20 @@
+{
+  "name": "@orbital-traffic/web",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Orbital Traffic web app — 3D orbital tracker PWA",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@orbital-traffic/catalog": "^2.0.0",
+    "satellite.js": "^5.0.0",
+    "three": "^0.160.1"
+  },
+  "devDependencies": {
+    "vite": "^6.0.7"
+  }
+}

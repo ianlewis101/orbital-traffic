@@ -1,0 +1,33 @@
+{
+  "name": "orbital-traffic",
+  "private": true,
+  "type": "module",
+  "description": "Real-time 3D satellite and near-Earth object tracker",
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "worker"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @orbital-traffic/web",
+    "build": "npm run build -w @orbital-traffic/web",
+    "preview": "npm run preview -w @orbital-traffic/web",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "data:tle": "node tools/fetch-tles.mjs",
+    "data:iss-today": "node tools/update-iss-today.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.17.0",
+    "globals": "^15.14.0",
+    "prettier": "^3.4.2",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

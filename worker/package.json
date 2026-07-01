@@ -1,13 +1,19 @@
 {
-  "name": "orbital-traffic-worker",
-  "version": "1.0.0",
+  "name": "@orbital-traffic/worker",
+  "version": "2.0.0",
   "private": true,
+  "type": "module",
   "description": "Cloudflare Worker backing the Orbital Traffic live-data endpoints (/tle, /crew, /today).",
+  "main": "src/index.js",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@orbital-traffic/catalog": "^2.0.0"
   },
   "devDependencies": {
-    "wrangler": "^3.78.0"
+    "wrangler": "^3.99.0"
   }
 }

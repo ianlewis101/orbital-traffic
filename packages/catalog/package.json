@@ -1,0 +1,13 @@
+{
+  "name": "@orbital-traffic/catalog",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared satellite catalog logic: TLE parsing, CelesTrak group definitions, and object classification. Single source of truth for the web app, the Cloudflare Worker, and the data pipeline.",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "vitest run"
+  }
+}

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+  <meta name="application-name" content="Orbital Traffic">
+  <meta name="description" content="Real-time 3D tracker for every satellite and asteroid near Earth">
+  <meta name="theme-color" content="#5eead4">
+
+  <!-- PWA manifest -->
+  <link rel="manifest" href="/manifest.json">
+
+  <!-- iOS PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Orbital Traffic">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <link rel="apple-touch-icon" sizes="120x120" href="/icons/icon-120.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png">
+  <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-167.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16.png">
+
+  <!-- Open Graph / Social -->
+  <meta property="og:title" content="Orbital Traffic">
+  <meta property="og:description" content="Real-time 3D tracker for every satellite and asteroid near Earth">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://orbitaltraffic.app">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ORBITAL TRAFFIC — live space tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Oxanium:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div id="scene"></div>
+
+<div id="fx-vignette" class="fx"></div>
+<div id="fx-scan" class="fx"></div>
+<div id="fx-grain" class="fx"></div>
+<div id="bezel"><span class="cx tl"></span><span class="cx tr"></span><span class="cx bl"></span><span class="cx br"></span><div class="ruler"></div><div class="ruler b"></div></div>
+
+<div id="splash">
+  <div class="ttl">Orbital&nbsp;<em>Traffic</em></div>
+  <div class="ld"><i></i></div>
+  <div class="msg" id="splash-msg">Acquiring orbital elements</div>
+</div>
+
+<div class="hud">
+  <div id="brand">
+    <div class="wm">Orbital&nbsp;<em>Traffic</em></div>
+    <div class="wm-sub">Live Space Situational Display</div>
+  </div>
+
+  <div id="clock" class="plate">
+    <div class="ph"><span class="ph-t">Current Time<span class="clock-suffix">&nbsp;&middot; UTC</span></span><span class="ph-i" id="clock-mode">LIVE</span></div>
+    <div class="body">
+      <div class="utc" id="utc">--:--:--</div>
+      <div class="date" id="datestr">&mdash;</div>
+      <div class="rows">
+        <div class="crow"><span class="ck">Orbit data</span>
+          <span id="status-pill" class="cached"><span class="dot"></span><span id="status-txt">Cached</span></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="search-wrap">
+    <div id="search" class="plate">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="search-in" type="text" placeholder="SEARCH CATALOG" autocomplete="off" spellcheck="false">
+      <span class="slash">↵</span>
+    </div>
+    <div id="results" class="plate"></div>
+  </div>
+
+  <div id="leftstack">
+    <div id="time" class="plate">
+      <div class="ph"><span class="ph-t">Time Machine</span><span class="ph-i" id="rate-lbl">REAL-TIME</span></div>
+      <div class="body">
+        <div class="btns" id="rate-btns"></div>
+        <div class="jumps" id="jump-btns"></div>
+      </div>
+    </div>
+    <div id="today" class="plate">
+      <div class="ph" id="today-ph"><span class="ph-t">Popular Objects Today</span><span class="ph-i" id="today-toggle">▾</span></div>
+      <div class="body" id="today-list"></div>
+    </div>
+    <div id="legend" class="plate">
+      <div class="ph"><span class="ph-t">Orbit Classes</span><span class="ph-i" id="legend-tot">0</span><b id="count-n" style="display:none">0</b></div>
+      <div class="body" id="cats"></div>
+    </div>
+  </div>
+
+  <div id="info" class="plate">
+    <div id="info-drag"></div>
+    <div class="ph">
+      <span class="ph-t">Tracked Object</span>
+      <button id="fav-btn" title="Save to favourites">☆</button>
+      <span class="x" id="info-x">✕</span>
+    </div>
+    <figure id="info-figure"></figure>
+    <div class="top">
+      <div class="cat-tag" id="info-cat"><span class="d"></span><span></span></div>
+      <div class="nm" id="info-nm">&mdash;</div>
+      <div class="flagline" id="info-flag"></div>
+      <div class="nid" id="info-nid">&mdash;</div>
+      <div class="launch" id="info-launch"></div>
+    </div>
+    <div class="lead" id="info-lead"></div>
+    <div id="info-crew"></div>
+    <div class="chips" id="info-chips"></div>
+    <div class="tele-h lab">Live Telemetry</div>
+    <div class="grid" id="info-grid"></div>
+    <div class="bar"></div>
+    <div class="foot"><button id="info-track">◎ Center on Globe</button><a id="info-gallery" href="#" target="_blank" rel="noopener" style="display:none">✦ View Imagery</a></div>
+    <div id="info-attr">Orbital data: <a href="https://celestrak.org" target="_blank" rel="noopener">CelesTrak</a> / Space-Track.org &middot; For informational use only</div>
+  </div>
+
+  <div id="mini-card">
+    <span class="d"></span>
+    <span class="nm" id="mini-nm">&mdash;</span>
+    <svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+  </div>
+
+  <div id="meta">
+    <div id="attr">positions computed in your browser</div>
+  </div>
+
+  <div id="hint">drag to rotate &middot; scroll to zoom &middot; select an object</div>
+</div>
+
+<div id="tip"></div>
+<div id="sel-marker"><div class="ring"></div></div>
+
+<script type="module" src="/src/main.js"></script>
+</body></html>

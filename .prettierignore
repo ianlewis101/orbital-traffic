@@ -1,0 +1,6 @@
+dist/
+node_modules/
+coverage/
+apps/web/public/data/
+docs/archive/
+*.md
