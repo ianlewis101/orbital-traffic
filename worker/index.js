@@ -93,6 +93,14 @@ const COMMS_NAME_RE = /IRIDIUM|GLOBALSTAR|ORBCOMM|O3B|HULIANWANG|GEESAT|SITRO-AI
 // Earth-observation/imaging constellations and tech-demo cubesats beyond
 // WEATHER_NAME_RE/EO_NAME_RE above, same "active" catch-all problem.
 const SCI_CONSTELLATION_RE = /FLOCK|JILIN-1|TIANMU|YUNHAI|TIANHUI|SUPERVIEW|AEROCUBE|WILDFIRE|CHUANGXIN|CARTOSAT|KOMPSAT|ARIRANG|PROBA|RADARSAT|RESOURCESAT|CBERS/;
+// Mirrors CLASSIFIED_NAME_RE in index.html — known military/intelligence
+// naming schemes, surfaced as their own "classified" category instead of
+// "other". Deliberately no generic /COSMOS/ pattern: most COSMOS-named
+// objects are ordinary (often defunct or debris) Russian satellites, and
+// some are GLONASS navigation birds already caught by NAV_NAME_RE above.
+// SHIJIAN uses [-\s]* rather than \s*: the real catalog name is hyphenated
+// ("SHIJIAN-21"), and a whitespace-only separator misses it entirely.
+const CLASSIFIED_NAME_RE = /\bUSA\s+\d+\b|\bNROL\b|\bYAOGAN\b|\bPRAETORIAN\b|\bCHANGGUANG\b|\bSHIJIAN[-\s]*\d+[A-Z]?\b/;
 // Mirrors SCIENCE_IDS in index.html (see other-category-audit.md
 // Suggestion C3). ISS-deployed educational CubeSats (batch 67683-67688)
 // arrive via the "stations" GROUP and fall to "other" after the station
@@ -115,6 +123,7 @@ function correctOtherCat(id, name, cat) {
   if (NAV_NAME_RE.test(n)) return "navigation";
   if (COMMS_NAME_RE.test(n)) return "communications";
   if (WEATHER_NAME_RE.test(n) || EO_NAME_RE.test(n) || SCI_CONSTELLATION_RE.test(n)) return "science";
+  if (CLASSIFIED_NAME_RE.test(n)) return "classified";
   return "other";
 }
 

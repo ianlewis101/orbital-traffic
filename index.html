@@ -593,13 +593,14 @@ const CATS = {
   communications:{label:"Communications", color:0xff8c00, px:4},
   science:       {label:"Science",        color:0xff8fb0, px:4},
   other:         {label:"Other",          color:0xc3cede, px:4},
+  classified:    {label:"CLASSIFIED",     color:0x8b0000, px:4},
   debris:        {label:"DEBRIS",         color:0x7a8899, px:4},
   hazardous:     {label:"Hazardous NEOs", color:0xff4422, px:5},
   cool:          {label:"COOL SHIT",      color:0xa78bfa, px:4},
 };
 // ---------- state ----------
 const state = {
-  sats:[], byId:new Map(), cats:{}, hidden:new Set(["debris"]),
+  sats:[], byId:new Map(), cats:{}, hidden:new Set(["debris","classified"]),
   simNow: Date.now(), rate:1, lastWall: performance.now(),
   selected:null, tracking:false, hovered:null, cardCollapsed:false,
   lastProp:0, source:"cached", srcTime:null
@@ -805,7 +806,7 @@ function makeShapeTextures(){
   });
   return {stations:circle,navigation:circle,geostationary:circle,
     starlink:circle,kuiper:circle,communications:circle,science:circle,
-    other:circle,hazardous:circle,cool:circle,debris:circle};
+    other:circle,classified:circle,hazardous:circle,cool:circle,debris:circle};
 }
 
 // --- selection orbit trail ---
@@ -912,6 +913,16 @@ function correctDebrisCat(name,cat){
 const NAV_NAME_RE     = / GPS | NAVSTAR | GALILEO | GLONASS | BEIDOU /;
 const WEATHER_NAME_RE = / GOES | METEOSAT | HIMAWARI | NOAA | METOP | METEOR | DMSP | ELEKTRO | FENGYUN /;
 const EO_NAME_RE      = / LANDSAT | SENTINEL | TERRA | AQUA | WORLDVIEW | SPOT | DOVE | ICEYE | PLEIADES /;
+// Known military/intelligence satellite naming schemes — surfaced as their
+// own "classified" category instead of being buried in "other" (see
+// describe() for the per-pattern mystery text). Deliberately does NOT
+// include a generic /COSMOS/ pattern: most COSMOS-named objects are
+// ordinary (often defunct or debris) Russian satellites, and some are
+// GLONASS navigation birds already caught by NAV_NAME_RE above — lumping
+// all of them into "classified" would misrepresent the vast majority.
+// SHIJIAN uses [-\s]* rather than \s*: the real catalog name is hyphenated
+// ("SHIJIAN-21"), and a whitespace-only separator misses it entirely.
+const CLASSIFIED_NAME_RE = /\bUSA\s+\d+\b|\bNROL\b|\bYAOGAN\b|\bPRAETORIAN\b|\bCHANGGUANG\b|\bSHIJIAN[-\s]*\d+[A-Z]?\b/;
 // ISS-deployed educational/research CubeSats (batch 67683-67688) that
 // arrive via the "stations" GROUP and fall to "other" after the station
 // allowlist filter. No shared name pattern exists for them, so they are
@@ -931,6 +942,7 @@ function correctOtherCat(id,name,cat){
   const n=" "+(name||"").toUpperCase()+" ";
   if(NAV_NAME_RE.test(n)) return "navigation";
   if(WEATHER_NAME_RE.test(n)||EO_NAME_RE.test(n)) return "science";
+  if(CLASSIFIED_NAME_RE.test(n)) return "classified";
   return "other";
 }
 function ingest(records){ // [{name,l1,l2,cat}]
@@ -1400,9 +1412,15 @@ const FLAGS={US:"\u{1F1FA}\u{1F1F8}",PRC:"\u{1F1E8}\u{1F1F3}",CIS:"\u{1F1F7}\u{1
   CHBZ:"\u{1F1E8}\u{1F1F3}\u{1F1E7}\u{1F1F7}"};
 function inferOwner(s){
   const n=" "+s.name.toUpperCase()+" ";
+  // Classified satellites get their operating agency, not just a country —
+  // checked first so it isn't shadowed by the generic country lines below
+  // (YAOGAN, for instance, would otherwise match the generic China line).
+  if(/\bUSA\s+\d+\b/.test(n)||/\bNROL\b/.test(n))                 return {code:"US",  name:"National Reconnaissance Office"};
+  if(/\bYAOGAN\b/.test(n)||/\bSHIJIAN[-\s]*\d+[A-Z]?\b/.test(n)) return {code:"PRC", name:"People's Liberation Army"};
+  if(/\bPRAETORIAN\b/.test(n))                                    return {code:"US",  name:"US Space Development Agency"};
   if(/ STARLINK | ONEWEB /.test(n))                               return {code:"US",  name:"United States"};
   if(/ GLONASS | SOYUZ | PROGRESS | COSMOS | METEOR | RESURS /.test(n)) return {code:"CIS", name:"Russia"};
-  if(/ BEIDOU | FENGYUN | TIANGONG | TIANZHOU | SHENZHOU | YAOGAN /.test(n)) return {code:"PRC",name:"China"};
+  if(/ BEIDOU | FENGYUN | TIANGONG | TIANZHOU | SHENZHOU | YAOGAN | CHANGGUANG /.test(n)) return {code:"PRC",name:"China"};
   if(/ GALILEO | GSAT /.test(n))                                  return {code:"ESA", name:"European Space Agency"};
   if(/ GPS | NAVSTAR /.test(n))                                   return {code:"US",  name:"United States"};
   if(/ GOES | NOAA | LANDSAT | TERRA | AQUA | TESS | KEPLER | DSCOVR | HUBBLE | CHANDRA | FERMI /.test(n)) return {code:"US",name:"United States"};
@@ -1465,6 +1483,7 @@ function classify(s){
   if(t==="DEB"||t==="R/B"||isDebrisName(s.name)) return "debris";
   if(/ OBJECT | TBA | UNIDENTIFIED | UNKNOWN /.test(n)) return "unknown";
   if(s.cat==="cool") return "telescope"; // hero objects — described individually
+  if(s.cat==="classified") return "classified";
   if(id==="25544"||/ ZARYA | TIANHE | TIANGONG | WENTIAN | MENGTIAN /.test(n)) return "station";
   if(/ SOYUZ | PROGRESS | DRAGON | CYGNUS | SHENZHOU | TIANZHOU | STARLINER | ENDEAVOUR | ENDURANCE | RESILIENCE | FREEDOM /.test(n)) return "capsule";
   if(/ STARLINK | ONEWEB /.test(n)) return "starlink";
@@ -1536,6 +1555,13 @@ function describe(s){
   if(/PROGRESS/.test(n)) return "A Progress cargo spacecraft — the uncrewed resupply ship that keeps the ISS stocked with food, fuel, and equipment.";
   if(/DRAGON/.test(n)) return "A SpaceX Dragon — the first commercial spacecraft to carry astronauts to the ISS. Reusable and autonomous, it docks itself using cameras and computer vision.";
   if(/CYGNUS/.test(n)) return "A Cygnus cargo vehicle built by Northrop Grumman — a disposable resupply ship that burns up on re-entry after delivering its cargo to the ISS.";
+  // --- Classified military/intelligence satellites — the mystery is the appeal ---
+  if(/\bUSA\s+\d+\b/.test(n)) return "A classified National Reconnaissance Office or US Space Force payload. Its mission, capabilities, and operators are officially undisclosed. Tracked by civilian surveillance networks as part of the open space catalog — the US government acknowledges its existence but nothing else.";
+  if(/\bNROL\b/.test(n)) return "A National Reconnaissance Office launch — the agency that operates America's spy satellites. What this spacecraft does, where it points, and what it sees are state secrets. The NRO's motto: 'Nothing is beyond our reach.'";
+  if(/\bYAOGAN\b/.test(n)) return "A Chinese military remote sensing satellite. Yaogan means 'remote sensing' — a deliberately vague designation covering a constellation believed to include optical reconnaissance, radar imaging, and signals intelligence assets. China has never officially described their capabilities.";
+  if(/\bPRAETORIAN\b/.test(n)) return "A US Space Development Agency experimental military satellite, part of a new generation of Pentagon space assets being built faster and cheaper than traditional defense programs. Praetorians were the elite guards of Roman emperors — the name was chosen deliberately.";
+  if(/\bSHIJIAN[-\s]*\d+[A-Z]?\b/.test(n)) return "A Chinese experimental satellite — 'Shijian' means 'practice' or 'experiment', a designation that covers everything from genuine technology demonstrators to some of China's most sensitive military space programs. Shijian-21 captured and moved a dead satellite in 2022, demonstrating capabilities that alarmed Western space agencies.";
+  if(/\bCHANGGUANG\b/.test(n)) return "A Chang Guang Satellite Technology spacecraft. Nominally a commercial Earth-imaging operator behind the Jilin-1 constellation, the state-linked company is also believed to support Chinese military reconnaissance — the line between commercial and military space in China is deliberately blurred.";
   // --- generic by type ---
   switch(c){
     case "station":    return "A crewed space station — a permanently inhabited outpost in orbit.";
@@ -1545,6 +1571,7 @@ function describe(s){
     case "eo":         return "An Earth-observation satellite mapping the planet's land, oceans and changing environment.";
     case "telescope":  return "A space telescope — studying the cosmos from above the blur and filtering of Earth's atmosphere.";
     case "geo":        return "A geostationary satellite — locked in orbit at 22,236 miles up, hovering motionless over one fixed point above the equator.";
+    case "classified": return "A classified military or intelligence satellite. Its mission, capabilities, and operator are officially undisclosed.";
     case "debris":     return "A piece of orbital debris — either a spent rocket body (the discarded upper stage of a launch vehicle) or a fragment from a past collision or breakup, tracked by space-surveillance networks.";
     case "unknown":    return "An object tracked by space-surveillance networks, not yet publicly identified.";
     default:           return "A satellite in Earth orbit, catalogued by the world's space-surveillance networks.";
