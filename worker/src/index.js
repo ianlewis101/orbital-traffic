@@ -23,7 +23,7 @@ export const CREW_TTL = 60 * 60; // 1 hour
 export const TODAY_TTL = 5 * 60; // 5 minutes
 
 const CREW_URL = "http://api.open-notify.org/astros.json";
-const TODAY_URL = "https://raw.githubusercontent.com/ianlewis101/orbital-traffic/main/iss-today.json";
+const TODAY_URL = "https://raw.githubusercontent.com/ianlewis101/orbitaltraffic/main/iss-today.json";
 
 async function fetchGroup([group, cat]) {
   try {
