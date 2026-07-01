@@ -69,6 +69,55 @@ function classifyByName(name, cat) {
   return isDebrisName(name) ? "debris" : cat;
 }
 
+// Based on the shared name-pattern regexes from index.html (NAV_NAME_RE /
+// WEATHER_NAME_RE / EO_NAME_RE), expanded here so the Worker — not every
+// client — does these lookups once per 20-minute cache cycle.
+//
+// Unlike index.html's space-padded " TOKEN " matching, these are bare
+// substrings with no boundary at all (same fix the BEIDOU bug suggests:
+// "/ BEIDOU[-\s]/ or simply /BEIDOU/"). Verified against real CelesTrak
+// names, operators hyphenate generation/variant suffixes onto the base
+// word inconsistently in both directions — "BEIDOU-2 M3", "GLONASS-M 758",
+// "SENTINEL-2B", "WORLDVIEW-3" (suffix glued on) and "GEO-KOMPSAT-2A"
+// (prefix glued on, confirmed in the bundled index.html dataset) — so any
+// fixed boundary character misses real satellites. These tokens are all
+// distinctive multi-character constellation names, so bare substring
+// matching carries negligible false-positive risk.
+const NAV_NAME_RE     = /GPS|NAVSTAR|GALILEO|GLONASS|BEIDOU|CENTISPACE/;
+const WEATHER_NAME_RE = /GOES|METEOSAT|HIMAWARI|NOAA|METOP|METEOR|DMSP|ELEKTRO|FENGYUN/;
+const EO_NAME_RE      = /LANDSAT|SENTINEL|TERRA|AQUA|WORLDVIEW|SPOT|DOVE|ICEYE|PLEIADES/;
+// Major LEO/MEO comms and IoT/AIS constellations that have no dedicated
+// CelesTrak GROUPS entry above and so arrive tagged "other" via the
+// generic "active" catch-all.
+const COMMS_NAME_RE = /IRIDIUM|GLOBALSTAR|ORBCOMM|O3B|HULIANWANG|GEESAT|SITRO-AIS|GONETS-M|CONNECTA|RASSVET-3|APRIZESAT|NINGXIA-1|SCS-01/;
+// Earth-observation/imaging constellations and tech-demo cubesats beyond
+// WEATHER_NAME_RE/EO_NAME_RE above, same "active" catch-all problem.
+const SCI_CONSTELLATION_RE = /FLOCK|JILIN-1|TIANMU|YUNHAI|TIANHUI|SUPERVIEW|AEROCUBE|WILDFIRE|CHUANGXIN|CARTOSAT|KOMPSAT|ARIRANG|PROBA|RADARSAT|RESOURCESAT|CBERS/;
+// Mirrors SCIENCE_IDS in index.html (see other-category-audit.md
+// Suggestion C3). ISS-deployed educational CubeSats (batch 67683-67688)
+// arrive via the "stations" GROUP and fall to "other" after the station
+// allowlist filter below; no shared name pattern exists for them, so
+// they're listed by NORAD ID instead. CORAL (67684) is already "science"
+// via CelesTrak's own science group.
+const SCIENCE_IDS = new Set(["67683", "67685", "67686", "67687", "67688"]);
+// Rescues records still tagged "other" after the station allowlist and
+// debris check above (and, for the science IDs, the ISS cubesat batch).
+// This is where the Worker now does the classification work index.html's
+// client-side correctOtherCat() used to redo for every visitor: name
+// lookups run once per group fetch instead of once per browser tab. Never
+// touches a record a dedicated CelesTrak GROUP already claimed
+// (navigation, geo, starlink, science, debris, stations) — only "other"
+// records are eligible for reclassification here.
+function correctOtherCat(id, name, cat) {
+  if (cat !== "other") return cat;
+  if (SCIENCE_IDS.has(id)) return "science";
+  const n = (name || "").toUpperCase();
+  if (NAV_NAME_RE.test(n)) return "navigation";
+  if (COMMS_NAME_RE.test(n)) return "communications";
+  if (WEATHER_NAME_RE.test(n) || EO_NAME_RE.test(n) || SCI_CONSTELLATION_RE.test(n)) return "science";
+  return "other";
+}
+
 // Mirrors correctStationCat()/isDockedCrewVehicle() in index.html and
 // correct_station_cat() in scripts/update_tles.py. CelesTrak's
 // GROUP=stations dump is far more than the crewed modules — it lumps in
@@ -105,12 +154,14 @@ function parseTLE(text, cat) {
       const name = lines[i].trim();
       const id = noradId(lines[i + 1]);
       // Station allowlist first (drops the feed's bogus "stations" tags to
-      // "other"), then the debris name backstop — same order as
-      // index.html's ingest(): correctDebrisCat(correctStationCat(...)).
+      // "other"), then the debris name backstop, then the name-pattern
+      // rescue for whatever is still "other" — same order as index.html's
+      // ingest(): correctOtherCat(correctDebrisCat(correctStationCat(...))).
       // This runs at parse time, before buildTLERecords() merges and
-      // before the 20-minute cache stores the response, so corrupted
-      // station classifications never get cached.
-      const finalCat = classifyByName(name, correctStationCat(id, name, cat));
+      // before the 20-minute cache stores the response, so every client
+      // gets objects that are already fully and correctly categorized —
+      // no client-side classification pass needed.
+      const finalCat = correctOtherCat(id, name, classifyByName(name, correctStationCat(id, name, cat)));
       recs.push({ name, l1: lines[i + 1], l2: lines[i + 2], cat: finalCat });
     }
   }
