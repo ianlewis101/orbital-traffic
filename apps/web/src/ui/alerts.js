@@ -13,13 +13,13 @@ const REASON_TEXT = {
 };
 
 export function initPassAlerts() {
+  const plate = document.getElementById("alerts");
   const toggle = $("#alerts-toggle");
   const status = $("#alerts-status");
-  if (!toggle || !status) return;
+  if (!plate || !toggle || !status) return;
 
   if (!passAlertsAvailable()) {
-    status.textContent = "Available in the iOS/Android app";
-    toggle.disabled = true;
+    plate.style.display = "none";
     return;
   }
 
