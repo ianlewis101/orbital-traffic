@@ -411,3 +411,4 @@
   .alerts-row{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--ink-dim);cursor:pointer;padding:2px 0}
   .alerts-row input{accent-color:var(--amber);width:14px;height:14px;cursor:pointer}
   .alerts-row input:disabled{cursor:not-allowed;opacity:.5}
+  #alerts{position:static;width:100%}
