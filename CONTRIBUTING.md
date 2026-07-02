@@ -5,8 +5,8 @@ Thanks for helping track everything in orbit!
 ## Setup
 
 ```bash
-git clone https://github.com/ianlewis101/orbitaltraffic
-cd orbitaltraffic
+git clone https://github.com/ianlewis101/orbital-traffic
+cd orbital-traffic
 npm install     # Node >= 20
 npm run dev     # http://localhost:5173
 ```
