@@ -4,7 +4,7 @@ export const state = {
   sats: [],
   byId: new Map(),
   cats: {},
-  hidden: new Set(["debris", "classified"]),
+  hidden: new Set(["debris", "other"]),
   simNow: Date.now(),
   rate: 1,
   lastWall: performance.now(),
