@@ -3,7 +3,14 @@ import globals from "globals";
 
 export default [
   {
-    ignores: ["**/dist/**", "**/node_modules/**", "**/.wrangler/**", "coverage/**", "docs/archive/**"],
+    ignores: [
+      "**/dist/**",
+      "**/node_modules/**",
+      "**/.wrangler/**",
+      "coverage/**",
+      "docs/archive/**",
+      "**/ios/**",
+    ],
   },
   js.configs.recommended,
   {

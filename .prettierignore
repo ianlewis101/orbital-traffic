@@ -3,4 +3,5 @@ node_modules/
 coverage/
 apps/web/public/data/
 docs/archive/
+apps/web/ios/
 *.md

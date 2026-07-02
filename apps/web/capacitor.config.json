@@ -1,0 +1,21 @@
+{
+  "appId": "app.orbitaltraffic",
+  "appName": "Orbital Traffic",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  },
+  "ios": {
+    "scheme": "Orbital Traffic",
+    "backgroundColor": "#07080f",
+    "contentInset": "always"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "backgroundColor": "#07080f",
+      "showSpinner": false
+    }
+  }
+}
