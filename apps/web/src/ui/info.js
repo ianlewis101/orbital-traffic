@@ -14,7 +14,6 @@ import { describe } from "./describe.js";
 import { figureHTML, wireFigure } from "./figures.js";
 import { fetchAndRenderCrew } from "./crew.js";
 import { toast } from "./status.js";
-import { galleryUrl } from "./describe.js";
 
 // =====================================================================
 // MOBILE — swipe-to-collapse detail card
@@ -136,12 +135,6 @@ export function select(s) {
   info.classList.add("show");
   info.scrollTop = 0;
   updateFavBtn(s);
-  const gl = document.getElementById("info-gallery");
-  if (gl) {
-    const url = galleryUrl(s);
-    gl.href = url || "#";
-    gl.style.display = url ? "" : "none";
-  }
   // uncatalogued "other" objects get a frosted veil over the detail sections
   // (see #info-veil in index.html) — header, figure and flag stay visible
   info.classList.toggle("veiled", s.cat === "other");
