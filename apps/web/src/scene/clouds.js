@@ -29,6 +29,28 @@ export function makeShapeTextures() {
   return tex;
 }
 
+/**
+ * Point-cloud geometry with a pre-seeded bounding sphere covering
+ * everything out to the camera far plane (4000 units).
+ *
+ * Points.raycast computes geometry.boundingSphere lazily on its first run
+ * and never refreshes it when the position attribute changes. Clouds are
+ * (re)built with zeroed positions that updatePositions() only fills in
+ * over the next few ticks, so a pointer event landing in that window
+ * would cache a degenerate radius-0 sphere and leave every object in the
+ * category unpickable for the rest of the session — which is exactly what
+ * happened to whichever clouds were visible when the live sync rebuilt
+ * them under the user's cursor. Assigning the sphere up front takes the
+ * lazy compute out of the picture entirely.
+ */
+export function makeCloudGeometry(count) {
+  const g = new THREE.BufferGeometry();
+  const pos = new Float32Array(Math.max(count, 1) * 3);
+  g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  g.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 4000);
+  return g;
+}
+
 /** (Re)build one point cloud per category from state.sats. */
 export function buildClouds() {
   for (const c in clouds) {
@@ -41,11 +63,8 @@ export function buildClouds() {
   for (const s of state.sats) (clouds[s.cat] || clouds.other).list.push(s);
   const SHAPES = makeShapeTextures();
   for (const c in CATS) {
-    const list = clouds[c].list,
-      n = Math.max(list.length, 1);
-    const pos = new Float32Array(n * 3);
-    const g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    const list = clouds[c].list;
+    const g = makeCloudGeometry(list.length);
     const m = new THREE.PointsMaterial({
       size: CATS[c].px,
       sizeAttenuation: false,
