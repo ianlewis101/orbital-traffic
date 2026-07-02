@@ -7,6 +7,9 @@
   "exports": {
     ".": "./src/index.js"
   },
+  "dependencies": {
+    "satellite.js": "^5.0.0"
+  },
   "scripts": {
     "test": "vitest run"
   }
