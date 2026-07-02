@@ -142,6 +142,9 @@ export function select(s) {
     gl.href = url || "#";
     gl.style.display = url ? "" : "none";
   }
+  // uncatalogued "other" objects get a frosted veil over the detail sections
+  // (see #info-veil in index.html) — header, figure and flag stay visible
+  info.classList.toggle("veiled", s.cat === "other");
   const hex = catColorHex(s.cat);
   $("#info-cat").querySelector(".d").style.cssText = `background:${hex};color:${hex}`;
   $("#info-cat").querySelector("span:last-child").textContent = (CATS[s.cat] || CATS.other).label;
