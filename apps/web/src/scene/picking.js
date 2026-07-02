@@ -20,7 +20,9 @@ function pick(cx, cy) {
     bd = 1e9;
   for (const c in clouds) {
     const cl = clouds[c];
-    if (!cl.points || !cl.points.visible) continue;
+    // empty categories still carry one placeholder vertex at the origin —
+    // never let it register as a hit (it has no satellite behind it)
+    if (!cl.points || !cl.points.visible || !cl.list.length) continue;
     const hits = ray.intersectObject(cl.points);
     if (hits.length) {
       const h = hits[0];

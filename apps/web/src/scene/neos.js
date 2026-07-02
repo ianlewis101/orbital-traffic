@@ -4,7 +4,7 @@ import { state } from "../state.js";
 import { DATA } from "../data/store.js";
 import { neoGeocentric } from "../astro/neo.js";
 import { scene } from "./core.js";
-import { makeShapeTextures } from "./clouds.js";
+import { makeCloudGeometry, makeShapeTextures } from "./clouds.js";
 
 /**
  * Near-Earth objects live far outside the satellite shell, so they are
@@ -20,9 +20,10 @@ let neoPos = null;
 
 /** Build the NEO point cloud and clickable objects. Requires DATA.neos. */
 export function initNeos() {
-  neoGeom = new THREE.BufferGeometry();
-  neoPos = new Float32Array(Math.max(DATA.neos.length, 1) * 3);
-  neoGeom.setAttribute("position", new THREE.BufferAttribute(neoPos, 3));
+  // pre-seeded bounding sphere: NEO positions drift with (simulated) time,
+  // and a lazily cached sphere would eventually strand them unpickable too
+  neoGeom = makeCloudGeometry(DATA.neos.length);
+  neoPos = neoGeom.attributes.position.array;
   const shapes = makeShapeTextures();
   const neoMat = new THREE.PointsMaterial({
     size: CATS.hazardous.px,
