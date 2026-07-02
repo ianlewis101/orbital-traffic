@@ -1,4 +1,3 @@
-import { $ } from "../state.js";
 import { DATA } from "../data/store.js";
 import { classify } from "./describe.js";
 
@@ -32,19 +31,9 @@ export function photoKey(s) {
 export function figureHTML(s) {
   const k = photoKey(s);
   if (k && DATA.photos[k]) {
-    const live = k === "iss" ? `<button class="livebtn" id="iss-live">Watch live</button>` : "";
-    return `<img src="${DATA.photos[k]}" alt="${s.name}"><span class="cred">NASA · public domain</span>${live}`;
+    return `<img src="${DATA.photos[k]}" alt="${s.name}"><span class="cred">NASA · public domain</span>`;
   }
   return svgFor(s);
-}
-
-export function wireFigure() {
-  const b = $("#iss-live");
-  if (b)
-    b.onclick = () => {
-      $("#info-figure").innerHTML =
-        `<iframe class="livecam" src="https://www.youtube.com/embed/live_stream?channel=UCLA_DiR1FfKNvjuUpBHmylQ&autoplay=1&mute=1" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe><span class="cred">NASA Live</span>`;
-    };
 }
 
 export function svgFor(s) {

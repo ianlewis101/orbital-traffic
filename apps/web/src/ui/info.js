@@ -11,7 +11,7 @@ import { buildTrail, clearTrail } from "../scene/trail.js";
 import { frameSelected } from "../scene/core.js";
 import { favs, saveFavs, updateFavBtn } from "./favorites.js";
 import { describe } from "./describe.js";
-import { figureHTML, wireFigure } from "./figures.js";
+import { figureHTML } from "./figures.js";
 import { fetchAndRenderCrew } from "./crew.js";
 import { toast } from "./status.js";
 
@@ -143,7 +143,6 @@ export function select(s) {
   $("#info-cat").querySelector("span:last-child").textContent = (CATS[s.cat] || CATS.other).label;
   $("#info-nm").textContent = s.name;
   $("#info-figure").innerHTML = figureHTML(s);
-  wireFigure();
   const li = launchInfo(s.rec);
   $("#info-nid").textContent = "NORAD " + s.id + (li.desig !== "—" ? "  ·  INT'L " + li.desig : "");
   setLaunchLine(s, li);
@@ -317,7 +316,6 @@ function enrichSatcat(s) {
         setFlagLine(s);
         $("#info-lead").textContent = describe(s);
         $("#info-figure").innerHTML = figureHTML(s);
-        wireFigure();
         refreshInfo();
       }
     })
