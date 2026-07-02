@@ -173,20 +173,3 @@ export function describe(s) {
       return "A satellite in Earth orbit, catalogued by the world's space-surveillance networks.";
   }
 }
-
-export const GALLERIES = {
-  "HUBBLE SPACE TELESCOPE": "https://hubblesite.org/images/gallery",
-  "JAMES WEBB SPACE TELESCOPE": "https://webbtelescope.org/news/webb-releases",
-  "CHANDRA X-RAY OBSERVATORY": "https://chandra.harvard.edu/photo/",
-  "FERMI GAMMA-RAY TELESCOPE": "https://fermi.gsfc.nasa.gov/science/",
-  TESS: "https://tess.mit.edu/publications/",
-  KEPLER: "https://science.nasa.gov/mission/kepler/",
-  TERRA: "https://terra.nasa.gov/gallery",
-  AQUA: "https://aqua.nasa.gov/content/gallery",
-  "LANDSAT 9": "https://landsat.visibleearth.nasa.gov/",
-  DSCOVR: "https://epic.gsfc.nasa.gov/",
-};
-
-export function galleryUrl(s) {
-  return GALLERIES[s.name.toUpperCase()] || null;
-}
