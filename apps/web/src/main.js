@@ -21,7 +21,7 @@ import { buildTrail } from "./scene/trail.js";
 import { initNeos, updateNeoPositions } from "./scene/neos.js";
 import { initPicking } from "./scene/picking.js";
 import { updateSelMarker } from "./scene/marker.js";
-import { select, refreshInfo, initInfoCard } from "./ui/info.js";
+import { refreshInfo, initInfoCard } from "./ui/info.js";
 import { rebuildLegend } from "./ui/legend.js";
 import { renderToday, initTodayToggle } from "./ui/today.js";
 import { initTimeMachine } from "./ui/time.js";
@@ -129,15 +129,6 @@ async function boot() {
     const h = $("#hint");
     if (h) h.style.opacity = 0;
   }, 9000);
-  // select ISS if present
-  setTimeout(() => {
-    const iss =
-      state.byId.get("25544") || state.sats.find((s) => /ZARYA/.test(s.name.toUpperCase()));
-    if (iss) {
-      updatePositions(new Date(state.simNow));
-      select(iss);
-    }
-  }, 800);
 }
 
 boot();
