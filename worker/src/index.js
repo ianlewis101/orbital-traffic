@@ -11,12 +11,21 @@
  *   GET /crew   — ISS/Tiangong crew roster
  *   GET /today  — ISS "Today aboard" activity feed
  *
- * All parsing/classification lives in @orbital-traffic/catalog (shared
- * with the web app and the data pipeline), so every client receives
- * objects that are already fully and correctly categorized — no
- * client-side classification pass needed.
+ * TLE parsing lives in @orbital-traffic/catalog (shared with the web
+ * app). This Worker only tags the coarse group a record came from (see
+ * groups.js) — it does NOT run categorize()'s full classification.
+ * Fine-grained categories (communications, classified, etc.) are
+ * produced client-side by apps/web/src/data/ingest.js on every ingest.
  */
-import { parseTle, mergeRecords, GROUPS, CELESTRAK_BASE, FETCH_HEADERS } from "@orbital-traffic/catalog";
+import {
+  parseTle,
+  mergeRecords,
+  GROUPS,
+  CELESTRAK_BASE,
+  FETCH_HEADERS,
+  noradId,
+  predictPasses,
+} from "@orbital-traffic/catalog";
 
 export const TLE_TTL = 20 * 60; // 20 minutes
 export const CREW_TTL = 60 * 60; // 1 hour
@@ -62,6 +71,65 @@ export async function buildToday() {
   return { updated: null, activities: [] };
 }
 
+const ISS_NORAD_ID = "25544";
+const ISS_TLE_URL = "https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=TLE";
+export const PASSES_TTL = 20 * 60; // matches TLE_TTL — a new TLE meaningfully shifts pass timing
+
+async function fetchIssTle() {
+  try {
+    const res = await fetch(ISS_TLE_URL, {
+      headers: FETCH_HEADERS,
+      cf: { cacheTtl: PASSES_TTL, cacheEverything: true },
+    });
+    if (!res.ok) return null;
+    const recs = parseTle(await res.text(), "stations");
+    return recs.find((r) => noradId(r.l1) === ISS_NORAD_ID) ?? recs[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function buildPasses(lat, lng) {
+  const iss = await fetchIssTle();
+  if (!iss) return { passes: [], error: "iss_tle_unavailable" };
+  const passes = predictPasses(iss.l1, iss.l2, lat, lng, { maxPasses: 5 });
+  return {
+    passes: passes.map((p) => ({
+      riseAt: new Date(p.riseMs).toISOString(),
+      culminatesAt: new Date(p.cullMs).toISOString(),
+      setAt: new Date(p.setMs).toISOString(),
+      maxElevationDeg: Math.round(p.maxElevationDeg * 10) / 10,
+    })),
+  };
+}
+
+function badRequest(message) {
+  return new Response(JSON.stringify({ error: message }), {
+    status: 400,
+    headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+  });
+}
+
+async function handlePasses(ctx, request) {
+  const url = new URL(request.url);
+  const latParam = url.searchParams.get("lat");
+  const lngParam = url.searchParams.get("lng");
+  if (latParam === null || lngParam === null) {
+    return badRequest("lat and lng query params are required");
+  }
+  const lat = Number(latParam);
+  const lng = Number(lngParam);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    return badRequest("lat and lng must be valid coordinates");
+  }
+  // Round to reduce cache cardinality — pass timing doesn't meaningfully
+  // change within ~11km (0.1 degree), well inside what matters for a
+  // "next pass in ~N minutes" alert.
+  const rLat = Math.round(lat * 10) / 10;
+  const rLng = Math.round(lng * 10) / 10;
+  return cached(ctx, `/passes?lat=${rLat}&lng=${rLng}`, PASSES_TTL, () => buildPasses(rLat, rLng));
+}
+
 function jsonResponse(data, ttl) {
   return new Response(JSON.stringify(data), {
     headers: {
@@ -92,6 +160,7 @@ const ROUTES = {
   "/tle": (ctx) => cached(ctx, "/tle", TLE_TTL, buildTLERecords),
   "/crew": (ctx) => cached(ctx, "/crew", CREW_TTL, buildCrew),
   "/today": (ctx) => cached(ctx, "/today", TODAY_TTL, buildToday),
+  "/passes": (ctx, request) => handlePasses(ctx, request),
 };
 
 export default {
@@ -108,6 +177,6 @@ export default {
     const { pathname } = new URL(request.url);
     const route = ROUTES[pathname];
     if (!route) return new Response("Not found", { status: 404 });
-    return route(ctx);
+    return route(ctx, request);
   },
 };

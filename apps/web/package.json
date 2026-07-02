@@ -12,6 +12,7 @@
   "dependencies": {
     "@capacitor/core": "^8.4.1",
     "@capacitor/ios": "^8.4.1",
+    "@capacitor/local-notifications": "^8.2.0",
     "@orbital-traffic/catalog": "^2.0.0",
     "satellite.js": "^5.0.0",
     "three": "^0.160.1"

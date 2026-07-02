@@ -104,3 +104,38 @@ describe("buildTLERecords", () => {
     expect(recs[0].cat).toBe("stations");
   });
 });
+
+describe("/passes route", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("400s on missing or invalid lat/lng", async () => {
+    let res = await worker.fetch(new Request("https://x/passes"), {}, ctx);
+    expect(res.status).toBe(400);
+    res = await worker.fetch(new Request("https://x/passes?lat=999&lng=0"), {}, ctx);
+    expect(res.status).toBe(400);
+  });
+
+  it("returns predicted ISS passes for valid coordinates", async () => {
+    fetch.mockResolvedValue(textResponse(ISS_TLE));
+    const res = await worker.fetch(new Request("https://x/passes?lat=40.7128&lng=-74.006"), {}, ctx);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body.passes)).toBe(true);
+    if (body.passes.length) {
+      expect(body.passes[0]).toHaveProperty("riseAt");
+      expect(body.passes[0]).toHaveProperty("maxElevationDeg");
+    }
+  });
+
+  it("reports iss_tle_unavailable instead of throwing when CelesTrak is down", async () => {
+    fetch.mockResolvedValue(new Response("err", { status: 500 }));
+    const res = await worker.fetch(new Request("https://x/passes?lat=0&lng=0"), {}, ctx);
+    expect(res.status).toBe(200);
+    expect((await res.json()).error).toBe("iss_tle_unavailable");
+  });
+});

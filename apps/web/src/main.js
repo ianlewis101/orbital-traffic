@@ -26,9 +26,11 @@ import { rebuildLegend } from "./ui/legend.js";
 import { renderToday, initTodayToggle } from "./ui/today.js";
 import { initTimeMachine } from "./ui/time.js";
 import { initSearch } from "./ui/search.js";
+import { initPassAlerts } from "./ui/alerts.js";
 import { setStatus, updateCount } from "./ui/status.js";
 import { updateClock } from "./ui/clock.js";
 import { registerServiceWorker } from "./pwa.js";
+import { refreshPassAlertsIfEnabled } from "./native/passAlerts.js";
 import * as THREE from "three";
 
 const splash = $("#splash"),
@@ -107,6 +109,7 @@ async function boot() {
   initTimeMachine();
   initTodayToggle();
   initSearch();
+  initPassAlerts();
   initPicking();
 
   ingest(data.sats);
@@ -133,3 +136,4 @@ async function boot() {
 
 boot();
 registerServiceWorker();
+refreshPassAlertsIfEnabled();
