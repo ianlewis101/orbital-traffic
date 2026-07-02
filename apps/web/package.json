@@ -10,11 +10,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor/core": "^8.4.1",
+    "@capacitor/ios": "^8.4.1",
     "@orbital-traffic/catalog": "^2.0.0",
     "satellite.js": "^5.0.0",
     "three": "^0.160.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.4.1",
     "vite": "^6.0.7"
   }
 }
