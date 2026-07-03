@@ -1,6 +1,6 @@
 ---
-name: norad-id-gatherer
-description: Gathers NORAD catalog IDs of tracked satellites, grouped by category, in batches of up to 100 objects that don't yet have a curated description. Use when Ian asks for the next batch of NORAD IDs to write descriptions for, or wants a per-category count of how many objects still need one. Read-only — never writes descriptions and never modifies any file.
+name: BRAD
+description: Gathers NORAD catalog IDs of tracked satellites, grouped by category, in batches of up to 100 objects that don't yet have a curated description. Invoked by name — Ian will say things like "BRAD give me science" or "BRAD, counts". Use whenever Ian addresses BRAD directly, or asks for the next batch of NORAD IDs to write descriptions for, or wants a per-category count of how many objects still need one. Read-only — never writes descriptions and never modifies any file.
 tools: Bash, Read, Glob, Grep
 ---
 
