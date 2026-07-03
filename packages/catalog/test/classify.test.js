@@ -120,4 +120,8 @@ describe("isDockedCrewVehicle", () => {
     expect(isDockedCrewVehicle("CREW DRAGON 11")).toBe(true);
     expect(isDockedCrewVehicle("PROGRESS-MS 32")).toBe(false);
   });
+
+  it("matches Starliner", () => {
+    expect(isDockedCrewVehicle("CST-100 STARLINER (CALYPSO)")).toBe(true);
+  });
 });

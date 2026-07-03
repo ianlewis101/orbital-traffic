@@ -1,5 +1,7 @@
 import { WORKER_BASE } from "../config.js";
 import { $ } from "../state.js";
+import { capsuleFamily } from "@orbital-traffic/catalog";
+import { renderCapsuleStatus } from "./capsule-status.js";
 
 /**
  * Fallback expedition metadata, shown while (or if) the live /crew and
@@ -49,6 +51,10 @@ export async function fetchAndRenderCrew(s) {
   const isISS = s.id === "25544";
   const isTG = /TIANHE|TIANGONG|CSS/.test(s.name.toUpperCase());
   if (!isISS && !isTG) {
+    // Not a station hub — if it's a tracked crewed capsule, show its own
+    // phase/status instead of hiding the card entirely.
+    const family = s.cat === "stations" ? capsuleFamily(s.name) : null;
+    if (family) return renderCapsuleStatus(s, el);
     el.style.display = "none";
     el.innerHTML = "";
     return;

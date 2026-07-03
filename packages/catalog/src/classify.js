@@ -36,8 +36,18 @@ export const STATION_CORE_IDS = new Set([
   "48274", "53239", "54216", // CSS Tiangong modules
 ]);
 
+export const CREW_VEHICLE_RE = /\bCREW\b/i;
+export const SOYUZ_MS_RE = /SOYUZ[- ]MS/i;
+export const STARLINER_RE = /STARLINER/i;
+export const SHENZHOU_RE = /SHENZHOU/i;
+
 export function isDockedCrewVehicle(name) {
-  return /\bCREW\b/i.test(name) || /SOYUZ[- ]MS/i.test(name) || /SHENZHOU/i.test(name);
+  return (
+    CREW_VEHICLE_RE.test(name) ||
+    SOYUZ_MS_RE.test(name) ||
+    STARLINER_RE.test(name) ||
+    SHENZHOU_RE.test(name)
+  );
 }
 
 export function correctStationCat(id, name, cat) {

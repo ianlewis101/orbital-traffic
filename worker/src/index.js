@@ -7,9 +7,10 @@
  * request per TTL window instead of one per visitor).
  *
  * Routes:
- *   GET /tle    — merged satellite TLE records across CelesTrak groups
- *   GET /crew   — ISS/Tiangong crew roster
- *   GET /today  — ISS "Today aboard" activity feed
+ *   GET /tle       — merged satellite TLE records across CelesTrak groups
+ *   GET /crew      — ISS/Tiangong crew roster
+ *   GET /today     — ISS "Today aboard" activity feed
+ *   GET /capsules  — crewed-capsule phase (docked/free-flying/landed) + event log
  *
  * TLE parsing lives in @orbital-traffic/catalog (shared with the web
  * app). This Worker only tags the coarse group a record came from (see
@@ -30,9 +31,12 @@ import {
 export const TLE_TTL = 20 * 60; // 20 minutes
 export const CREW_TTL = 60 * 60; // 1 hour
 export const TODAY_TTL = 5 * 60; // 5 minutes
+export const CAPSULES_TTL = 10 * 60; // 10 minutes — source refreshes every 4h, so this just bounds edge staleness
 
 const CREW_URL = "http://api.open-notify.org/astros.json";
 const TODAY_URL = "https://raw.githubusercontent.com/ianlewis101/orbital-traffic/main/iss-today.json";
+const CAPSULES_URL =
+  "https://raw.githubusercontent.com/ianlewis101/orbital-traffic/main/capsule-status.json";
 
 async function fetchGroup([group, cat]) {
   try {
@@ -69,6 +73,19 @@ export async function buildToday() {
     if (r.ok) return await r.json();
   } catch {}
   return { updated: null, activities: [] };
+}
+
+/**
+ * Re-serves capsule-status.json (written by the scheduled
+ * update-capsule-status workflow) — same "committed JSON, no live upstream
+ * computation here" shape as buildToday().
+ */
+export async function buildCapsules() {
+  try {
+    const r = await fetch(CAPSULES_URL, { cf: { cacheTtl: CAPSULES_TTL, cacheEverything: true } });
+    if (r.ok) return await r.json();
+  } catch {}
+  return { updated: null, capsules: {}, events: [] };
 }
 
 const ISS_NORAD_ID = "25544";
@@ -160,6 +177,7 @@ const ROUTES = {
   "/tle": (ctx) => cached(ctx, "/tle", TLE_TTL, buildTLERecords),
   "/crew": (ctx) => cached(ctx, "/crew", CREW_TTL, buildCrew),
   "/today": (ctx) => cached(ctx, "/today", TODAY_TTL, buildToday),
+  "/capsules": (ctx) => cached(ctx, "/capsules", CAPSULES_TTL, buildCapsules),
   "/passes": (ctx, request) => handlePasses(ctx, request),
 };
 

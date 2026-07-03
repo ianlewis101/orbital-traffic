@@ -18,7 +18,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "data:tle": "node tools/fetch-tles.mjs",
-    "data:iss-today": "node tools/update-iss-today.mjs"
+    "data:iss-today": "node tools/update-iss-today.mjs",
+    "data:capsule-status": "node tools/update-capsule-status.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

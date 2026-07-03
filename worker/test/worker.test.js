@@ -78,6 +78,17 @@ describe("worker routes", () => {
     res = await worker.fetch(new Request("https://x/today"), {}, ctx);
     expect(await res.json()).toEqual({ updated: null, activities: [] });
   });
+
+  it("serves /capsules and degrades to an empty snapshot", async () => {
+    const body = { updated: "2026-07-03T00:00:00Z", capsules: { "60001": { phase: "docked" } }, events: [] };
+    fetch.mockResolvedValue(new Response(JSON.stringify(body)));
+    let res = await worker.fetch(new Request("https://x/capsules"), {}, ctx);
+    expect((await res.json()).capsules["60001"].phase).toBe("docked");
+
+    fetch.mockResolvedValue(new Response("err", { status: 500 }));
+    res = await worker.fetch(new Request("https://x/capsules"), {}, ctx);
+    expect(await res.json()).toEqual({ updated: null, capsules: {}, events: [] });
+  });
 });
 
 describe("buildTLERecords", () => {
