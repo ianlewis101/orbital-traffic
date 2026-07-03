@@ -7,15 +7,17 @@ small Cloudflare Worker that proxies and edge-caches upstream data. There is no
 application server and no database.
 
 ```
-                                     ┌──────────────────────────────┐
-   CelesTrak ──┐                     │   GitHub Pages (static)      │
-   Open Notify ┼── Cloudflare Worker │   apps/web/dist              │
-   NASA blog ──┘   /tle /crew /today │   + /data/*.json catalog     │
-        │                 ▲          └──────────────┬───────────────┘
-        │                 │ live refresh            │ app shell + bundled catalog
-        │                 └───────────── browser ◄──┘
-        │                                   ▲
-        └── tools/ (daily CI) ──────────────┘  commits refreshed satellites.json
+                                        ┌──────────────────────────────┐
+   CelesTrak ──┐                        │   GitHub Pages (static)      │
+   Open Notify ┼── Cloudflare Worker ── │   apps/web/dist              │
+   NASA blog ──┘   /tle /crew /today    │   + /data/*.json catalog     │
+                    /capsules           └──────────────┬───────────────┘
+        │                 ▲                            │ app shell + bundled catalog
+        │                 │ live refresh                │
+        │                 └────────────────  browser ◄──┘
+        │                                       ▲
+        └── tools/ (scheduled CI) ──────────────┘  commits satellites.json,
+                                                     iss-today.json, capsule-status.json
 ```
 
 ## Workspaces
@@ -40,6 +42,13 @@ Classification runs in a fixed, canonical order:
 Every ingestion path runs this same pipeline: the web app's `ingest()`, the Worker's
 `/tle` handler, and the daily data refresh. Historically these were three hand-synced
 copies (JS ×2 + Python) that drifted; now a classification fix is one change plus a test.
+
+`capsules.js` is a sibling module, not part of `categorize()`: it derives each tracked
+crewed capsule's **phase** (`docked` / `free-flying` / `landed`) from orbital elements —
+propagated 3D separation from the capsule's associated station, not just orbit shape, so
+two objects sharing an altitude/inclination on opposite sides of Earth aren't mistaken for
+"docked". A capsule keeps `cat:"stations"` for its whole tracked lifetime regardless of
+phase; phase is additional per-capsule status, never a category swap.
 
 ### `apps/web` — the PWA
 
@@ -70,13 +79,14 @@ for navigations. Live endpoints are never intercepted.
 
 ### `worker` — Cloudflare Worker
 
-Three GET routes, each edge-cached (`caches.default`) with per-route TTLs:
+Four GET routes, each edge-cached (`caches.default`) with per-route TTLs:
 
 | Route | Upstream | TTL |
 |-------|----------|-----|
 | `/tle` | CelesTrak groups, merged + classified via `catalog` | 20 min |
 | `/crew` | Open Notify `astros.json` | 1 h |
 | `/today` | `iss-today.json` from this repo (raw.githubusercontent) | 5 min |
+| `/capsules` | `capsule-status.json` from this repo (raw.githubusercontent) | 10 min |
 
 Upstreams see one request per TTL window instead of one per visitor. Every route degrades
 to an empty-but-valid payload if its upstream is down. Handlers are exported for unit
@@ -89,6 +99,10 @@ testing; the edge cache is feature-detected so tests run in plain Node.
   than writing an empty catalog.
 - `update-iss-today.mjs` — crew roster + NASA station-blog headlines (48 h window,
   newest-post fallback) → `iss-today.json`. Leaves the file untouched on any fetch failure.
+- `update-capsule-status.mjs` — fetches CelesTrak's `stations` group, derives each tracked
+  crewed capsule's phase via `catalog`'s `capsules.js`, diffs against the previous run to
+  detect docked/undocked/launched/landed transitions → `capsule-status.json`. Aborts
+  without writing if the CelesTrak fetch itself fails.
 
 ## CI/CD
 
@@ -98,6 +112,7 @@ testing; the edge cache is feature-detected so tests run in plain Node.
 | `deploy-pages.yml` | push to main | Vite build → GitHub Pages |
 | `refresh-tle-data.yml` | daily 06:00 UTC | refresh + commit `satellites.json` |
 | `update-iss-today.yml` | daily 12:00 UTC | refresh + commit `iss-today.json` |
+| `update-capsule-status.yml` | every 4 h | refresh + commit `capsule-status.json` |
 
 The Worker is deployed manually via `wrangler deploy` (see `worker/README.md`).
 

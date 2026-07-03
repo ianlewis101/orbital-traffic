@@ -54,13 +54,16 @@ those against this document instead.
    response — they are only produced later, client-side, by
    categorize()'s name-pattern rescue step.
 
-   IMPORTANT: worker/src/index.js currently has a comment
-   claiming "every client receives objects that are already
-   fully and correctly categorized — no client-side
-   classification pass needed." That comment is incorrect and
-   contradicts the actual code below it. Don't trust it, and
-   ideally fix/remove it in a cleanup PR so it stops misleading
-   people (including future AI sessions).
+   CAPSULE PHASE IS SEPARATE FROM CATEGORY: a crewed capsule
+   (Dragon/Soyuz/Starliner/Shenzhou) keeps cat:"stations" for
+   its entire tracked lifetime — launch through landing —
+   regardless of whether it's actually docked. Its live
+   docked/free-flying/landed phase is tracked separately in
+   packages/catalog/src/capsules.js and served via the Worker's
+   /capsules endpoint (see below); this is additional per-
+   capsule status, not a category. Never make categorize()
+   itself phase-aware — that would break the single-source-of-
+   truth boundary this rule establishes.
 
    Do not add classification logic anywhere else (e.g. inline
    in ingest.js or duplicated in the Worker) — categorize() in
@@ -133,13 +136,15 @@ a tested, modular monorepo v2.0.0"):
   for categorize().
 
 - worker/ — Cloudflare Worker (worker/src/index.js), proxies
-  and edge-caches three endpoints: /tle, /crew, /today. Deploy
-  is manual (see Critical Rule #1). Cache TTLs: /tle 20 min,
-  /crew 1 hour, /today 5 min.
+  and edge-caches four endpoints: /tle, /crew, /today,
+  /capsules. Deploy is manual (see Critical Rule #1). Cache
+  TTLs: /tle 20 min, /crew 1 hour, /today 5 min, /capsules
+  10 min.
 
 - GitHub Actions also handles daily TLE refresh
-  (refresh-tle-data.yml) and ISS Today data updates
-  (update-iss-today.yml).
+  (refresh-tle-data.yml), ISS Today data updates
+  (update-iss-today.yml), and crewed-capsule phase tracking
+  every 4 hours (update-capsule-status.yml).
 
 - PWA: manifest.json, sw.js, icons under apps/web/public/.
   App Store submission via PWABuilder iOS package — check with
@@ -174,6 +179,10 @@ a tested, modular monorepo v2.0.0"):
   and ingest() (which calls categorize()) always runs before
   buildClouds() — order matters, don't reorder without
   understanding why each step is sequenced that way
+- Starliner must stay in isDockedCrewVehicle's pattern set
+  (packages/catalog/src/classify.js's STARLINER_RE) — without
+  it, a docked or in-transit Starliner falls out of the station
+  allowlist to "other" instead of "stations"
 
 ── DEPLOY COMMANDS (reference) ───────────────────────────────
 
@@ -192,6 +201,11 @@ Verify the Worker is returning data correctly:
   categorize() on ingest. If you need to verify fine-grained
   classification end to end, check the rendered app/legend
   counts instead, not the raw Worker JSON.
+
+  curl https://orbital-traffic.ianlewis101.workers.dev/capsules
+  Check for a "capsules" object keyed by NORAD ID with a
+  "phase" field ("docked"/"free-flying"/"landed") per tracked
+  crewed capsule, and an "events" array of transitions.
 
 Web app deploy: automatic on merge to main via
   .github/workflows/deploy-pages.yml — no manual step needed.
