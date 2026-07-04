@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-04T10:08:17.040Z",
+  "updated": "2026-07-04T13:20:59.452Z",
   "capsules": {
     "66664": {
       "name": "SOYUZ-MS 28",
@@ -8,8 +8,8 @@
       "stationKey": "iss",
       "since": "2026-07-03T10:34:14.509Z",
       "distanceKm": 0,
-      "altitudeKm": 425.8,
-      "inclinationDeg": 51.631
+      "altitudeKm": 427.6,
+      "inclinationDeg": 51.63
     },
     "67796": {
       "name": "CREW DRAGON 12",
@@ -18,8 +18,8 @@
       "stationKey": "iss",
       "since": "2026-07-03T10:34:14.509Z",
       "distanceKm": 0,
-      "altitudeKm": 425.8,
-      "inclinationDeg": 51.631
+      "altitudeKm": 427.6,
+      "inclinationDeg": 51.63
     },
     "69180": {
       "name": "SHENZHOU-23 (SZ-23)",
