@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-05T20:58:15.044Z",
+  "updated": "2026-07-06T03:21:49.938Z",
   "capsules": {
     "66664": {
       "name": "SOYUZ-MS 28",
@@ -29,7 +29,7 @@
       "since": "2026-07-03T10:34:14.509Z",
       "distanceKm": 0,
       "altitudeKm": 402.9,
-      "inclinationDeg": 41.468
+      "inclinationDeg": 41.467
     }
   },
   "events": []
