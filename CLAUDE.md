@@ -33,7 +33,10 @@ those against this document instead.
    workflow for the Worker.) They only sync when you explicitly
    run `npx wrangler deploy` from the worker/ directory.
    Forgetting this is the single most common source of
-   production bugs on this project.
+   production bugs on this project. Also run `npm install` at
+   the repo root first — see DEPLOY COMMANDS below; skipping it
+   fails the build (worker/src/index.js imports from the
+   @orbital-traffic/catalog workspace package).
 
 2. CLASSIFICATION IS SHARED, AND RUNS CLIENT-SIDE — NOT IN
    THE WORKER: All satellite classification logic (category
@@ -188,9 +191,23 @@ a tested, modular monorepo v2.0.0"):
 
 Worker deploy (run after ANY worker/src/index.js PR merges —
 this step is never automatic):
-  cd worker
   git pull origin main
+  npm install
+  cd worker
   npx wrangler deploy
+
+  IMPORTANT: `npm install` must run at the REPO ROOT before
+  `wrangler deploy`, not just `git pull` inside worker/. The
+  Worker imports from the @orbital-traffic/catalog workspace
+  package (worker/src/index.js's top import), which only
+  resolves once npm has created the workspace symlink at
+  node_modules/@orbital-traffic/catalog — running `npm install`
+  from inside worker/ alone does not set this up; it has to be
+  the monorepo root. Skipping this step fails wrangler's build
+  with "Could not resolve @orbital-traffic/catalog" — confirmed
+  this is what happens when the step is skipped, since the
+  original commands above were missing it and that's exactly
+  the error Ian hit trying to deploy PR #52.
 
 Verify the Worker is returning data correctly:
   curl https://orbital-traffic.ianlewis101.workers.dev/tle
