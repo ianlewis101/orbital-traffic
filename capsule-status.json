@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-07T07:36:13.773Z",
+  "updated": "2026-07-07T10:53:59.071Z",
   "capsules": {
     "66664": {
       "name": "SOYUZ-MS 28",
@@ -9,7 +9,7 @@
       "since": "2026-07-03T10:34:14.509Z",
       "distanceKm": 0,
       "altitudeKm": 427.5,
-      "inclinationDeg": 51.63
+      "inclinationDeg": 51.631
     },
     "67796": {
       "name": "CREW DRAGON 12",
@@ -19,7 +19,7 @@
       "since": "2026-07-03T10:34:14.509Z",
       "distanceKm": 0,
       "altitudeKm": 427.5,
-      "inclinationDeg": 51.63
+      "inclinationDeg": 51.631
     },
     "69180": {
       "name": "SHENZHOU-23 (SZ-23)",
@@ -27,7 +27,7 @@
       "phase": "docked",
       "stationKey": "css",
       "since": "2026-07-03T10:34:14.509Z",
-      "distanceKm": 1.5,
+      "distanceKm": 2.2,
       "altitudeKm": 402.8,
       "inclinationDeg": 41.468
     }
