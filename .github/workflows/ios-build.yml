@@ -54,7 +54,11 @@ jobs:
           PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
           KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
         run: |
-          set -euo pipefail
+         set -euo pipefail
+          P12_BASE64="$(printf '%s' "$P12_BASE64" | tr -d '[:space:]')"
+          P12_PASSWORD="$(printf '%s' "$P12_PASSWORD" | tr -d '[:space:]')"
+          PROFILE_BASE64="$(printf '%s' "$PROFILE_BASE64" | tr -d '[:space:]')"
+          KEYCHAIN_PASSWORD="$(printf '%s' "$KEYCHAIN_PASSWORD" | tr -d '[:space:]')"
 
           CERT_PATH=$RUNNER_TEMP/dist_cert.p12
           PROFILE_PATH=$RUNNER_TEMP/profile.mobileprovision
