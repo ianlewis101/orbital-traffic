@@ -187,7 +187,7 @@
   #info-body{position:relative}
   #info-veil{display:none;position:absolute;inset:0;z-index:4;pointer-events:none;padding-top:84px;
     background:rgba(10,13,24,0.55);
-    backdrop-filter:blur(9px) saturate(1.15);-webkit-backdrop-filter:blur(9px) saturate(1.15)}
+    backdrop-filter:blur(10.8px) saturate(1.15);-webkit-backdrop-filter:blur(10.8px) saturate(1.15)}
   #info.veiled #info-veil{display:block}
   /* sticky keeps the lock in the card's visible area even when the veiled
      region is taller than the fold and the card is scrolled */
