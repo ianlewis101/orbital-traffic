@@ -130,7 +130,7 @@ export function select(s) {
     clearTrail();
     return;
   }
-  teleOpen = false; // start each newly selected object with telemetry detail collapsed
+  teleOpen = true; // start each newly selected object with telemetry detail expanded
   fetchAndRenderCrew(s);
   info.classList.add("show");
   info.scrollTop = 0;
@@ -322,7 +322,7 @@ function enrichSatcat(s) {
     .catch(() => {});
 }
 
-let teleOpen = false; // persists the "more"/"less" telemetry state across refreshInfo() re-renders
+let teleOpen = true; // persists the "more"/"less" telemetry state across refreshInfo() re-renders
 
 export function refreshInfo() {
   const s = state.selected;
