@@ -47,6 +47,15 @@ jobs:
       #   APP_STORE_CONNECT_API_KEY_ID
       #   APP_STORE_CONNECT_API_ISSUER_ID
       #   APP_STORE_CONNECT_API_KEY_BASE64
+      - name: DEBUG - check secret integrity
+        env:
+          P12_BASE64: ${{ secrets.IOS_DIST_CERTIFICATE_P12_BASE64 }}
+        run: |
+          echo "Base64 secret length (should be 4316):"
+          printf '%s' "$P12_BASE64" | wc -c
+          echo "Decoded p12 sha256 (should be 3292bbb695ad48f375a1bda57860dc330871b0cb4388859114ae3dc993e9d27b):"
+          printf '%s' "$P12_BASE64" | tr -d '[:space:]' | base64 --decode -o /tmp/debug_cert.p12
+          shasum -a 256 /tmp/debug_cert.p12
       - name: Import signing certificate & provisioning profile
         env:
           P12_BASE64: ${{ secrets.IOS_DIST_CERTIFICATE_P12_BASE64 }}
