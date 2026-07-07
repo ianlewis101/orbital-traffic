@@ -401,8 +401,10 @@
     #info .foot{padding:10px 15px 16px;display:flex;gap:8px}
     #info-track{padding:12px 0}
 
-    /* Hint — above leftstack */
-    #hint{bottom:auto;top:70px;font-size:9px}
+    /* Hint — below the clock card. Clock's real rendered bottom edge on
+       mobile is 127px (see #alerts comment above); top:140px matches the
+       same 13px clearance #alerts uses to clear it. */
+    #hint{bottom:auto;top:140px;font-size:9px}
 
     /* Meta attribution — inset clear of the leftstack card, centered in remaining space */
     #meta{left:205px;right:10px;bottom:10px;transform:none;width:auto}
