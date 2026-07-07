@@ -23,7 +23,9 @@ export function renderToday() {
 }
 
 export function initTodayToggle() {
-  let todayOpen = true;
+  let todayOpen = false;
+  $("#today-list").style.display = todayOpen ? "" : "none";
+  $("#today-toggle").textContent = todayOpen ? "▾" : "▸";
   const todayPh = $("#today-ph");
   if (todayPh)
     todayPh.onclick = () => {
