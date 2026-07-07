@@ -386,8 +386,11 @@
     #tip{display:none!important}
 
     /* Mini-card — compact pill shown bottom-right when the detail card is
-       swiped down; tapping it restores the full card without deselecting */
-    #mini-card{display:none;position:fixed;right:10px;bottom:10px;z-index:11;
+       swiped down; tapping it restores the full card without deselecting.
+       bottom:44px (not 10px) keeps it clear of the #meta attribution line,
+       which is anchored at bottom:10px in this same media block — both
+       sharing bottom:10px used to let the mini-card cover the "Privacy" link */
+    #mini-card{display:none;position:fixed;right:10px;bottom:44px;z-index:11;
       align-items:center;gap:9px;min-height:44px;padding:8px 14px 8px 12px;
       background:rgba(17,22,42,0.88);backdrop-filter:blur(18px) saturate(1.2);
       -webkit-backdrop-filter:blur(18px) saturate(1.2);
