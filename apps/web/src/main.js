@@ -27,7 +27,7 @@ import { renderToday, initTodayToggle } from "./ui/today.js";
 import { initTimeMachine } from "./ui/time.js";
 import { initSearch } from "./ui/search.js";
 import { initPassAlerts } from "./ui/alerts.js";
-import { setStatus, updateCount } from "./ui/status.js";
+import { updateCount } from "./ui/status.js";
 import { updateClock } from "./ui/clock.js";
 import { registerServiceWorker } from "./pwa.js";
 import { refreshPassAlertsIfEnabled } from "./native/passAlerts.js";
@@ -117,7 +117,6 @@ async function boot() {
   rebuildLegend();
   updateCount();
   renderToday();
-  setStatus("cached", "Cached");
   requestAnimationFrame(loop);
   setTimeout(() => {
     splash.classList.add("gone");

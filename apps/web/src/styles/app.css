@@ -56,29 +56,20 @@
   .utc-compact{display:none}
   .utc-full{display:inline}
   #clock .utc{font-family:var(--mono);font-weight:600;font-size:30px;letter-spacing:0.02em;
-    font-variant-numeric:tabular-nums;line-height:1;color:var(--ink)}
+    font-variant-numeric:tabular-nums;line-height:1;color:var(--ink);margin-top:6px}
   #clock .utc small{font-size:12px;color:var(--ink-dim);font-weight:400;letter-spacing:0.1em;margin-left:3px}
-  #clock .date{font-size:10px;letter-spacing:0.14em;color:var(--ink-dim);margin-top:6px;font-variant-numeric:tabular-nums}
+  #clock .date{font-size:10px;letter-spacing:0.14em;color:var(--ink-dim);text-align:center;font-variant-numeric:tabular-nums}
   #clock .row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:9px;
     padding-top:9px;border-top:1px solid var(--line)}
   #count{font-size:9.5px;letter-spacing:0.1em;color:var(--ink-dim);text-transform:uppercase}
   #count b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
-  #status-pill{display:inline-flex;align-items:center;color:var(--ink-dim)}
-  #status-pill .dot{width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 7px currentColor}
-  #status-txt{display:none}
-  #status-pill.live{color:var(--good)}
-  #status-pill.cached{color:var(--amber)}
-  #status-pill.loading{color:var(--signal)}
-  #status-pill.live .dot{animation:live-pulse 1.6s ease-in-out infinite}
-  #status-pill.loading .dot{animation:blink 1s infinite}
-  @keyframes blink{50%{opacity:0.2}}
-  @keyframes live-pulse{0%,100%{opacity:1;box-shadow:0 0 7px currentColor}50%{opacity:.5;box-shadow:0 0 14px currentColor}}
 
   /* ISS Pass Alerts — low-profile chip, top-right, right under the clock.
      Position measured against the clock's real rendered bottom edge
-     (127px mobile / 147px desktop) — not guessed. Mobile override lives
-     in the @media block below, same pattern as #clock. */
-  #alerts{position:fixed;top:162px;right:24px;z-index:5;max-width:200px;
+     (98px mobile / 118px desktop after the clock card layout redesign
+     dropped the header row and status row) — not guessed. Mobile override
+     lives in the @media block below, same pattern as #clock. */
+  #alerts{position:fixed;top:133px;right:24px;z-index:5;max-width:200px;
     padding:8px 12px;
     background:rgba(17,22,42,0.55);backdrop-filter:blur(18px) saturate(1.2);-webkit-backdrop-filter:blur(18px) saturate(1.2);
     border:1px solid rgba(255,255,255,0.12);border-radius:14px;
@@ -269,12 +260,12 @@
   #info .stat .v small{font-size:9px}
 
   /* clock readouts */
-  #clock .cap{font-size:8px;letter-spacing:0.1em;color:var(--ink-faint);margin-top:7px;text-transform:uppercase}
+  #clock .cap{font-size:8px;letter-spacing:0.1em;color:var(--ink-faint);text-transform:uppercase}
   #clock .rows{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
-  .crow{display:flex;justify-content:space-between;align-items:center}
-  .ck{font-size:9px;letter-spacing:0.13em;text-transform:uppercase;color:var(--ink-faint);font-weight:500}
+  .crow{display:flex;justify-content:space-between;align-items:center;gap:14px}
   #count-n{font-size:13px;color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
   #clock-mode{color:var(--good)}
+  #clock-mode.live{animation:pulse 1s ease-in-out infinite}
 
   /* layout fix: these panels must be viewport-fixed */
   #brand,#search-wrap,#meta{position:fixed}
@@ -317,18 +308,16 @@
        suffix (the time row already labels itself "UTC") lets the header, and so the
        whole card, shrink to roughly match the compact content. */
     #clock{top:10px;right:10px;width:fit-content;min-width:0;animation:none}
-    #alerts{top:140px;right:10px;max-width:150px}
+    #alerts{top:111px;right:10px;max-width:150px}
     #alerts .alerts-row{font-size:9.5px}
-    #clock .clock-suffix{display:none}
     #clock .body{padding:7px 11px 8px}
-    #clock .utc{font-size:20px;letter-spacing:0.01em;text-align:center}
+    #clock .utc{font-size:20px;letter-spacing:0.01em;text-align:center;margin-top:4px}
     #clock .utc small{font-size:10px}
-    #clock .date{font-size:8.5px;margin-top:4px;text-align:center}
+    #clock .date{font-size:8.5px;text-align:center}
     #clock .row{display:none}
     .utc-full{display:none!important}
     .utc-compact{display:inline!important}
     #clock .utc{font-size:26px}
-    #clock .cap{display:none}
 
     /* Search — collapses to an icon button; tap slides it open
        #search inherits position:fixed from .plate, which on desktop is anchored to
@@ -402,9 +391,9 @@
     #info-track{padding:12px 0}
 
     /* Hint — below the clock card. Clock's real rendered bottom edge on
-       mobile is 127px (see #alerts comment above); top:140px matches the
+       mobile is 98px (see #alerts comment above); top:111px matches the
        same 13px clearance #alerts uses to clear it. */
-    #hint{bottom:auto;top:140px;font-size:9px}
+    #hint{bottom:auto;top:111px;font-size:9px}
 
     /* Meta attribution — inset clear of the leftstack card, centered in remaining space */
     #meta{left:205px;right:10px;bottom:10px;transform:none;width:auto}
