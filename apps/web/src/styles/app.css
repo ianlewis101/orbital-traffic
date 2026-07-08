@@ -6,6 +6,7 @@
     --violet:#a78bfa; --signal:#7dd3fc; --good:#5eead4; --bad:#fb7185;
     --serif:'Bricolage Grotesque',ui-sans-serif,system-ui,sans-serif;
     --mono:'Oxanium',ui-sans-serif,system-ui,sans-serif;
+    --logo:'Orbitron',ui-sans-serif,system-ui,sans-serif; /* wordmark only — --serif stays on object-name display */
   }
   *{margin:0;padding:0;box-sizing:border-box}
   html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
@@ -43,9 +44,10 @@
   .lab{font-size:9px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);font-weight:500}
 
   /* ---------- wordmark ---------- */
-  #brand{top:22px;left:24px;animation:rise .8s both .05s}
-  #brand .wm{font-family:var(--serif);font-weight:800;font-size:30px;line-height:0.92;letter-spacing:-0.025em;
-    background:linear-gradient(95deg,#eef1f8 18%,#5eead4 55%,#a78bfa 92%);-webkit-background-clip:text;
+  #brand{top:22px;left:24px;animation:rise .8s both .05s;display:flex;align-items:center;gap:12px}
+  #brand .mark{width:34px;height:34px;flex-shrink:0}
+  #brand .wm{font-family:var(--logo);font-weight:800;font-size:28px;line-height:0.92;letter-spacing:0.01em;
+    background:linear-gradient(95deg,#eef1f8 12%,#5eead4 55%,#a78bfa 92%);-webkit-background-clip:text;
     background-clip:text;color:transparent}
   #brand .wm em{font-style:normal}
   #brand .wm-sub{font-size:8.5px;letter-spacing:0.4em;text-transform:uppercase;color:var(--ink-faint);margin-top:8px;padding-left:2px}
@@ -212,8 +214,12 @@
   #splash{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;
     align-items:center;justify-content:center;gap:26px;transition:opacity .9s}
   #splash.gone{opacity:0;pointer-events:none}
-  #splash .ttl{font-family:var(--serif);font-weight:400;font-size:38px;letter-spacing:-0.01em;color:var(--ink)}
-  #splash .ttl em{font-style:italic;color:var(--amber)}
+  #splash .splash-brand{display:flex;flex-direction:column;align-items:center;gap:14px}
+  #splash .splash-brand .mark{width:56px;height:56px}
+  #splash .ttl{font-family:var(--logo);font-weight:800;font-size:36px;letter-spacing:0.01em;
+    background:linear-gradient(95deg,#eef1f8 12%,#5eead4 55%,#a78bfa 92%);-webkit-background-clip:text;
+    background-clip:text;color:transparent}
+  #splash .ttl em{font-style:normal}
   #splash .ld{width:220px;height:1px;background:var(--line-bright);overflow:hidden;position:relative}
   #splash .ld i{position:absolute;inset:0;background:var(--amber);transform:translateX(-100%);animation:load 1.2s ease-in-out infinite}
   @keyframes load{to{transform:translateX(100%)}}
