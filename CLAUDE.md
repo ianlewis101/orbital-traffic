@@ -90,7 +90,22 @@ those against this document instead.
    rule to worry about in the current architecture — that
    constraint applied only to the old single-file index.html.
 
-5. STATION ALLOWLIST: The "stations" category must only
+5. NEO DATA/DESCRIPTION SYNC: apps/web/public/data/neos.json
+   (orbital elements — what actually gets plotted) and
+   apps/web/public/data/neo-descriptions.json (write-ups — what
+   the info card shows) are two separately-maintained files that
+   must stay in sync. On 2026-07-08, 22 objects — including
+   Apophis, Bennu, Ryugu, Itokawa, and Didymos — had detailed
+   descriptions written for them but no matching orbital-elements
+   entry, so they silently never appeared anywhere in the app.
+   apps/web/test/neo-consistency.test.js checks this
+   automatically now (every description must have a matching
+   plotted entry) — do not remove or weaken that test. If you add
+   a new NEO description, add its orbital data to neos.json in
+   the same change, fetched from JPL's Small-Body Database
+   (ssd-api.jpl.nasa.gov/sbdb.api), never estimated or guessed.
+
+6. STATION ALLOWLIST: The "stations" category must only
    contain objects in STATION_CORE_IDS, defined in
    packages/catalog/src/classify.js. Never trust CelesTrak's
    raw GROUP=stations feed directly — it includes cargo
