@@ -5,7 +5,7 @@ import { ingest } from "./ingest.js";
 import { buildClouds } from "../scene/clouds.js";
 import { rebuildLegend } from "../ui/legend.js";
 import { renderToday } from "../ui/today.js";
-import { setStatus, updateCount, flash, toast } from "../ui/status.js";
+import { updateCount, flash, toast } from "../ui/status.js";
 
 /**
  * Refresh the catalog from the Worker proxy; fall back to fetching
@@ -15,7 +15,6 @@ export async function fetchLive() {
   const totEl = $("#legend-tot");
   totEl.classList.add("loading");
   totEl.textContent = "…";
-  setStatus("loading", "Syncing…");
   try {
     const res = await fetch(WORKER_BASE + "/tle", { cache: "no-store" });
     if (!res.ok) throw new Error("worker " + res.status);
@@ -34,7 +33,6 @@ export async function fetchLive() {
     if (recs.length) {
       applyLive(recs);
     } else {
-      setStatus("cached", "Cached");
       toast("Live fetch unavailable — showing cached elements");
       updateCount();
     }
@@ -47,7 +45,6 @@ function applyLive(recs) {
   buildClouds();
   state.source = "live";
   state.srcTime = new Date();
-  setStatus("live", "Live");
   rebuildLegend();
   updateCount();
   renderToday();

@@ -21,6 +21,7 @@ export function setRate(v, btn) {
   const cm = $("#clock-mode");
   cm.textContent = v === 0 ? "PAUSED" : v === 1 ? "LIVE" : "+" + v + "×";
   cm.style.color = v === 1 ? "var(--good)" : v === 0 ? "var(--ink-dim)" : "var(--signal)";
+  cm.classList.toggle("live", v === 1);
 }
 
 export function initTimeMachine() {

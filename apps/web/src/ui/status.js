@@ -1,18 +1,5 @@
 import { state, $ } from "../state.js";
 
-export function setStatus(cls, txt) {
-  const p = $("#status-pill");
-  p.className = cls;
-  if ((cls === "live" || cls === "cached") && state.srcTime) {
-    const hm = state.srcTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    txt = cls === "live" ? `Live · Updated ${hm}` : `Cached · As of ${hm}`;
-  }
-  $("#status-txt").textContent = txt;
-  if (cls === "live" && state.srcTime) {
-    p.title = "Synced " + state.srcTime.toUTCString();
-  }
-}
-
 export function updateCount() {
   const n = state.sats.length;
   $("#count-n").textContent = n.toLocaleString();
