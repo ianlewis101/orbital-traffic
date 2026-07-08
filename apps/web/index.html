@@ -32,7 +32,7 @@
 <title>ORBITAL TRAFFIC — live space tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Oxanium:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Oxanium:wght@400;500;600;700&family=Orbitron:wght@700;800;900&display=swap" rel="stylesheet">
 </head>
 <body>
 <div id="scene"></div>
@@ -43,15 +43,31 @@
 <div id="bezel"><span class="cx tl"></span><span class="cx tr"></span><span class="cx bl"></span><span class="cx br"></span><div class="ruler"></div><div class="ruler b"></div></div>
 
 <div id="splash">
-  <div class="ttl">Orbital&nbsp;<em>Traffic</em></div>
+  <div class="splash-brand">
+    <svg class="mark" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+      <defs><linearGradient id="splashMarkGrad" x1="4" y1="4" x2="60" y2="60"><stop offset="0%" stop-color="#eef1f8"/><stop offset="45%" stop-color="#5eead4"/><stop offset="100%" stop-color="#a78bfa"/></linearGradient></defs>
+      <ellipse cx="32" cy="32" rx="26" ry="10.5" transform="rotate(-24 32 32)" stroke="url(#splashMarkGrad)" stroke-width="2.4" opacity=".65"/>
+      <circle cx="32" cy="32" r="7.5" fill="url(#splashMarkGrad)"/>
+      <circle cx="52" cy="20" r="3.4" fill="#5eead4"/>
+    </svg>
+    <div class="ttl">Orbital&nbsp;<em>Traffic</em></div>
+  </div>
   <div class="ld"><i></i></div>
   <div class="msg" id="splash-msg">Loading 18,000+ objects in orbit for you to explore</div>
 </div>
 
 <div class="hud">
   <div id="brand">
-    <div class="wm">Orbital&nbsp;<em>Traffic</em></div>
-    <div class="wm-sub">Live Space Situational Display</div>
+    <svg class="mark" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+      <defs><linearGradient id="brandMarkGrad" x1="4" y1="4" x2="60" y2="60"><stop offset="0%" stop-color="#eef1f8"/><stop offset="45%" stop-color="#5eead4"/><stop offset="100%" stop-color="#a78bfa"/></linearGradient></defs>
+      <ellipse cx="32" cy="32" rx="26" ry="10.5" transform="rotate(-24 32 32)" stroke="url(#brandMarkGrad)" stroke-width="2.4" opacity=".65"/>
+      <circle cx="32" cy="32" r="7.5" fill="url(#brandMarkGrad)"/>
+      <circle cx="52" cy="20" r="3.4" fill="#5eead4"/>
+    </svg>
+    <div class="wm-col">
+      <div class="wm">Orbital&nbsp;<em>Traffic</em></div>
+      <div class="wm-sub">Live Space Situational Display</div>
+    </div>
   </div>
 
   <div id="clock" class="plate">
