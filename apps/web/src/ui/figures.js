@@ -8,8 +8,14 @@ export function photoKey(s) {
   if (id === "20580" || / HUBBLE | HST /.test(n)) return "hubble";
   if (/ WEBB | JWST /.test(n)) return "jwst";
   if (/ DRAGON | ENDEAVOUR | ENDURANCE | RESILIENCE | FREEDOM /.test(n)) return "dragon";
-  if (/ SOYUZ | PROGRESS /.test(n)) return "soyuz";
+  if (/ SOYUZ /.test(n)) return "soyuz";
+  if (/ PROGRESS /.test(n)) return "progress";
   if (/ CYGNUS /.test(n)) return "cygnus";
+  // No trailing space required: CelesTrak hyphenates these directly
+  // (e.g. "SHENZHOU-21", "TIANZHOU-9"), unlike "SOYUZ MS-28" above.
+  if (/ STARLINER/.test(n)) return "starliner";
+  if (/ SHENZHOU/.test(n)) return "shenzhou";
+  if (/ TIANZHOU/.test(n)) return "tianzhou";
   // asteroid real photos
   if (s._neo) {
     if (/ GEOGRAPHOS /.test(n)) return "asteroid_geographos";
@@ -21,17 +27,42 @@ export function photoKey(s) {
   }
   const c = classify(s);
   if (c === "station") return "station_generic";
-  if (c === "capsule") return "capsule_generic";
+  // Note: c === "capsule" is intentionally NOT handled here. Every name pattern
+  // that classify() tags as "capsule" (Soyuz/Progress/Dragon/Cygnus/Starliner/
+  // Shenzhou/Tianzhou) is matched explicitly above with its own accurate photo.
+  // There is no capsule_generic bucket — if a future capsule name doesn't match
+  // any pattern above, it should fall through to the procedural SVG (below)
+  // rather than show a photo of the wrong spacecraft.
   if (c === "navigation" || c === "geo") return c === "geo" ? "geo_generic" : "navigation_generic";
   if (c === "weather" || c === "eo" || c === "telescope") return "science_generic";
   if (c === "generic") return "satellite_generic";
   return null;
 }
 
+/**
+ * Simple deterministic string hash (djb2-ish). Used to pick a stable photo
+ * from a rotation pool per object, so the same satellite always shows the
+ * same photo across reloads/reopens, while different satellites in the same
+ * category spread across the available pool instead of all showing photo #1.
+ */
+function hashStr(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = (h * 31 + str.charCodeAt(i)) >>> 0;
+  }
+  return h;
+}
+
 export function figureHTML(s) {
   const k = photoKey(s);
-  if (k && DATA.photos[k]) {
-    return `<img src="${DATA.photos[k]}" alt="${s.name}"><span class="cred">NASA · public domain</span>`;
+  const entry = k && DATA.photos[k];
+  if (entry) {
+    const photo = entry.pool
+      ? entry.pool[hashStr(String(s.id || s.name)) % entry.pool.length]
+      : entry;
+    if (photo && photo.path) {
+      return `<img src="${photo.path}" alt="${s.name}"><span class="cred">${photo.credit}</span>`;
+    }
   }
   return svgFor(s);
 }
