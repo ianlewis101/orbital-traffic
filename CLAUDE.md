@@ -38,41 +38,55 @@ those against this document instead.
    fails the build (worker/src/index.js imports from the
    @orbital-traffic/catalog workspace package).
 
-2. CLASSIFICATION IS SHARED, AND RUNS CLIENT-SIDE — NOT IN
-   THE WORKER: All satellite classification logic (category
+2. CLASSIFICATION IS SHARED — ONE PIPELINE AT EVERY ENTRY
+   POINT: All satellite classification logic (category
    assignment, name-pattern matching, station allowlist,
-   debris detection) lives in ONE place:
-   packages/catalog/src/classify.js, exported as categorize().
-   It is called from apps/web/src/data/ingest.js's ingest(),
-   which runs on EVERY ingest — both the initial cached/bundled
-   boot data and the live data fetched from the Worker.
+   crew-vehicle promotion, debris detection) lives in ONE
+   place: packages/catalog/src/classify.js, exported as
+   categorize(). parseTle() (packages/catalog/src/tle.js) runs
+   it on every record it parses, so the Worker's /tle output,
+   the bundled-data pipeline, and the capsule-status tool all
+   emit fully classified records. On top of that,
+   apps/web/src/data/ingest.js's ingest() re-runs categorize()
+   on EVERY ingest — bundled boot data and live Worker data
+   alike — so clients never depend on a stale Worker deploy or
+   stale bundled JSON to pick up a classification fix.
 
-   The Worker (worker/src/index.js) does NOT run categorize().
-   It only tags records with the coarse group they came from
-   (see packages/catalog/src/groups.js's GROUPS array — e.g.
-   "stations", "navigation", "geostationary", "starlink",
-   "science", or "other" for the generic CelesTrak "active"
-   catch-all). Fine-grained categories like "communications"
-   and "classified" do not exist anywhere in the Worker's
-   response — they are only produced later, client-side, by
-   categorize()'s name-pattern rescue step.
+   (Correction, 2026-07-09: this doc previously claimed the
+   Worker "does NOT run categorize()" and that fine-grained
+   categories never appear in /tle responses. That was stale —
+   parseTle() applies the full pipeline, so expect
+   "communications"/"classified"/"debris" etc. in raw Worker
+   JSON.)
+
+   CREW-VEHICLE PROMOTION: categorize()'s other-rescue promotes
+   any isDockedCrewVehicle() name that arrives via the generic
+   catch-alls ("active", "last-30-days") back to "stations" —
+   the mirror of correctStationCat()'s demotion. Without it, a
+   free-flying or just-launched capsule classifies as "other",
+   which the app hides by default. Both directions use the same
+   CREW_VEHICLE_PATTERNS table in classify.js (also the source
+   of capsuleFamily()), matched against a normalized name
+   (hyphens/underscores collapsed to spaces) so catalog
+   hyphenation variants can't break matching. New crewed
+   vehicles get added to that ONE table, nowhere else.
 
    CAPSULE PHASE IS SEPARATE FROM CATEGORY: a crewed capsule
-   (Dragon/Soyuz/Starliner/Shenzhou) keeps cat:"stations" for
-   its entire tracked lifetime — launch through landing —
-   regardless of whether it's actually docked. Its live
-   docked/free-flying/landed phase is tracked separately in
-   packages/catalog/src/capsules.js and served via the Worker's
-   /capsules endpoint (see below); this is additional per-
-   capsule status, not a category. Never make categorize()
-   itself phase-aware — that would break the single-source-of-
-   truth boundary this rule establishes.
+   (any CREW_VEHICLE_PATTERNS family — Dragon/Soyuz/Starliner/
+   Shenzhou, plus Mengzhou/Gaganyaan/Orion pre-added) keeps
+   cat:"stations" for its entire tracked lifetime — launch
+   through landing — regardless of whether it's actually
+   docked. Its live docked/free-flying/landed phase is tracked
+   separately in packages/catalog/src/capsules.js and served
+   via the Worker's /capsules endpoint (see below); this is
+   additional per-capsule status, not a category. Never make
+   categorize() itself phase-aware — that would break the
+   single-source-of-truth boundary this rule establishes.
 
    Do not add classification logic anywhere else (e.g. inline
    in ingest.js or duplicated in the Worker) — categorize() in
    packages/catalog/src/classify.js is the single source of
-   truth, imported by both the Worker (for group tagging) and
-   the web app (for final classification).
+   truth for every consumer.
 
 3. NO EMBEDDED DATA ISLAND TO PATCH: This project no longer
    ships a single giant HTML file with an embedded TLE data
@@ -162,7 +176,17 @@ a tested, modular monorepo v2.0.0"):
 - GitHub Actions also handles daily TLE refresh
   (refresh-tle-data.yml), ISS Today data updates
   (update-iss-today.yml), and crewed-capsule phase tracking
-  every 4 hours (update-capsule-status.yml).
+  hourly (update-capsule-status.yml). The capsule tracker reads
+  CelesTrak's stations + last-30-days groups, CATNR-re-verifies
+  any previously-tracked capsule missing from both before
+  letting it land, treats elsets older than STALE_TLE_DAYS (7)
+  as absent, and aborts untouched if the stations feed lacks
+  the ISS. Each active capsule entry in capsule-status.json
+  carries its l1/l2 so the web app can plot capsules the group
+  feeds miss; landed entries carry no elset. On every live
+  sync the web app prunes objects absent from the feed whose
+  epoch is >10 days old, injects active capsules from
+  /capsules, and immediately removes landed ones.
 
 - PWA: manifest.json, sw.js, icons under apps/web/public/.
   App Store submission via PWABuilder iOS package — check with
@@ -197,10 +221,25 @@ a tested, modular monorepo v2.0.0"):
   and ingest() (which calls categorize()) always runs before
   buildClouds() — order matters, don't reorder without
   understanding why each step is sequenced that way
-- Starliner must stay in isDockedCrewVehicle's pattern set
-  (packages/catalog/src/classify.js's STARLINER_RE) — without
-  it, a docked or in-transit Starliner falls out of the station
-  allowlist to "other" instead of "stations"
+- Starliner must stay in classify.js's CREW_VEHICLE_PATTERNS
+  (the shared table behind isDockedCrewVehicle() and
+  capsuleFamily()) — without it, a docked or in-transit
+  Starliner falls out of the station allowlist to "other"
+  instead of "stations"
+- The dragon pattern must never match bare DRAGON (cargo
+  "DRAGON CRS-nn" is uncrewed) and GRACE must keep its
+  (?! FO) guard — bare GRACE would swallow the GRACE-FO
+  science pair. Never add a bare SZ-\d+ crew pattern either:
+  jettisoned "SZ-nn MODULE" hardware must keep falling to
+  debris
+- Landed entries in capsule-status.json must never carry
+  l1/l2 — clients plot whatever elset they're given, so a
+  stale one renders a ghost capsule (advanceCapsuleLog strips
+  them on landing)
+- Live-sync pruning must keep its epoch guard (absent from
+  feed AND epoch >10 days) — pruning on absence alone would
+  wipe healthy categories whenever one CelesTrak group fetch
+  fails mid-sync
 
 ── DEPLOY COMMANDS (reference) ───────────────────────────────
 
@@ -226,18 +265,18 @@ this step is never automatic):
 
 Verify the Worker is returning data correctly:
   curl https://orbital-traffic.ianlewis101.workers.dev/tle
-  Check for coarse group tags like "cat":"stations",
-  "cat":"starlink", "cat":"other", etc. — do NOT expect to see
-  "cat":"communications" or "cat":"classified" in this raw
-  response; those only appear after the client runs
-  categorize() on ingest. If you need to verify fine-grained
-  classification end to end, check the rendered app/legend
-  counts instead, not the raw Worker JSON.
+  Check for fully classified "cat" tags — parseTle() runs the
+  complete categorize() pipeline, so "cat":"communications",
+  "cat":"classified", "cat":"debris" etc. all appear in this
+  raw response, and every crewed capsule must show
+  "cat":"stations" no matter which group it arrived from.
 
   curl https://orbital-traffic.ianlewis101.workers.dev/capsules
   Check for a "capsules" object keyed by NORAD ID with a
   "phase" field ("docked"/"free-flying"/"landed") per tracked
-  crewed capsule, and an "events" array of transitions.
+  crewed capsule, and an "events" array of transitions. Active
+  (non-landed) entries must carry "l1"/"l2" elset lines;
+  landed entries must NOT.
 
 Web app deploy: automatic on merge to main via
   .github/workflows/deploy-pages.yml — no manual step needed.

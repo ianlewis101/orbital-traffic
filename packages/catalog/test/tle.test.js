@@ -1,5 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { parseTle, mergeRecords, noradId } from "../src/index.js";
+import * as satellite from "satellite.js";
+import {
+  parseTle,
+  mergeRecords,
+  noradId,
+  tleEpochDate,
+  tleAgeDays,
+  satrecEpochDate,
+  satrecAgeDays,
+} from "../src/index.js";
 
 const ISS_TLE = `ISS (ZARYA)
 1 25544U 98067A   26181.86323116  .00005885  00000+0  11296-3 0  9995
@@ -40,6 +49,35 @@ describe("parseTle", () => {
   it("handles empty and blank input", () => {
     expect(parseTle("", "other")).toEqual([]);
     expect(parseTle("\n\n\n", "other")).toEqual([]);
+  });
+});
+
+describe("epoch helpers", () => {
+  const L1 = "1 25544U 98067A   26181.86323116  .00005885  00000+0  11296-3 0  9995";
+  const L2 = "2 25544  51.6310 232.3923 0004309 252.2804 107.7714 15.50129012345678";
+  // 2026 day 181.86323116 = June 30, ~20:43 UTC
+  const AT = new Date("2026-07-03T00:00:00Z"); // day 184.0
+
+  it("parses the epoch timestamp from line 1", () => {
+    const epoch = tleEpochDate(L1);
+    expect(epoch.toISOString().startsWith("2026-06-30T20:43")).toBe(true);
+  });
+
+  it("computes fractional age in days", () => {
+    expect(tleAgeDays(L1, AT)).toBeCloseTo(184 - 181.86323116, 5);
+  });
+
+  it("reads the same epoch off a parsed satrec", () => {
+    const rec = satellite.twoline2satrec(L1, L2);
+    expect(satrecEpochDate(rec).getTime()).toBeCloseTo(tleEpochDate(L1).getTime(), -3);
+    expect(satrecAgeDays(rec, AT)).toBeCloseTo(tleAgeDays(L1, AT), 4);
+  });
+
+  it("returns null for unparseable input", () => {
+    expect(tleEpochDate("garbage")).toBeNull();
+    expect(tleAgeDays("garbage")).toBeNull();
+    expect(satrecEpochDate(null)).toBeNull();
+    expect(satrecAgeDays({}, AT)).toBeNull();
   });
 });
 

@@ -24,6 +24,10 @@ export const GROUPS = [
   ["starlink", "starlink"],
   ["oneweb", "starlink"],
   ["science", "science"],
+  // Fresh launches take a while to graduate into "active"; without this
+  // group a just-launched object (a new crewed capsule especially) is
+  // absent from every feed. Merged before "active" (same cat, id-deduped).
+  ["last-30-days", "other"],
   ["active", "other"],
 ];
 

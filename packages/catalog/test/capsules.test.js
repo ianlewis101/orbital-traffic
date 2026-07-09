@@ -41,9 +41,22 @@ describe("capsuleFamily", () => {
     expect(capsuleFamily("DRAGON CRS-29")).toBeNull();
   });
 
+  it("tolerates hyphenation and matches airframes and upcoming vehicles", () => {
+    expect(capsuleFamily("CREW-DRAGON 13")).toBe("dragon");
+    expect(capsuleFamily("DRAGON GRACE")).toBe("dragon");
+    expect(capsuleFamily("ENDEAVOUR")).toBe("dragon");
+    expect(capsuleFamily("SOYUZ MS-30")).toBe("soyuz");
+    expect(capsuleFamily("CST-100 (CALYPSO)")).toBe("starliner");
+    expect(capsuleFamily("MENGZHOU-1")).toBe("mengzhou");
+    expect(capsuleFamily("GAGANYAAN-1")).toBe("gaganyaan");
+    expect(capsuleFamily("ORION (ARTEMIS II)")).toBe("orion");
+  });
+
   it("returns null for non-capsule names", () => {
     expect(capsuleFamily("PROGRESS-MS 32")).toBeNull();
     expect(capsuleFamily("STARLINK-30042")).toBeNull();
+    expect(capsuleFamily("GRACE-FO 1")).toBeNull();
+    expect(capsuleFamily("DRAGRACER 2 (AUGURY)")).toBeNull();
   });
 });
 
@@ -150,9 +163,31 @@ describe("buildCapsuleSnapshot", () => {
     expect(away.stationKey).toBe("iss");
     expect(away.phase).toBe("free-flying");
   });
+
+  it("carries the source elset so clients can plot capsules the group feeds miss", () => {
+    const snap = buildCapsuleSnapshot(records, FIXED_AT);
+    const docked = snap.find((c) => c.id === "99001");
+    expect(docked.l1).toBe(dockedL1);
+    expect(docked.l2).toBe(dockedL2);
+  });
+
+  it("treats a frozen elset as absent — a de-orbited capsule must not be tracked on a ghost orbit", () => {
+    const [ghostL1, ghostL2] = withSatnum(ISS_L1, ISS_L2, "99009");
+    // epoch pushed back from day 182 to day 170: ~13.5 days before FIXED_AT
+    const frozenL1 = ghostL1.replace("26182.50817465", "26170.50817465");
+    const snap = buildCapsuleSnapshot(
+      [
+        { name: "ISS (ZARYA)", l1: ISS_L1, l2: ISS_L2, cat: "stations" },
+        { name: "CREW DRAGON 9", l1: frozenL1, l2: ghostL2, cat: "stations" },
+      ],
+      FIXED_AT
+    );
+    expect(snap.map((c) => c.id)).not.toContain("99009");
+  });
 });
 
 describe("advanceCapsuleLog", () => {
+  const [capL1, capL2] = withSatnum(ISS_L1, ISS_L2, "99001");
   const snapshot = [
     {
       id: "99001",
@@ -163,6 +198,8 @@ describe("advanceCapsuleLog", () => {
       distanceKm: 0.4,
       altitudeKm: 418,
       inclinationDeg: 51.6,
+      l1: capL1,
+      l2: capL2,
     },
   ];
 
@@ -173,6 +210,9 @@ describe("advanceCapsuleLog", () => {
     expect(events).toEqual([]);
     expect(capsules["99001"].phase).toBe("docked");
     expect(capsules["99001"].since).toBe("2026-07-03T00:00:00.000Z");
+    // the elset rides along so clients can plot capsules the feeds miss
+    expect(capsules["99001"].l1).toBe(capL1);
+    expect(capsules["99001"].l2).toBe(capL2);
   });
 
   it("emits a launched event for a newly-seen capsule", () => {
@@ -183,7 +223,7 @@ describe("advanceCapsuleLog", () => {
 
   it("emits an undocked event on a docked -> free-flying transition", () => {
     const previous = {
-      "99001": {
+      99001: {
         name: "CREW DRAGON 12",
         family: "dragon",
         stationKey: "iss",
@@ -199,7 +239,7 @@ describe("advanceCapsuleLog", () => {
 
   it("carries `since` forward when the phase is unchanged", () => {
     const previous = {
-      "99001": {
+      99001: {
         name: "CREW DRAGON 12",
         family: "dragon",
         stationKey: "iss",
@@ -214,21 +254,45 @@ describe("advanceCapsuleLog", () => {
 
   it("marks a disappeared capsule landed, then prunes it after the retention window", () => {
     const previous = {
-      "99001": {
+      99001: {
         name: "CREW DRAGON 12",
         family: "dragon",
         stationKey: "iss",
         phase: "free-flying",
         since: "2026-07-01T00:00:00.000Z",
+        l1: capL1,
+        l2: capL2,
       },
     };
     const { capsules, events } = advanceCapsuleLog(previous, [], "2026-07-03T00:00:00.000Z");
     expect(events[0].event).toBe("landed");
     expect(capsules["99001"].phase).toBe("landed");
+    // nothing plottable may survive landing — a stale elset would render a ghost
+    expect(capsules["99001"].l1).toBeUndefined();
+    expect(capsules["99001"].l2).toBeUndefined();
 
-    const stale = { "99001": { ...capsules["99001"], since: "2026-01-01T00:00:00.000Z" } };
+    const stale = { 99001: { ...capsules["99001"], since: "2026-01-01T00:00:00.000Z" } };
     const pruned = advanceCapsuleLog(stale, [], "2026-07-03T00:00:00.000Z");
     expect(pruned.capsules["99001"]).toBeUndefined();
     expect(pruned.events).toEqual([]);
+  });
+
+  it("treats a capsule returning from landed as a fresh launch, not a stale continuation", () => {
+    const previous = {
+      99001: {
+        name: "CREW DRAGON 12",
+        family: "dragon",
+        stationKey: "iss",
+        phase: "landed",
+        since: "2026-06-20T00:00:00.000Z",
+        distanceKm: null,
+      },
+    };
+    const { capsules, events } = advanceCapsuleLog(previous, snapshot, "2026-07-03T00:00:00.000Z");
+    expect(events).toHaveLength(1);
+    expect(events[0].event).toBe("launched");
+    expect(capsules["99001"].phase).toBe("docked");
+    expect(capsules["99001"].since).toBe("2026-07-03T00:00:00.000Z");
+    expect(capsules["99001"].l1).toBe(capL1);
   });
 });
