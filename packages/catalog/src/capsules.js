@@ -1,6 +1,6 @@
 import * as satellite from "satellite.js";
-import { STATION_CORE_IDS, isDockedCrewVehicle, SOYUZ_MS_RE, STARLINER_RE, SHENZHOU_RE } from "./classify.js";
-import { noradId } from "./tle.js";
+import { STATION_CORE_IDS, isDockedCrewVehicle, capsuleFamily } from "./classify.js";
+import { noradId, tleAgeDays } from "./tle.js";
 
 /**
  * Crewed-capsule phase tracking — docked / free-flying / landed — derived
@@ -37,28 +37,17 @@ export const MAX_ASSOCIATION_INCLINATION_DEG = 5;
 export const LANDED_RETENTION_DAYS = 30;
 /** Hard ceiling on the persisted event log — years of real transition history at the actual event rate. */
 export const MAX_EVENTS = 200;
+/**
+ * A capsule TLE older than this is treated as absent (→ landed): crewed-
+ * vehicle elsets are re-fit at least daily while on orbit, so a week of
+ * silence decisively means de-orbited, while still tolerating ordinary
+ * fit gaps. Without this, a frozen TLE left in the feed after re-entry
+ * would keep the capsule "tracked" on a ghost orbit indefinitely.
+ */
+export const STALE_TLE_DAYS = 7;
 
-// Deliberately not a bare DRAGON pattern — that also matches uncrewed
-// cargo Dragon ("DRAGON CRS-29"), which must never be tracked as a crewed
-// capsule. CREW DRAGON (the generic bus name at launch) and the four
-// individually-named reusable crew airframes are the only safe anchors.
-const DRAGON_RE = /\bCREW DRAGON\b|\bENDEAVOUR\b|\bENDURANCE\b|\bRESILIENCE\b|\bFREEDOM\b/i;
-
-export const CAPSULE_FAMILY_PATTERNS = [
-  ["dragon", DRAGON_RE],
-  ["soyuz", SOYUZ_MS_RE],
-  ["starliner", STARLINER_RE],
-  ["shenzhou", SHENZHOU_RE],
-];
-
-/** Which crewed-vehicle family a name belongs to, or null. */
-export function capsuleFamily(name) {
-  const n = name || "";
-  for (const [family, re] of CAPSULE_FAMILY_PATTERNS) {
-    if (re.test(n)) return family;
-  }
-  return null;
-}
+// Family patterns (and capsuleFamily itself) live in classify.js next to
+// isDockedCrewVehicle so eligibility and family can never disagree.
 
 /** Classical elements derived from a TLE — altitude/inclination/period, no propagation needed. */
 export function deriveOrbitElements(l1, l2) {
@@ -135,6 +124,10 @@ export function buildCapsuleSnapshot(records, at = new Date()) {
     const id = noradId(r.l1);
     if (STATION_CORE_IDS.has(id)) continue; // station hardware itself, not a capsule
     if (r.cat !== "stations" || !isDockedCrewVehicle(r.name)) continue;
+    // A frozen elset means the capsule de-orbited but the feed hasn't
+    // dropped it yet — treat it as absent so it lands promptly instead of
+    // being tracked on a ghost orbit. Unparseable epochs count as stale.
+    if ((tleAgeDays(r.l1, at) ?? Infinity) > STALE_TLE_DAYS) continue;
     const el = deriveOrbitElements(r.l1, r.l2);
     if (!el) continue;
     const hub = nearestStation(el.inclinationDeg, hubs);
@@ -149,6 +142,8 @@ export function buildCapsuleSnapshot(records, at = new Date()) {
       distanceKm: distanceKm == null ? null : Math.round(distanceKm * 10) / 10,
       altitudeKm: Math.round(el.altitudeKm * 10) / 10,
       inclinationDeg: Math.round(el.inclinationDeg * 1000) / 1000,
+      l1: r.l1,
+      l2: r.l2,
     });
   }
   return capsules;
@@ -158,9 +153,10 @@ export function buildCapsuleSnapshot(records, at = new Date()) {
  * Advances the persisted per-capsule log by one run. Pure/side-effect-free
  * — the caller owns file I/O. Diffs a fresh snapshot against the previous
  * run's state: a phase change emits a transition event ("launched" for a
- * capsule never seen before, "docked"/"undocked" for a phase flip), and a
- * capsule that's dropped out of the snapshot entirely (no longer in the
- * feed) is marked terminal "landed" and retained for landedRetentionDays
+ * capsule never seen before or returning from "landed", "docked"/"undocked"
+ * for a phase flip), and a capsule that's dropped out of the snapshot
+ * entirely (no longer in the feed) is marked terminal "landed" and retained
+ * for landedRetentionDays
  * before being pruned. On isFirstRun, state is seeded with zero events —
  * there's no prior run to have transitioned from.
  */
@@ -174,12 +170,17 @@ export function advanceCapsuleLog(previousById, snapshot, nowIso, opts = {}) {
     const prev = previousById[c.id];
     const changed = !prev || prev.phase !== c.phase;
     if (changed && !isFirstRun) {
+      // A capsule reappearing after "landed" is back on orbit (a fresh
+      // elset after a feed gap, or a premature landing call) — that's a
+      // launch, with completely fresh state, never a stale docked/undocked
+      // continuation of its previous orbit.
+      const returned = !prev || prev.phase === "landed";
       events.push({
         id: c.id,
         name: c.name,
         family: c.family,
         stationKey: c.stationKey,
-        event: !prev ? "launched" : c.phase === "docked" ? "docked" : "undocked",
+        event: returned ? "launched" : c.phase === "docked" ? "docked" : "undocked",
         at: nowIso,
       });
     }
@@ -192,6 +193,8 @@ export function advanceCapsuleLog(previousById, snapshot, nowIso, opts = {}) {
       distanceKm: c.distanceKm,
       altitudeKm: c.altitudeKm,
       inclinationDeg: c.inclinationDeg,
+      l1: c.l1,
+      l2: c.l2,
     };
   }
 
@@ -212,7 +215,12 @@ export function advanceCapsuleLog(previousById, snapshot, nowIso, opts = {}) {
         at: nowIso,
       });
     }
-    capsules[id] = { ...prev, phase: "landed", since: nowIso, distanceKm: null };
+    // A landed capsule must carry nothing plottable — clients would render
+    // its final orbit as a ghost object otherwise.
+    const landed = { ...prev, phase: "landed", since: nowIso, distanceKm: null };
+    delete landed.l1;
+    delete landed.l2;
+    capsules[id] = landed;
   }
 
   return { capsules, events };

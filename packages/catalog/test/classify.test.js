@@ -124,4 +124,52 @@ describe("isDockedCrewVehicle", () => {
   it("matches Starliner", () => {
     expect(isDockedCrewVehicle("CST-100 STARLINER (CALYPSO)")).toBe(true);
   });
+
+  it("tolerates hyphenated catalog-name variants", () => {
+    expect(isDockedCrewVehicle("CREW-DRAGON 13")).toBe(true);
+    expect(isDockedCrewVehicle("SOYUZ MS-29")).toBe(true);
+    expect(isDockedCrewVehicle("SOYUZ-MS-29")).toBe(true);
+    expect(isDockedCrewVehicle("CST-100 (CALYPSO)")).toBe(true);
+  });
+
+  it("matches named Dragon crew airframes without the CREW prefix", () => {
+    expect(isDockedCrewVehicle("DRAGON ENDEAVOUR")).toBe(true);
+    expect(isDockedCrewVehicle("ENDURANCE")).toBe(true);
+    expect(isDockedCrewVehicle("DRAGON GRACE")).toBe(true);
+  });
+
+  it("matches upcoming crewed vehicles", () => {
+    expect(isDockedCrewVehicle("MENGZHOU-1")).toBe(true);
+    expect(isDockedCrewVehicle("GAGANYAAN-1")).toBe(true);
+    expect(isDockedCrewVehicle("ORION (ARTEMIS II)")).toBe(true);
+  });
+
+  it("never matches cargo or crew-lookalike names", () => {
+    expect(isDockedCrewVehicle("DRAGON CRS-33")).toBe(false);
+    expect(isDockedCrewVehicle("TIANZHOU-10")).toBe(false);
+    expect(isDockedCrewVehicle("GRACE-FO 1")).toBe(false);
+    expect(isDockedCrewVehicle("DRAGRACER 2 (AUGURY)")).toBe(false);
+  });
+});
+
+describe("crew-vehicle promotion", () => {
+  it("promotes capsules arriving via the generic catch-alls to stations", () => {
+    expect(correctOtherCat("90001", "CREW DRAGON 13", "other")).toBe("stations");
+    expect(categorize("90002", "SOYUZ-MS 29", "other")).toBe("stations");
+    expect(categorize("90003", "SHENZHOU-24 (SZ-24)", "other")).toBe("stations");
+  });
+
+  it("never promotes cargo vehicles", () => {
+    expect(categorize("90004", "PROGRESS-MS 34", "other")).toBe("other");
+    expect(categorize("90005", "DRAGON CRS-33", "other")).toBe("other");
+  });
+
+  it("keeps jettisoned crew hardware in debris — the backstop runs first", () => {
+    expect(categorize("90006", "SZ-21 MODULE", "other")).toBe("debris");
+    expect(categorize("90007", "SZ-21 MODULE", "stations")).toBe("debris");
+  });
+
+  it("leaves crew-lookalike science names alone", () => {
+    expect(categorize("90008", "GRACE-FO 1", "other")).toBe("other");
+  });
 });

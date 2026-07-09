@@ -2,10 +2,9 @@ name: Update Capsule Status
 
 on:
   schedule:
-    # Every 4 hours — frequent enough to bound same-day detection latency
-    # for docking/undocking transitions without polling CelesTrak for TLEs
-    # that haven't meaningfully changed.
-    - cron: "0 */4 * * *"
+    # Hourly — bounds how fast de-orbited capsules disappear and fresh
+    # launches appear to ~1h (plus the Worker's 10-min /capsules TTL).
+    - cron: "0 * * * *"
   workflow_dispatch:
 
 jobs:
