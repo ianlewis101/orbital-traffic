@@ -1,19 +1,49 @@
 {
-  "iss": "/photos/iss.jpg",
-  "hubble": "/photos/hubble.jpg",
-  "jwst": "/photos/jwst.jpg",
-  "dragon": "/photos/dragon.jpg",
-  "soyuz": "/photos/soyuz.jpg",
-  "cygnus": "/photos/cygnus.jpg",
-  "station_generic": "/photos/station_generic.jpg",
-  "capsule_generic": "/photos/capsule_generic.jpg",
-  "satellite_generic": "/photos/satellite_generic.jpg",
-  "asteroid_geographos": "/photos/asteroid_geographos.jpg",
-  "asteroid_apollo": "/photos/asteroid_apollo.jpg",
-  "asteroid_phaethon": "/photos/asteroid_phaethon.jpg",
-  "asteroid_toutatis": "/photos/asteroid_toutatis.jpg",
-  "asteroid_florence": "/photos/asteroid_florence.jpg",
-  "navigation_generic": "/photos/navigation_generic.jpg",
-  "geo_generic": "/photos/geo_generic.jpg",
-  "science_generic": "/photos/science_generic.jpg"
+  "iss": { "path": "/photos/iss.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
+  "hubble": { "path": "/photos/hubble.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
+  "jwst": { "path": "/photos/jwst.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
+  "dragon": { "path": "/photos/dragon.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
+  "soyuz": { "path": "/photos/soyuz.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
+  "progress": { "path": "/photos/progress.jpg", "credit": "NASA (ISS Expedition 14)" },
+  "cygnus": { "path": "/photos/cygnus.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
+  "starliner": { "path": "/photos/starliner.jpg", "credit": "NASA (Starliner CFT, 2024)" },
+  "shenzhou": { "path": "/photos/shenzhou.jpg", "credit": "Shujianyang, CC BY-SA 4.0 (Shenzhou-1 capsule, China Science and Technology Museum)" },
+  "tianzhou": { "path": "/photos/tianzhou.jpg", "credit": "Shujianyang, CC BY-SA 4.0 (rendering \u2014 no on-orbit photos are publicly released)" },
+
+  "asteroid_geographos": { "path": "/photos/asteroid_geographos.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
+  "asteroid_apollo": { "path": "/photos/asteroid_apollo.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
+  "asteroid_phaethon": { "path": "/photos/asteroid_phaethon.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
+  "asteroid_toutatis": { "path": "/photos/asteroid_toutatis.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
+  "asteroid_florence": { "path": "/photos/asteroid_florence.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
+
+  "station_generic": { "pool": [
+    { "path": "/photos/station_generic.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
+    { "path": "/photos/station_generic_2.jpg", "credit": "NASA (STS-88, Unity/Zarya docked)" },
+    { "path": "/photos/station_generic_3.jpg", "credit": "NASA (ISS Expedition 3 EVA)" },
+    { "path": "/photos/station_generic_4.jpg", "credit": "China Manned Space Engineering Office, CC BY 4.0" }
+  ] },
+  "navigation_generic": { "pool": [
+    { "path": "/photos/navigation_generic.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
+    { "path": "/photos/navigation_generic_2.jpg", "credit": "U.S. Air Force, public domain" },
+    { "path": "/photos/navigation_generic_3.jpg", "credit": "Science Museum Group, CC BY 4.0 (scale model)" },
+    { "path": "/photos/navigation_generic_4.jpg", "credit": "Vitaly V. Kuzmin, CC BY-SA 4.0 (GLONASS-M)" }
+  ] },
+  "geo_generic": { "pool": [
+    { "path": "/photos/geo_generic.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
+    { "path": "/photos/geo_generic_2.jpg", "credit": "NASA (GOES-U)" },
+    { "path": "/photos/geo_generic_3.jpg", "credit": "NASA (TDRS)" },
+    { "path": "/photos/geo_generic_4.jpg", "credit": "NASA (GOES-U)" }
+  ] },
+  "science_generic": { "pool": [
+    { "path": "/photos/science_generic.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
+    { "path": "/photos/science_generic_2.jpg", "credit": "NASA (Landsat 9)" },
+    { "path": "/photos/science_generic_3.jpg", "credit": "NASA (Terra)" },
+    { "path": "/photos/science_generic_4.jpg", "credit": "NASA (TESS)" }
+  ] },
+  "satellite_generic": { "pool": [
+    { "path": "/photos/satellite_generic.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
+    { "path": "/photos/satellite_generic_2.jpg", "credit": "NASA (NanoRacks CubeSat deployment)" },
+    { "path": "/photos/satellite_generic_3.jpg", "credit": "NASA/JPL-Caltech (GRACE-FO)" },
+    { "path": "/photos/satellite_generic_4.jpg", "credit": "NASA (NanoRacks CubeSat deployment)" }
+  ] }
 }
