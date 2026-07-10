@@ -1,16 +1,28 @@
 import * as satellite from "satellite.js";
-import { STATION_CORE_IDS, isDockedCrewVehicle, capsuleFamily } from "./classify.js";
+import {
+  STATION_CORE_IDS,
+  isDockedCrewVehicle,
+  isStationVehicle,
+  vehicleFamily,
+} from "./classify.js";
 import { noradId, tleAgeDays } from "./tle.js";
 
 /**
- * Crewed-capsule phase tracking — docked / free-flying / landed — derived
+ * Docking-vehicle phase tracking — docked / free-flying / landed — derived
  * from orbital elements rather than name matching alone. classify.js's
- * isDockedCrewVehicle() only ever says "this name looks like a crew
+ * isStationVehicle() only ever says "this name looks like a crew or cargo
  * vehicle"; it has no notion of *when* that vehicle actually docked,
  * undocked, or landed. This module answers that, and is a sibling to
- * classify.js, not a replacement for it — a capsule keeps cat:"stations"
+ * classify.js, not a replacement for it — a vehicle keeps cat:"stations"
  * for its whole tracked lifetime regardless of phase; phase is additional
- * per-capsule status, never a category swap.
+ * per-vehicle status, never a category swap.
+ *
+ * 2026-07-10: extended from crewed-capsule-only to also cover cargo
+ * vehicles (Progress/Cygnus/Tianzhou/cargo Dragon) — Ian's call, since both
+ * are "Famous Objects" users specifically search for and both should behave
+ * identically: "stations" while tracked, gone (not "other") once landed.
+ * Every entry carries a `kind` ("crew" | "cargo") alongside `family` so
+ * consumers can still tell them apart.
  */
 
 // Same physical constants apps/web/src/astro/orbital.js's orbital(rec)
@@ -102,13 +114,13 @@ export function determinePhase(distanceKm) {
 }
 
 /**
- * Identifies every currently-tracked crewed capsule in a batch of TLE
- * records (typically CelesTrak's "stations" group) and computes its
- * phase/family/station association. Records are expected to already carry
- * a categorize()-derived `cat` (parseTle() does this) — only records still
- * tagged "stations" and name-matched by isDockedCrewVehicle are eligible,
- * so cargo vehicles and jettisoned hardware are excluded the same way the
- * rest of the pipeline excludes them.
+ * Identifies every currently-tracked crewed capsule or cargo vehicle in a
+ * batch of TLE records (typically CelesTrak's "stations" group) and
+ * computes its phase/family/station association. Records are expected to
+ * already carry a categorize()-derived `cat` (parseTle() does this) — only
+ * records still tagged "stations" and name-matched by isStationVehicle are
+ * eligible, so jettisoned hardware and co-orbiting cubesats are excluded
+ * the same way the rest of the pipeline excludes them.
  */
 export function buildCapsuleSnapshot(records, at = new Date()) {
   const hubs = [];
@@ -122,9 +134,9 @@ export function buildCapsuleSnapshot(records, at = new Date()) {
   const capsules = [];
   for (const r of records) {
     const id = noradId(r.l1);
-    if (STATION_CORE_IDS.has(id)) continue; // station hardware itself, not a capsule
-    if (r.cat !== "stations" || !isDockedCrewVehicle(r.name)) continue;
-    // A frozen elset means the capsule de-orbited but the feed hasn't
+    if (STATION_CORE_IDS.has(id)) continue; // station hardware itself, not a vehicle
+    if (r.cat !== "stations" || !isStationVehicle(r.name)) continue;
+    // A frozen elset means the vehicle de-orbited but the feed hasn't
     // dropped it yet — treat it as absent so it lands promptly instead of
     // being tracked on a ghost orbit. Unparseable epochs count as stale.
     if ((tleAgeDays(r.l1, at) ?? Infinity) > STALE_TLE_DAYS) continue;
@@ -135,7 +147,8 @@ export function buildCapsuleSnapshot(records, at = new Date()) {
     capsules.push({
       id,
       name: r.name,
-      family: capsuleFamily(r.name),
+      kind: isDockedCrewVehicle(r.name) ? "crew" : "cargo",
+      family: vehicleFamily(r.name),
       stationId: hub ? hub.id : null,
       stationKey: hub ? hub.key : null,
       phase: determinePhase(distanceKm),
@@ -178,6 +191,7 @@ export function advanceCapsuleLog(previousById, snapshot, nowIso, opts = {}) {
       events.push({
         id: c.id,
         name: c.name,
+        kind: c.kind,
         family: c.family,
         stationKey: c.stationKey,
         event: returned ? "launched" : c.phase === "docked" ? "docked" : "undocked",
@@ -186,6 +200,7 @@ export function advanceCapsuleLog(previousById, snapshot, nowIso, opts = {}) {
     }
     capsules[c.id] = {
       name: c.name,
+      kind: c.kind,
       family: c.family,
       phase: c.phase,
       stationKey: c.stationKey,
@@ -209,6 +224,7 @@ export function advanceCapsuleLog(previousById, snapshot, nowIso, opts = {}) {
       events.push({
         id,
         name: prev.name,
+        kind: prev.kind,
         family: prev.family,
         stationKey: prev.stationKey,
         event: "landed",

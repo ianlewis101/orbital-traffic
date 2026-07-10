@@ -10,7 +10,7 @@
  *   GET /tle       — merged satellite TLE records across CelesTrak groups
  *   GET /crew      — ISS/Tiangong crew roster
  *   GET /today     — ISS "Today aboard" activity feed
- *   GET /capsules  — crewed-capsule phase (docked/free-flying/landed) + event log
+ *   GET /capsules  — crewed-capsule/cargo-vehicle phase (docked/free-flying/landed) + event log
  *
  * TLE parsing lives in @orbital-traffic/catalog (shared with the web
  * app). This Worker only tags the coarse group a record came from (see
@@ -34,7 +34,8 @@ export const TODAY_TTL = 5 * 60; // 5 minutes
 export const CAPSULES_TTL = 10 * 60; // 10 minutes — source refreshes every 4h, so this just bounds edge staleness
 
 const CREW_URL = "http://api.open-notify.org/astros.json";
-const TODAY_URL = "https://raw.githubusercontent.com/ianlewis101/orbital-traffic/main/iss-today.json";
+const TODAY_URL =
+  "https://raw.githubusercontent.com/ianlewis101/orbital-traffic/main/iss-today.json";
 const CAPSULES_URL =
   "https://raw.githubusercontent.com/ianlewis101/orbital-traffic/main/capsule-status.json";
 
@@ -136,7 +137,14 @@ async function handlePasses(ctx, request) {
   }
   const lat = Number(latParam);
   const lng = Number(lngParam);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+  if (
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng) ||
+    lat < -90 ||
+    lat > 90 ||
+    lng < -180 ||
+    lng > 180
+  ) {
     return badRequest("lat and lng must be valid coordinates");
   }
   // Round to reduce cache cardinality — pass timing doesn't meaningfully

@@ -41,7 +41,7 @@ those against this document instead.
 2. CLASSIFICATION IS SHARED — ONE PIPELINE AT EVERY ENTRY
    POINT: All satellite classification logic (category
    assignment, name-pattern matching, station allowlist,
-   crew-vehicle promotion, debris detection) lives in ONE
+   crew/cargo-vehicle promotion, debris detection) lives in ONE
    place: packages/catalog/src/classify.js, exported as
    categorize(). parseTle() (packages/catalog/src/tle.js) runs
    it on every record it parses, so the Worker's /tle output,
@@ -59,29 +59,40 @@ those against this document instead.
    "communications"/"classified"/"debris" etc. in raw Worker
    JSON.)
 
-   CREW-VEHICLE PROMOTION: categorize()'s other-rescue promotes
-   any isDockedCrewVehicle() name that arrives via the generic
-   catch-alls ("active", "last-30-days") back to "stations" —
-   the mirror of correctStationCat()'s demotion. Without it, a
-   free-flying or just-launched capsule classifies as "other",
-   which the app hides by default. Both directions use the same
-   CREW_VEHICLE_PATTERNS table in classify.js (also the source
-   of capsuleFamily()), matched against a normalized name
-   (hyphens/underscores collapsed to spaces) so catalog
-   hyphenation variants can't break matching. New crewed
-   vehicles get added to that ONE table, nowhere else.
+   CREW/CARGO VEHICLE PROMOTION: categorize()'s other-rescue
+   promotes any isStationVehicle() name that arrives via the
+   generic catch-alls ("active", "last-30-days") back to
+   "stations" — the mirror of correctStationCat()'s demotion.
+   Without it, a free-flying or just-launched vehicle classifies
+   as "other", which the app hides by default. isStationVehicle()
+   is isDockedCrewVehicle() (CREW_VEHICLE_PATTERNS table — also
+   the source of capsuleFamily()) OR isCargoVehicle()
+   (CARGO_VEHICLE_PATTERNS table — also the source of
+   cargoFamily()); vehicleFamily() resolves across both. Every
+   pattern is matched against a normalized name (hyphens/
+   underscores collapsed to spaces) so catalog hyphenation
+   variants can't break matching. The two tables must stay
+   separate, never merged — CREW_VEHICLE_PATTERNS' dragon entry
+   and CARGO_VEHICLE_PATTERNS' dragon-cargo entry deliberately
+   anchor on mutually exclusive name forms (see the Known Bugs
+   entry below). New crewed vehicles get added to
+   CREW_VEHICLE_PATTERNS; new cargo vehicles get added to
+   CARGO_VEHICLE_PATTERNS. Nowhere else.
 
-   CAPSULE PHASE IS SEPARATE FROM CATEGORY: a crewed capsule
+   VEHICLE PHASE IS SEPARATE FROM CATEGORY: a crewed capsule
    (any CREW_VEHICLE_PATTERNS family — Dragon/Soyuz/Starliner/
-   Shenzhou, plus Mengzhou/Gaganyaan/Orion pre-added) keeps
-   cat:"stations" for its entire tracked lifetime — launch
-   through landing — regardless of whether it's actually
-   docked. Its live docked/free-flying/landed phase is tracked
-   separately in packages/catalog/src/capsules.js and served
-   via the Worker's /capsules endpoint (see below); this is
-   additional per-capsule status, not a category. Never make
-   categorize() itself phase-aware — that would break the
-   single-source-of-truth boundary this rule establishes.
+   Shenzhou, plus Mengzhou/Gaganyaan/Orion pre-added) or cargo
+   vehicle (any CARGO_VEHICLE_PATTERNS family — Progress/Cygnus/
+   Tianzhou/cargo Dragon) keeps cat:"stations" for its entire
+   tracked lifetime — launch through landing — regardless of
+   whether it's actually docked. Its live docked/free-flying/
+   landed phase is tracked separately in
+   packages/catalog/src/capsules.js and served via the Worker's
+   /capsules endpoint (see below); this is additional per-vehicle
+   status, not a category. Each tracked entry also carries a
+   "kind" field ("crew" | "cargo"). Never make categorize() itself
+   phase-aware — that would break the single-source-of-truth
+   boundary this rule establishes.
 
    Do not add classification logic anywhere else (e.g. inline
    in ingest.js or duplicated in the Worker) — categorize() in
@@ -119,14 +130,30 @@ those against this document instead.
    the same change, fetched from JPL's Small-Body Database
    (ssd-api.jpl.nasa.gov/sbdb.api), never estimated or guessed.
 
-6. STATION ALLOWLIST: The "stations" category must only
-   contain objects in STATION_CORE_IDS, defined in
-   packages/catalog/src/classify.js. Never trust CelesTrak's
-   raw GROUP=stations feed directly — it includes cargo
-   vehicles, cubesats, and decaying hardware that are not
-   stations. correctStationCat() enforces this and demotes
-   anything not on the allowlist (or matching
-   isDockedCrewVehicle()) to "other".
+6. STATION ALLOWLIST: The "stations" category is earned two
+   ways, both in packages/catalog/src/classify.js. Permanent
+   structural modules must be in STATION_CORE_IDS (an ID
+   allowlist — ISS/CSS modules only; nothing transient ever
+   goes in this set). Crewed capsules and cargo vehicles earn
+   "stations" separately, by name, via isStationVehicle() —
+   for as long as they're actively tracked; see VEHICLE PHASE
+   IS SEPARATE FROM CATEGORY above for what happens on landing
+   (hidden entirely, never "other"). Never trust CelesTrak's
+   raw GROUP=stations feed directly — it also includes
+   co-orbiting cubesats and decaying hardware that are
+   genuinely not station traffic. correctStationCat() enforces
+   this and demotes anything not on STATION_CORE_IDS or matched
+   by isStationVehicle() to "other".
+
+   (Policy change, 2026-07-10, PR #71: cargo vehicles were
+   previously excluded from "stations" and fell to "other"
+   permanently. Ian decided cargo vehicles should be treated
+   identically to crewed capsules — both are "Famous Objects"
+   users specifically search for, and both should read
+   "stations" while flying and disappear completely, not
+   demote to "other", once landed/de-orbited. If you find
+   older docs, commits, or test names describing cargo vehicles
+   as excluded from "stations", they predate this change.)
 
 ── BRANCH AND PR DISCIPLINE ──────────────────────────────────
 
@@ -175,18 +202,19 @@ a tested, modular monorepo v2.0.0"):
 
 - GitHub Actions also handles daily TLE refresh
   (refresh-tle-data.yml), ISS Today data updates
-  (update-iss-today.yml), and crewed-capsule phase tracking
-  hourly (update-capsule-status.yml). The capsule tracker reads
+  (update-iss-today.yml), and crew/cargo vehicle phase tracking
+  hourly (update-capsule-status.yml). The tracker reads
   CelesTrak's stations + last-30-days groups, CATNR-re-verifies
-  any previously-tracked capsule missing from both before
+  any previously-tracked vehicle missing from both before
   letting it land, treats elsets older than STALE_TLE_DAYS (7)
   as absent, and aborts untouched if the stations feed lacks
-  the ISS. Each active capsule entry in capsule-status.json
-  carries its l1/l2 so the web app can plot capsules the group
-  feeds miss; landed entries carry no elset. On every live
-  sync the web app prunes objects absent from the feed whose
-  epoch is >10 days old, injects active capsules from
-  /capsules, and immediately removes landed ones.
+  the ISS. Each active entry in capsule-status.json carries its
+  l1/l2 so the web app can plot vehicles the group feeds miss,
+  plus a "kind" field ("crew"/"cargo"); landed entries carry no
+  elset. On every live sync the web app prunes objects absent
+  from the feed whose epoch is >10 days old, injects active
+  vehicles from /capsules, and immediately removes landed ones
+  — cargo vehicles included as of 2026-07-10 (Critical Rule #6).
 
 - PWA: manifest.json, sw.js, icons under apps/web/public/.
   App Store submission via PWABuilder iOS package — check with
@@ -232,6 +260,20 @@ a tested, modular monorepo v2.0.0"):
   science pair. Never add a bare SZ-\d+ crew pattern either:
   jettisoned "SZ-nn MODULE" hardware must keep falling to
   debris
+- CARGO_VEHICLE_PATTERNS' dragon-cargo entry ("DRAGON CRS") and
+  CREW_VEHICLE_PATTERNS' dragon entry must stay mutually
+  exclusive and never be merged into one table — a cargo Dragon
+  resolving to the crew "dragon" family (or vice versa) would
+  break the kind:"crew"/"cargo" field's guarantee in
+  capsules.js. New cargo Dragon name formats get a new pattern
+  in CARGO_VEHICLE_PATTERNS, never a change to
+  CREW_VEHICLE_PATTERNS' dragon entry
+- Cargo vehicles (Progress, Cygnus, Tianzhou, cargo Dragon)
+  must never be added to STATION_CORE_IDS — that allowlist is
+  for permanent structural modules only. They earn "stations"
+  transiently through isStationVehicle()'s name check
+  (CARGO_VEHICLE_PATTERNS), same mechanism as crewed capsules,
+  not through the ID allowlist
 - Landed entries in capsule-status.json must never carry
   l1/l2 — clients plot whatever elset they're given, so a
   stale one renders a ghost capsule (advanceCapsuleLog strips
@@ -268,15 +310,16 @@ Verify the Worker is returning data correctly:
   Check for fully classified "cat" tags — parseTle() runs the
   complete categorize() pipeline, so "cat":"communications",
   "cat":"classified", "cat":"debris" etc. all appear in this
-  raw response, and every crewed capsule must show
+  raw response, and every crewed capsule or cargo vehicle
+  (Progress/Cygnus/Tianzhou/cargo Dragon included) must show
   "cat":"stations" no matter which group it arrived from.
 
   curl https://orbital-traffic.ianlewis101.workers.dev/capsules
   Check for a "capsules" object keyed by NORAD ID with a
-  "phase" field ("docked"/"free-flying"/"landed") per tracked
-  crewed capsule, and an "events" array of transitions. Active
-  (non-landed) entries must carry "l1"/"l2" elset lines;
-  landed entries must NOT.
+  "phase" field ("docked"/"free-flying"/"landed") and a "kind"
+  field ("crew"/"cargo") per tracked vehicle, and an "events"
+  array of transitions. Active (non-landed) entries must carry
+  "l1"/"l2" elset lines; landed entries must NOT.
 
 Web app deploy: automatic on merge to main via
   .github/workflows/deploy-pages.yml — no manual step needed.

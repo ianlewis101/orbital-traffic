@@ -97,6 +97,30 @@ describe("renderCapsuleStatus", () => {
     expect(el.innerHTML).toContain("Landed — since Jul 5");
   });
 
+  it("renders a cargo vehicle's status identically to a crewed capsule's", async () => {
+    const s = { id: "68689", name: "CYGNUS NG-24" };
+    state.selected = s;
+    fetch.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          capsules: {
+            68689: {
+              kind: "cargo",
+              family: "cygnus",
+              phase: "docked",
+              stationKey: "iss",
+              since: "2026-07-08T00:00:00.000Z",
+            },
+          },
+          events: [],
+        })
+      )
+    );
+    const el = stubEl();
+    await renderCapsuleStatus(s, el);
+    expect(el.innerHTML).toContain("Docked — since Jul 8");
+  });
+
   it("shows status unavailable when the capsule id has no entry", async () => {
     const s = { id: "99999", name: "UNKNOWN" };
     state.selected = s;

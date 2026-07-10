@@ -1,21 +1,22 @@
 #!/usr/bin/env node
 /**
  * update-capsule-status.mjs
- * Derives each currently-tracked crewed capsule's phase (docked/free-
- * flying/landed) relative to its associated station, diffs against the
- * previous run to detect transitions, and writes capsule-status.json in
- * the repo root (served to clients via the Worker's /capsules endpoint).
- * Run locally or via the scheduled update-capsule-status workflow.
+ * Derives each currently-tracked crewed capsule's or cargo vehicle's phase
+ * (docked/free-flying/landed) relative to its associated station, diffs
+ * against the previous run to detect transitions, and writes
+ * capsule-status.json in the repo root (served to clients via the Worker's
+ * /capsules endpoint). Run locally or via the scheduled
+ * update-capsule-status workflow.
  *
  * Sources, in order:
  *   1. CelesTrak "stations" group — station hubs + docked/visiting vehicles.
  *   2. CelesTrak "last-30-days" group — fresh launches and free-flying
  *      missions that never enter the stations group.
  *   3. Per-CATNR re-verification of any previously-tracked, still-active
- *      capsule missing from both feeds — a capsule that fell out of a
- *      group but still has a fresh elset keeps being tracked (long free
- *      flight); one whose elset is gone or frozen is declared landed by
- *      buildCapsuleSnapshot's staleness cutoff.
+ *      vehicle missing from both feeds — one that fell out of a group but
+ *      still has a fresh elset keeps being tracked (long free flight or
+ *      slow cargo transit); one whose elset is gone or frozen is declared
+ *      landed by buildCapsuleSnapshot's staleness cutoff.
  */
 import { readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -55,7 +56,7 @@ async function fetchTleText(url) {
 /**
  * The stations group is load-bearing (hubs + docked vehicles) and fails
  * the whole run; parseTle() runs each record through the full categorize()
- * pipeline, so cargo/debris are correctly tagged and crew vehicles from
+ * pipeline, so debris is correctly tagged and crew/cargo vehicles from
  * the generic feeds are promoted to "stations" by name.
  */
 async function fetchStationsGroup() {
@@ -142,9 +143,11 @@ async function main() {
   }
 
   const snapshot = buildCapsuleSnapshot(records, new Date(nowIso));
-  console.log(`  Tracking ${snapshot.length} crewed capsule(s):`);
+  console.log(`  Tracking ${snapshot.length} vehicle(s) (crew + cargo):`);
   for (const c of snapshot) {
-    console.log(`   - ${c.name} (${c.id}): ${c.phase}${c.stationKey ? " @ " + c.stationKey : ""}`);
+    console.log(
+      `   - ${c.name} (${c.id}, ${c.kind}): ${c.phase}${c.stationKey ? " @ " + c.stationKey : ""}`
+    );
   }
 
   const { capsules, events } = advanceCapsuleLog(previousById, snapshot, nowIso, { isFirstRun });

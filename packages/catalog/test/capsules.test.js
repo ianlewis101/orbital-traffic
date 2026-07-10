@@ -136,32 +136,43 @@ describe("buildCapsuleSnapshot", () => {
   const [dockedL1, dockedL2] = withSatnum(ISS_L1, ISS_L2, "99001");
   const [awayL1, awayL2] = withSatnum(ISS_L1, ISS_OPPOSITE_L2, "99002");
   const [progressL1, progressL2] = withSatnum(ISS_L1, ISS_L2, "99003");
+  const [cubesatL1, cubesatL2] = withSatnum(ISS_L1, ISS_L2, "99004");
 
   const records = [
     { name: "ISS (ZARYA)", l1: ISS_L1, l2: ISS_L2, cat: "stations" },
     { name: "CREW DRAGON 12", l1: dockedL1, l2: dockedL2, cat: "stations" },
     { name: "SOYUZ-MS 30", l1: awayL1, l2: awayL2, cat: "stations" },
-    // Mistakenly tagged "stations" upstream — must still be excluded by name.
     { name: "PROGRESS-MS 33", l1: progressL1, l2: progressL2, cat: "stations" },
+    // A co-orbiting cubesat, not a docking vehicle — must still be excluded.
+    { name: "KNACKSAT-2", l1: cubesatL1, l2: cubesatL2, cat: "stations" },
   ];
 
-  it("tracks only crewed capsules, with correct family/station/phase", () => {
+  it("tracks crewed capsules and cargo vehicles, with correct kind/family/station/phase", () => {
     const snap = buildCapsuleSnapshot(records, FIXED_AT);
     const ids = snap.map((c) => c.id);
     expect(ids).toContain("99001");
     expect(ids).toContain("99002");
-    expect(ids).not.toContain("99003"); // cargo, excluded despite cat:"stations"
+    expect(ids).toContain("99003"); // cargo, now tracked same as crew
+    expect(ids).not.toContain("99004"); // co-orbiting cubesat, not a vehicle
     expect(ids).not.toContain("25544"); // the hub itself, not a capsule
 
     const docked = snap.find((c) => c.id === "99001");
+    expect(docked.kind).toBe("crew");
     expect(docked.family).toBe("dragon");
     expect(docked.stationKey).toBe("iss");
     expect(docked.phase).toBe("docked");
 
     const away = snap.find((c) => c.id === "99002");
+    expect(away.kind).toBe("crew");
     expect(away.family).toBe("soyuz");
     expect(away.stationKey).toBe("iss");
     expect(away.phase).toBe("free-flying");
+
+    const cargo = snap.find((c) => c.id === "99003");
+    expect(cargo.kind).toBe("cargo");
+    expect(cargo.family).toBe("progress");
+    expect(cargo.stationKey).toBe("iss");
+    expect(cargo.phase).toBe("docked");
   });
 
   it("carries the source elset so clients can plot capsules the group feeds miss", () => {
@@ -192,6 +203,7 @@ describe("advanceCapsuleLog", () => {
     {
       id: "99001",
       name: "CREW DRAGON 12",
+      kind: "crew",
       family: "dragon",
       stationKey: "iss",
       phase: "docked",
@@ -208,6 +220,7 @@ describe("advanceCapsuleLog", () => {
       isFirstRun: true,
     });
     expect(events).toEqual([]);
+    expect(capsules["99001"].kind).toBe("crew");
     expect(capsules["99001"].phase).toBe("docked");
     expect(capsules["99001"].since).toBe("2026-07-03T00:00:00.000Z");
     // the elset rides along so clients can plot capsules the feeds miss
@@ -275,6 +288,43 @@ describe("advanceCapsuleLog", () => {
     const pruned = advanceCapsuleLog(stale, [], "2026-07-03T00:00:00.000Z");
     expect(pruned.capsules["99001"]).toBeUndefined();
     expect(pruned.events).toEqual([]);
+  });
+
+  it("treats a cargo vehicle identically to a crewed capsule — stations while tracked, gone (not other) on landing", () => {
+    const [cargoL1, cargoL2] = withSatnum(ISS_L1, ISS_L2, "99010");
+    const cargoSnapshot = [
+      {
+        id: "99010",
+        name: "PROGRESS-MS 34",
+        kind: "cargo",
+        family: "progress",
+        stationKey: "iss",
+        phase: "docked",
+        distanceKm: 0.2,
+        altitudeKm: 418,
+        inclinationDeg: 51.6,
+        l1: cargoL1,
+        l2: cargoL2,
+      },
+    ];
+    const launch = advanceCapsuleLog({}, cargoSnapshot, "2026-07-01T00:00:00.000Z");
+    expect(launch.events[0]).toMatchObject({
+      event: "launched",
+      kind: "cargo",
+      family: "progress",
+    });
+    expect(launch.capsules["99010"].kind).toBe("cargo");
+
+    // The vehicle disappears from the feed (landed/de-orbited).
+    const landing = advanceCapsuleLog(launch.capsules, [], "2026-07-03T00:00:00.000Z");
+    expect(landing.events[0]).toMatchObject({ event: "landed", kind: "cargo" });
+    expect(landing.capsules["99010"].phase).toBe("landed");
+    expect(landing.capsules["99010"].kind).toBe("cargo");
+    // no plottable elset survives landing — live.js's reconcileCapsules()
+    // uses exactly this to remove it from the globe immediately, instead of
+    // leaving it rendered under "other" until the generic epoch prune.
+    expect(landing.capsules["99010"].l1).toBeUndefined();
+    expect(landing.capsules["99010"].l2).toBeUndefined();
   });
 
   it("treats a capsule returning from landed as a fresh launch, not a stale continuation", () => {

@@ -56,10 +56,11 @@ async function fetchCapsuleStatus() {
 }
 
 /**
- * capsule-status.json is the authority on crewed capsules. Two fixes per
- * sync: an active capsule the group feeds missed is injected from the
- * l1/l2 it carries (so every capsule on orbit renders), and a landed one
- * is dropped immediately — no waiting out the generic epoch prune.
+ * capsule-status.json is the authority on crewed capsules and cargo
+ * vehicles alike. Two fixes per sync: an active vehicle the group feeds
+ * missed is injected from the l1/l2 it carries (so every one on orbit
+ * renders), and a landed one is dropped immediately — no waiting out the
+ * generic epoch prune, and never left to render under "other" either.
  */
 function reconcileCapsules(capsules) {
   if (!capsules) return [];
