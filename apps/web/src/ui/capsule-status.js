@@ -3,13 +3,22 @@ import { state } from "../state.js";
 
 const STATION_LABEL = { iss: "ISS", css: "Tiangong" };
 const PHASE_LABEL = { docked: "Docked", "free-flying": "Free-flying", landed: "Landed" };
-const EVENT_LABEL = { launched: "Launched", docked: "Docked", undocked: "Undocked", landed: "Landed / re-entered" };
+const EVENT_LABEL = {
+  launched: "Launched",
+  docked: "Docked",
+  undocked: "Undocked",
+  landed: "Landed / re-entered",
+};
 
 function timeAgo(iso) {
   if (!iso) return "";
   const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
   if (days <= 0) return "today";
   return days === 1 ? "1 day" : `${days} days`;
+}
+
+function shortDate(iso) {
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 /**
@@ -36,19 +45,30 @@ export async function renderCapsuleStatus(s, el) {
     return;
   }
 
-  const stationLbl = status.stationKey ? STATION_LABEL[status.stationKey] || status.stationKey : null;
-  const recent = (data.events || []).filter((e) => e.id === s.id).slice(-5).reverse();
-  const eventsHTML = recent
-    .map((e) => {
-      const verb = EVENT_LABEL[e.event] || e.event;
-      const where =
-        (e.event === "docked" || e.event === "undocked") && e.stationKey
-          ? ` ${e.event === "docked" ? "at" : "from"} ${STATION_LABEL[e.stationKey] || e.stationKey}`
-          : "";
-      const when = new Date(e.at).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-      return `<div class="crew-today-item"><div class="crew-today-dot"></div><div class="crew-today-txt">${verb}${where} — ${when}</div></div>`;
-    })
-    .join("");
+  const stationLbl = status.stationKey
+    ? STATION_LABEL[status.stationKey] || status.stationKey
+    : null;
+  const recent = (data.events || [])
+    .filter((e) => e.id === s.id)
+    .slice(-5)
+    .reverse();
+  // The event log only records transitions — a capsule that hasn't
+  // docked/undocked/launched/landed since tracking began has no entries
+  // yet, which used to hide the whole card instead of showing an empty
+  // (but accurate) state. Fall back to a single line built from the
+  // capsule's current phase so the card always has something to say.
+  const eventsHTML = recent.length
+    ? recent
+        .map((e) => {
+          const verb = EVENT_LABEL[e.event] || e.event;
+          const where =
+            (e.event === "docked" || e.event === "undocked") && e.stationKey
+              ? ` ${e.event === "docked" ? "at" : "from"} ${STATION_LABEL[e.stationKey] || e.stationKey}`
+              : "";
+          return `<div class="crew-today-item"><div class="crew-today-dot"></div><div class="crew-today-txt">${verb}${where} — ${shortDate(e.at)}</div></div>`;
+        })
+        .join("")
+    : `<div class="crew-today-item"><div class="crew-today-dot"></div><div class="crew-today-txt">${PHASE_LABEL[status.phase] || status.phase} — since ${shortDate(status.since)}</div></div>`;
 
   el.innerHTML = `
     <div class="crew-block">
@@ -57,9 +77,5 @@ export async function renderCapsuleStatus(s, el) {
         <div class="crew-exp-sub">${stationLbl ? "at " + stationLbl + " · " : ""}${timeAgo(status.since)} in this phase</div></div>
       </div>
     </div>
-    ${
-      recent.length
-        ? `<div class="crew-today"><div class="crew-today-hd"><div class="crew-today-lbl">Recent activity</div></div><div class="crew-today-body">${eventsHTML}</div></div>`
-        : ""
-    }`;
+    <div class="crew-today"><div class="crew-today-hd"><div class="crew-today-lbl">Recent activity</div></div><div class="crew-today-body">${eventsHTML}</div></div>`;
 }
