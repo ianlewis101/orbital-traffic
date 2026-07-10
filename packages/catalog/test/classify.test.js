@@ -113,7 +113,9 @@ describe("correctOtherCat", () => {
       "43776",
       "44072",
       "44634",
+      "53109",
       "54754",
+      "56178",
       "57630",
       "58957",
       "60419",
@@ -124,6 +126,13 @@ describe("correctOtherCat", () => {
     ]) {
       expect(correctOtherCat(id, "PLACEHOLDER NAME", "other")).toBe("science");
     }
+  });
+
+  it("science IDs corrected after an initial ID/description mismatch (GreenCube, IMECE)", () => {
+    // 53109 is GREENCUBE (IO-117), not the Vega AVUM stage originally attributed to it
+    expect(correctOtherCat("53109", "GREENCUBE (IO-117)", "other")).toBe("science");
+    // 56178 is IMECE, not SDA Tranche 0 "CHECKMATE" originally attributed to it
+    expect(correctOtherCat("56178", "IMECE", "other")).toBe("science");
   });
 
   it("does not let the new ID allowlists leak into unrelated IDs", () => {
