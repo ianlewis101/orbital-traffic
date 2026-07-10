@@ -87,6 +87,48 @@ describe("correctOtherCat", () => {
     expect(correctOtherCat("11", "GALILEO 23", "geostationary")).toBe("geostationary");
     expect(correctOtherCat("12", "SENTINEL-6", "starlink")).toBe("starlink");
   });
+
+  it("rescues LEMUR and MERIDIAN comms series by name", () => {
+    expect(correctOtherCat("63262", "LEMUR-2-MARACHE-FRAN", "other")).toBe("communications");
+    expect(correctOtherCat("44453", "MERIDIAN 8", "other")).toBe("communications");
+  });
+
+  it("rescues 2026-07-10 curated batch objects by NORAD ID", () => {
+    // debris: fragments/test objects named only by international designator
+    expect(correctOtherCat("51950", "2022-023E", "other")).toBe("debris");
+    expect(correctOtherCat("69320", "GUOWANG TEST OBJECT A", "other")).toBe("debris");
+    // communications: one-off relay/messaging sats with no shared pattern
+    expect(correctOtherCat("23439", "RADIO ROSTO (RS15)", "other")).toBe("communications");
+    expect(correctOtherCat("59072", "MARAFON-D GVM", "other")).toBe("communications");
+    // classified: one-off military codename with no recognizable scheme
+    expect(correctOtherCat("57757", "BB4", "other")).toBe("classified");
+    // science: one-off tech demonstrators / national missions / calibration targets
+    for (const id of [
+      "01361",
+      "31113",
+      "35932",
+      "40376",
+      "40970",
+      "41899",
+      "43776",
+      "44072",
+      "44634",
+      "54754",
+      "57630",
+      "58957",
+      "60419",
+      "63263",
+      "65301",
+      "66657",
+      "67556",
+    ]) {
+      expect(correctOtherCat(id, "PLACEHOLDER NAME", "other")).toBe("science");
+    }
+  });
+
+  it("does not let the new ID allowlists leak into unrelated IDs", () => {
+    expect(correctOtherCat("1", "PLACEHOLDER NAME", "other")).toBe("other");
+  });
 });
 
 describe("categorize (canonical pipeline)", () => {

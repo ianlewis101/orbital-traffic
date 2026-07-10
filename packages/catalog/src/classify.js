@@ -163,7 +163,7 @@ export const WEATHER_NAME_RE = /GOES|METEOSAT|HIMAWARI|NOAA|METOP|METEOR|DMSP|EL
 export const EO_NAME_RE = /LANDSAT|SENTINEL|TERRA|AQUA|WORLDVIEW|SPOT|DOVE|ICEYE|PLEIADES/;
 /** Major LEO/MEO comms and IoT/AIS constellations with no dedicated CelesTrak group. */
 export const COMMS_NAME_RE =
-  /IRIDIUM|GLOBALSTAR|ORBCOMM|O3B|HULIANWANG|GEESAT|SITRO-AIS|GONETS-M|CONNECTA|RASSVET-3|APRIZESAT|NINGXIA-1|SCS-01/;
+  /IRIDIUM|GLOBALSTAR|ORBCOMM|O3B|HULIANWANG|GEESAT|SITRO-AIS|GONETS-M|CONNECTA|RASSVET-3|APRIZESAT|NINGXIA-1|SCS-01|LEMUR|MERIDIAN/;
 /** Earth-observation/imaging constellations and tech-demo cubesats beyond the weather/EO sets. */
 export const SCI_CONSTELLATION_RE =
   /FLOCK|JILIN-1|TIANMU|YUNHAI|TIANHUI|SUPERVIEW|AEROCUBE|WILDFIRE|CHUANGXIN|CARTOSAT|KOMPSAT|ARIRANG|PROBA|RADARSAT|RESOURCESAT|CBERS/;
@@ -179,12 +179,49 @@ export const CLASSIFIED_NAME_RE =
   /\bUSA\s+\d+\b|\bNROL\b|\bYAOGAN\b|\bPRAETORIAN\b|\bCHANGGUANG\b|\bSHIJIAN[-\s]*\d+[A-Z]?\b/;
 
 /**
- * ISS-deployed educational CubeSats (batch 67683-67688) arrive via the
- * "stations" group and fall to "other" after the station allowlist; no
- * shared name pattern exists for them, so they are listed by NORAD ID.
- * CORAL (67684) is already "science" via CelesTrak's own science group.
+ * Records that belong outside "other" but share no reliable name pattern
+ * with anything else — one-off tech demonstrators, single national EO/
+ * ocean/soil-moisture missions, calibration targets, cataloged fragments
+ * named only by international designator ("2022-023E") or generic "test
+ * object" label — so they're listed by NORAD ID instead of matched by name.
+ * Same precedent in each case: an ID allowlist for objects a regex can't
+ * safely reach without false-positive risk.
+ *
+ * SCIENCE_IDS includes the original ISS-deployed educational CubeSat batch
+ * (67683-67688; CORAL/67684 is already "science" via CelesTrak's own
+ * science group) plus a 2026-07-10 curated batch of individually-verified
+ * objects.
  */
-export const SCIENCE_IDS = new Set(["67683", "67685", "67686", "67687", "67688"]);
+export const SCIENCE_IDS = new Set([
+  "67683",
+  "67685",
+  "67686",
+  "67687",
+  "67688",
+  "01361",
+  "31113",
+  "35932",
+  "40376",
+  "40970",
+  "41899",
+  "43776",
+  "44072",
+  "44634",
+  "54754",
+  "57630",
+  "58957",
+  "60419",
+  "63263",
+  "65301",
+  "66657",
+  "67556",
+]);
+/** Cataloged fragments/sub-payloads with no name DEBRIS_NAME_RE can match. */
+export const DEBRIS_IDS = new Set(["51950", "69320"]);
+/** One-off comms/data-relay satellites with no shared constellation name (see COMMS_NAME_RE for those that do). */
+export const COMMS_IDS = new Set(["23439", "59072"]);
+/** One-off military satellites identified by individual codename rather than a recognizable scheme (see CLASSIFIED_NAME_RE). */
+export const CLASSIFIED_IDS = new Set(["57757"]);
 
 /**
  * Rescues records still tagged "other" after the station allowlist and the
@@ -199,11 +236,18 @@ export const SCIENCE_IDS = new Set(["67683", "67685", "67686", "67687", "67688"]
  * isDockedCrewVehicle(), so the stations category stays exactly
  * STATION_CORE_IDS + crew-vehicle names. Jettisoned crew hardware can't
  * sneak in — the debris backstop runs before this rescue.
+ *
+ * The four *_IDS allowlists are checked next, before any name regex: they
+ * are individually-verified objects with no safe shared pattern, so ID
+ * lookup is the only reliable match.
  */
 export function correctOtherCat(id, name, cat) {
   if (cat !== "other") return cat;
   if (isDockedCrewVehicle(name)) return "stations";
   if (SCIENCE_IDS.has(id)) return "science";
+  if (DEBRIS_IDS.has(id)) return "debris";
+  if (COMMS_IDS.has(id)) return "communications";
+  if (CLASSIFIED_IDS.has(id)) return "classified";
   const n = (name || "").toUpperCase();
   if (NAV_NAME_RE.test(n)) return "navigation";
   if (COMMS_NAME_RE.test(n)) return "communications";
