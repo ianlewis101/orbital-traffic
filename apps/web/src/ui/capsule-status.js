@@ -22,9 +22,9 @@ function shortDate(iso) {
 }
 
 /**
- * Renders a tracked crewed capsule's own phase + recent transition events —
- * the counterpart to fetchAndRenderCrew() for when the capsule itself
- * (not its station hub) is the selected object.
+ * Renders a tracked crewed capsule's or cargo vehicle's own phase + recent
+ * transition events — the counterpart to fetchAndRenderCrew() for when the
+ * vehicle itself (not its station hub) is the selected object.
  */
 export async function renderCapsuleStatus(s, el) {
   el.style.display = "block";

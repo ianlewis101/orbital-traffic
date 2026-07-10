@@ -27,9 +27,11 @@ export const CATEGORY_IDS = [
 const CATEGORY_SET = new Set(CATEGORY_IDS);
 
 /**
- * Only true crewed-station modules may carry the "stations" category.
- * CelesTrak's GROUP=stations dump also includes cargo vehicles (Dragon CRS,
- * Progress, Cygnus, Tianzhou), released hardware, and co-orbiting cubesats.
+ * Only permanent, structural station modules may carry the "stations"
+ * category by ID alone. CelesTrak's GROUP=stations dump also includes
+ * docking vehicles (crewed capsules, cargo ships), released hardware, and
+ * co-orbiting cubesats — docking vehicles earn "stations" separately, by
+ * name, via isStationVehicle() below; everything else demotes to "other".
  */
 export const STATION_CORE_IDS = new Set([
   "25544",
@@ -47,13 +49,14 @@ export const STATION_CORE_IDS = new Set([
 export const CREW_VEHICLE_RE = /\bCREW\b/;
 
 /**
- * Catalogs hyphenate crew-vehicle names inconsistently in both directions
+ * Catalogs hyphenate vehicle names inconsistently in both directions
  * ("SOYUZ-MS 28", "SOYUZ MS-29", "CREW-DRAGON", "CST-100 STARLINER"), so
- * every crew pattern is matched against a normalized form — uppercase,
+ * every crew/cargo pattern is matched against a normalized form — uppercase,
  * hyphens/underscores collapsed to single spaces — instead of trying to
- * enumerate separator variants inside each regex.
+ * enumerate separator variants inside each regex. Shared by both
+ * CREW_VEHICLE_PATTERNS and CARGO_VEHICLE_PATTERNS.
  */
-function normalizeCrewName(name) {
+function normalizeVehicleName(name) {
   return (name || "").toUpperCase().replace(/[-_]+/g, " ").replace(/\s+/g, " ");
 }
 
@@ -61,12 +64,13 @@ function normalizeCrewName(name) {
  * The single crewed-vehicle pattern table, shared by isDockedCrewVehicle()
  * (station-allowlist eligibility) and capsuleFamily() (per-capsule phase
  * tracking) so the two can never disagree about what counts as a capsule.
- * Regexes run against normalizeCrewName() output — write them space-
+ * Regexes run against normalizeVehicleName() output — write them space-
  * separated and uppercase.
  *
  * dragon: deliberately not a bare DRAGON pattern — that also matches
  * uncrewed cargo Dragon ("DRAGON CRS-29"), which must never be tracked as
- * a crewed capsule. CREW DRAGON (the generic bus name at launch) and the
+ * a crewed capsule (see CARGO_VEHICLE_PATTERNS' separate dragon-cargo entry
+ * for that). CREW DRAGON (the generic bus name at launch) and the
  * individually-named reusable crew airframes are the only safe anchors.
  * GRACE excludes the GRACE-FO science pair ("GRACE FO 1" once normalized).
  * shenzhou: SHENZHOU only, never bare SZ-\d+ — jettisoned "SZ-nn MODULE"
@@ -88,7 +92,7 @@ export const CREW_VEHICLE_PATTERNS = [
 ];
 
 export function isDockedCrewVehicle(name) {
-  const n = normalizeCrewName(name);
+  const n = normalizeVehicleName(name);
   return CREW_VEHICLE_RE.test(n) || CREW_VEHICLE_PATTERNS.some(([, re]) => re.test(n));
 }
 
@@ -98,17 +102,66 @@ export function isDockedCrewVehicle(name) {
  * it still classifies as "stations", but callers get null here.
  */
 export function capsuleFamily(name) {
-  const n = normalizeCrewName(name);
+  const n = normalizeVehicleName(name);
   for (const [family, re] of CREW_VEHICLE_PATTERNS) {
     if (re.test(n)) return family;
   }
   return null;
 }
 
+/**
+ * Uncrewed cargo/resupply vehicles — the counterpart to CREW_VEHICLE_PATTERNS.
+ * 2026-07-10: Ian decided cargo vehicles should count as "stations" while
+ * actively tracked, same as crewed capsules, and disappear immediately (not
+ * demote to "other") once landed/de-orbited — both families are "Famous
+ * Objects" users specifically search for. Kept as a separate table from
+ * CREW_VEHICLE_PATTERNS rather than merged in, because the two must never
+ * be allowed to overlap on the same name — dragon-cargo below anchors on
+ * "DRAGON CRS", which CREW_VEHICLE_PATTERNS' dragon entry deliberately
+ * excludes (see its comment). htv/HTV-X intentionally omitted: not
+ * currently in the catalog, so there's nothing to verify the pattern
+ * against — add it if/when Japan's resupply vehicle reappears.
+ */
+export const CARGO_VEHICLE_PATTERNS = [
+  ["progress", /\bPROGRESS\b/],
+  ["cygnus", /\bCYGNUS\b/],
+  ["tianzhou", /\bTIANZHOU\b/],
+  ["dragon-cargo", /\bDRAGON CRS\b/],
+];
+
+export function isCargoVehicle(name) {
+  const n = normalizeVehicleName(name);
+  return CARGO_VEHICLE_PATTERNS.some(([, re]) => re.test(n));
+}
+
+/** Which cargo-vehicle family a name belongs to, or null. */
+export function cargoFamily(name) {
+  const n = normalizeVehicleName(name);
+  for (const [family, re] of CARGO_VEHICLE_PATTERNS) {
+    if (re.test(n)) return family;
+  }
+  return null;
+}
+
+/**
+ * True for anything that should count as "stations" traffic while tracked —
+ * crewed capsule or cargo vehicle alike. The single check shared by
+ * correctStationCat() and correctOtherCat() so both directions (demotion
+ * and promotion) agree on exactly the same set of vehicles.
+ */
+export function isStationVehicle(name) {
+  return isDockedCrewVehicle(name) || isCargoVehicle(name);
+}
+
+/** capsuleFamily() if crewed, else cargoFamily() if cargo, else null. */
+export function vehicleFamily(name) {
+  return capsuleFamily(name) ?? cargoFamily(name);
+}
+
 export function correctStationCat(id, name, cat) {
   if (cat !== "stations") return cat;
   if (STATION_CORE_IDS.has(id)) return "stations";
-  if (isDockedCrewVehicle(name)) return "stations";
+  if (isStationVehicle(name)) return "stations";
   return "other";
 }
 
@@ -163,7 +216,7 @@ export const WEATHER_NAME_RE = /GOES|METEOSAT|HIMAWARI|NOAA|METOP|METEOR|DMSP|EL
 export const EO_NAME_RE = /LANDSAT|SENTINEL|TERRA|AQUA|WORLDVIEW|SPOT|DOVE|ICEYE|PLEIADES/;
 /** Major LEO/MEO comms and IoT/AIS constellations with no dedicated CelesTrak group. */
 export const COMMS_NAME_RE =
-  /IRIDIUM|GLOBALSTAR|ORBCOMM|O3B|HULIANWANG|GEESAT|SITRO-AIS|GONETS-M|CONNECTA|RASSVET-3|APRIZESAT|NINGXIA-1|SCS-01/;
+  /IRIDIUM|GLOBALSTAR|ORBCOMM|O3B|HULIANWANG|GEESAT|SITRO-AIS|GONETS-M|CONNECTA|RASSVET-3|APRIZESAT|NINGXIA-1|SCS-01|LEMUR|MERIDIAN/;
 /** Earth-observation/imaging constellations and tech-demo cubesats beyond the weather/EO sets. */
 export const SCI_CONSTELLATION_RE =
   /FLOCK|JILIN-1|TIANMU|YUNHAI|TIANHUI|SUPERVIEW|AEROCUBE|WILDFIRE|CHUANGXIN|CARTOSAT|KOMPSAT|ARIRANG|PROBA|RADARSAT|RESOURCESAT|CBERS/;
@@ -179,31 +232,77 @@ export const CLASSIFIED_NAME_RE =
   /\bUSA\s+\d+\b|\bNROL\b|\bYAOGAN\b|\bPRAETORIAN\b|\bCHANGGUANG\b|\bSHIJIAN[-\s]*\d+[A-Z]?\b/;
 
 /**
- * ISS-deployed educational CubeSats (batch 67683-67688) arrive via the
- * "stations" group and fall to "other" after the station allowlist; no
- * shared name pattern exists for them, so they are listed by NORAD ID.
- * CORAL (67684) is already "science" via CelesTrak's own science group.
+ * Records that belong outside "other" but share no reliable name pattern
+ * with anything else — one-off tech demonstrators, single national EO/
+ * ocean/soil-moisture missions, calibration targets, cataloged fragments
+ * named only by international designator ("2022-023E") or generic "test
+ * object" label — so they're listed by NORAD ID instead of matched by name.
+ * Same precedent in each case: an ID allowlist for objects a regex can't
+ * safely reach without false-positive risk.
+ *
+ * SCIENCE_IDS includes the original ISS-deployed educational CubeSat batch
+ * (67683-67688; CORAL/67684 is already "science" via CelesTrak's own
+ * science group) plus a 2026-07-10 curated batch of individually-verified
+ * objects.
  */
-export const SCIENCE_IDS = new Set(["67683", "67685", "67686", "67687", "67688"]);
+export const SCIENCE_IDS = new Set([
+  "67683",
+  "67685",
+  "67686",
+  "67687",
+  "67688",
+  "01361",
+  "31113",
+  "35932",
+  "40376",
+  "40970",
+  "41899",
+  "43776",
+  "44072",
+  "44634",
+  "53109",
+  "54754",
+  "56178",
+  "57630",
+  "58957",
+  "60419",
+  "63263",
+  "65301",
+  "66657",
+  "67556",
+]);
+/** Cataloged fragments/sub-payloads with no name DEBRIS_NAME_RE can match. */
+export const DEBRIS_IDS = new Set(["51950", "69320"]);
+/** One-off comms/data-relay satellites with no shared constellation name (see COMMS_NAME_RE for those that do). */
+export const COMMS_IDS = new Set(["23439", "59072"]);
+/** One-off military satellites identified by individual codename rather than a recognizable scheme (see CLASSIFIED_NAME_RE). */
+export const CLASSIFIED_IDS = new Set(["57757"]);
 
 /**
  * Rescues records still tagged "other" after the station allowlist and the
  * debris check. Never touches a record a dedicated CelesTrak group already
  * claimed — only "other" records are eligible.
  *
- * Crew vehicles are checked first: a capsule that arrives via the generic
- * "active"/"last-30-days" catch-alls (a free-flying private mission, or a
- * fresh launch not yet in CelesTrak's stations group) would otherwise stay
- * "other" — which the app hides by default — instead of "stations". This
- * is the promotion mirror of correctStationCat(): both directions use
- * isDockedCrewVehicle(), so the stations category stays exactly
- * STATION_CORE_IDS + crew-vehicle names. Jettisoned crew hardware can't
- * sneak in — the debris backstop runs before this rescue.
+ * Crew and cargo vehicles are checked first: a docking vehicle that arrives
+ * via the generic "active"/"last-30-days" catch-alls (a free-flying private
+ * mission, or a fresh launch not yet in CelesTrak's stations group) would
+ * otherwise stay "other" — which the app hides by default — instead of
+ * "stations". This is the promotion mirror of correctStationCat(): both
+ * directions use isStationVehicle(), so the stations category stays exactly
+ * STATION_CORE_IDS + crew/cargo vehicle names. Jettisoned crew hardware
+ * can't sneak in — the debris backstop runs before this rescue.
+ *
+ * The four *_IDS allowlists are checked next, before any name regex: they
+ * are individually-verified objects with no safe shared pattern, so ID
+ * lookup is the only reliable match.
  */
 export function correctOtherCat(id, name, cat) {
   if (cat !== "other") return cat;
-  if (isDockedCrewVehicle(name)) return "stations";
+  if (isStationVehicle(name)) return "stations";
   if (SCIENCE_IDS.has(id)) return "science";
+  if (DEBRIS_IDS.has(id)) return "debris";
+  if (COMMS_IDS.has(id)) return "communications";
+  if (CLASSIFIED_IDS.has(id)) return "classified";
   const n = (name || "").toUpperCase();
   if (NAV_NAME_RE.test(n)) return "navigation";
   if (COMMS_NAME_RE.test(n)) return "communications";
@@ -217,7 +316,7 @@ export function correctOtherCat(id, name, cat) {
  * Canonical classification pipeline, in the canonical order:
  *   1. station allowlist (drops bogus "stations" tags to "other")
  *   2. debris name backstop
- *   3. name-pattern rescue for whatever is still "other" (crew-vehicle
+ *   3. name-pattern rescue for whatever is still "other" (crew/cargo vehicle
  *      promotion back to "stations" first, then nav/comms/science/classified)
  * Unknown input categories normalize to "other" first.
  */

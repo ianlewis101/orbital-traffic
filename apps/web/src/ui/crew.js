@@ -1,6 +1,6 @@
 import { WORKER_BASE } from "../config.js";
 import { $ } from "../state.js";
-import { capsuleFamily } from "@orbital-traffic/catalog";
+import { vehicleFamily } from "@orbital-traffic/catalog";
 import { renderCapsuleStatus } from "./capsule-status.js";
 
 /**
@@ -37,7 +37,9 @@ const EXPEDITION_DATA = {
 
 function initials(name) {
   const p = name.trim().split(/\s+/);
-  return p.length >= 2 ? (p[0][0] + p[p.length - 1][0]).toUpperCase() : name.slice(0, 2).toUpperCase();
+  return p.length >= 2
+    ? (p[0][0] + p[p.length - 1][0]).toUpperCase()
+    : name.slice(0, 2).toUpperCase();
 }
 
 // "Today aboard" is sourced from iss-today.json via the worker's /today
@@ -51,9 +53,9 @@ export async function fetchAndRenderCrew(s) {
   const isISS = s.id === "25544";
   const isTG = /TIANHE|TIANGONG|CSS/.test(s.name.toUpperCase());
   if (!isISS && !isTG) {
-    // Not a station hub — if it's a tracked crewed capsule, show its own
-    // phase/status instead of hiding the card entirely.
-    const family = s.cat === "stations" ? capsuleFamily(s.name) : null;
+    // Not a station hub — if it's a tracked crewed capsule or cargo vehicle,
+    // show its own phase/status instead of hiding the card entirely.
+    const family = s.cat === "stations" ? vehicleFamily(s.name) : null;
     if (family) return renderCapsuleStatus(s, el);
     el.style.display = "none";
     el.innerHTML = "";

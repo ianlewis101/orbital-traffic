@@ -6,6 +6,10 @@ import {
   correctOtherCat,
   isDebrisName,
   isDockedCrewVehicle,
+  isCargoVehicle,
+  cargoFamily,
+  isStationVehicle,
+  vehicleFamily,
 } from "../src/index.js";
 
 describe("correctStationCat", () => {
@@ -20,10 +24,14 @@ describe("correctStationCat", () => {
     expect(correctStationCat("99003", "SHENZHOU-21 (SZ-21)", "stations")).toBe("stations");
   });
 
-  it("demotes cargo vehicles and co-orbiting objects to other", () => {
-    expect(correctStationCat("99004", "PROGRESS-MS 32", "stations")).toBe("other");
-    expect(correctStationCat("99005", "CYGNUS NG-24", "stations")).toBe("other");
-    expect(correctStationCat("99006", "TIANZHOU-9", "stations")).toBe("other");
+  it("keeps cargo vehicles too — 2026-07-10 policy: stations while tracked, hidden on landing", () => {
+    expect(correctStationCat("99004", "PROGRESS-MS 32", "stations")).toBe("stations");
+    expect(correctStationCat("99005", "CYGNUS NG-24", "stations")).toBe("stations");
+    expect(correctStationCat("99006", "TIANZHOU-9", "stations")).toBe("stations");
+    expect(correctStationCat("99009", "DRAGON CRS-33", "stations")).toBe("stations");
+  });
+
+  it("still demotes co-orbiting cubesats and other non-vehicle objects to other", () => {
     expect(correctStationCat("99007", "KNACKSAT-2", "stations")).toBe("other");
   });
 
@@ -87,6 +95,57 @@ describe("correctOtherCat", () => {
     expect(correctOtherCat("11", "GALILEO 23", "geostationary")).toBe("geostationary");
     expect(correctOtherCat("12", "SENTINEL-6", "starlink")).toBe("starlink");
   });
+
+  it("rescues LEMUR and MERIDIAN comms series by name", () => {
+    expect(correctOtherCat("63262", "LEMUR-2-MARACHE-FRAN", "other")).toBe("communications");
+    expect(correctOtherCat("44453", "MERIDIAN 8", "other")).toBe("communications");
+  });
+
+  it("rescues 2026-07-10 curated batch objects by NORAD ID", () => {
+    // debris: fragments/test objects named only by international designator
+    expect(correctOtherCat("51950", "2022-023E", "other")).toBe("debris");
+    expect(correctOtherCat("69320", "GUOWANG TEST OBJECT A", "other")).toBe("debris");
+    // communications: one-off relay/messaging sats with no shared pattern
+    expect(correctOtherCat("23439", "RADIO ROSTO (RS15)", "other")).toBe("communications");
+    expect(correctOtherCat("59072", "MARAFON-D GVM", "other")).toBe("communications");
+    // classified: one-off military codename with no recognizable scheme
+    expect(correctOtherCat("57757", "BB4", "other")).toBe("classified");
+    // science: one-off tech demonstrators / national missions / calibration targets
+    for (const id of [
+      "01361",
+      "31113",
+      "35932",
+      "40376",
+      "40970",
+      "41899",
+      "43776",
+      "44072",
+      "44634",
+      "53109",
+      "54754",
+      "56178",
+      "57630",
+      "58957",
+      "60419",
+      "63263",
+      "65301",
+      "66657",
+      "67556",
+    ]) {
+      expect(correctOtherCat(id, "PLACEHOLDER NAME", "other")).toBe("science");
+    }
+  });
+
+  it("science IDs corrected after an initial ID/description mismatch (GreenCube, IMECE)", () => {
+    // 53109 is GREENCUBE (IO-117), not the Vega AVUM stage originally attributed to it
+    expect(correctOtherCat("53109", "GREENCUBE (IO-117)", "other")).toBe("science");
+    // 56178 is IMECE, not SDA Tranche 0 "CHECKMATE" originally attributed to it
+    expect(correctOtherCat("56178", "IMECE", "other")).toBe("science");
+  });
+
+  it("does not let the new ID allowlists leak into unrelated IDs", () => {
+    expect(correctOtherCat("1", "PLACEHOLDER NAME", "other")).toBe("other");
+  });
 });
 
 describe("categorize (canonical pipeline)", () => {
@@ -95,9 +154,8 @@ describe("categorize (canonical pipeline)", () => {
     expect(categorize("99010", "ISS DEB (PANEL)", "stations")).toBe("debris");
   });
 
-  it("station allowlist losers still get the other-rescue", () => {
-    // Tianzhou cargo drops to "other" and stays there
-    expect(categorize("99011", "TIANZHOU-9", "stations")).toBe("other");
+  it("cargo vehicles pass the station allowlist by name, same as crew vehicles", () => {
+    expect(categorize("99011", "TIANZHOU-9", "stations")).toBe("stations");
   });
 
   it("normalizes unknown input categories to other, then rescues", () => {
@@ -152,16 +210,18 @@ describe("isDockedCrewVehicle", () => {
   });
 });
 
-describe("crew-vehicle promotion", () => {
+describe("crew/cargo vehicle promotion", () => {
   it("promotes capsules arriving via the generic catch-alls to stations", () => {
     expect(correctOtherCat("90001", "CREW DRAGON 13", "other")).toBe("stations");
     expect(categorize("90002", "SOYUZ-MS 29", "other")).toBe("stations");
     expect(categorize("90003", "SHENZHOU-24 (SZ-24)", "other")).toBe("stations");
   });
 
-  it("never promotes cargo vehicles", () => {
-    expect(categorize("90004", "PROGRESS-MS 34", "other")).toBe("other");
-    expect(categorize("90005", "DRAGON CRS-33", "other")).toBe("other");
+  it("promotes cargo vehicles arriving via the generic catch-alls too", () => {
+    expect(categorize("90004", "PROGRESS-MS 34", "other")).toBe("stations");
+    expect(categorize("90005", "DRAGON CRS-33", "other")).toBe("stations");
+    expect(categorize("90009", "CYGNUS NG-25", "other")).toBe("stations");
+    expect(categorize("90010", "TIANZHOU-11", "other")).toBe("stations");
   });
 
   it("keeps jettisoned crew hardware in debris — the backstop runs first", () => {
@@ -171,5 +231,51 @@ describe("crew-vehicle promotion", () => {
 
   it("leaves crew-lookalike science names alone", () => {
     expect(categorize("90008", "GRACE-FO 1", "other")).toBe("other");
+  });
+});
+
+describe("isCargoVehicle / cargoFamily", () => {
+  it("matches each cargo family", () => {
+    expect(isCargoVehicle("PROGRESS-MS 34")).toBe(true);
+    expect(isCargoVehicle("CYGNUS NG-24")).toBe(true);
+    expect(isCargoVehicle("TIANZHOU-10")).toBe(true);
+    expect(isCargoVehicle("DRAGON CRS-33")).toBe(true);
+    expect(cargoFamily("PROGRESS-MS 34")).toBe("progress");
+    expect(cargoFamily("CYGNUS NG-24")).toBe("cygnus");
+    expect(cargoFamily("TIANZHOU-10")).toBe("tianzhou");
+    expect(cargoFamily("DRAGON CRS-33")).toBe("dragon-cargo");
+  });
+
+  it("never matches crewed vehicles or unrelated names", () => {
+    expect(isCargoVehicle("CREW DRAGON 12")).toBe(false);
+    expect(isCargoVehicle("DRAGON ENDEAVOUR")).toBe(false);
+    expect(isCargoVehicle("SOYUZ-MS 29")).toBe(false);
+    expect(isCargoVehicle("STARLINK-30042")).toBe(false);
+    expect(cargoFamily("STARLINK-30042")).toBeNull();
+  });
+});
+
+describe("isStationVehicle / vehicleFamily", () => {
+  it("is true for both crew and cargo vehicles", () => {
+    expect(isStationVehicle("CREW DRAGON 12")).toBe(true);
+    expect(isStationVehicle("SOYUZ-MS 29")).toBe(true);
+    expect(isStationVehicle("PROGRESS-MS 34")).toBe(true);
+    expect(isStationVehicle("CYGNUS NG-24")).toBe(true);
+    expect(isStationVehicle("TIANZHOU-10")).toBe(true);
+    expect(isStationVehicle("DRAGON CRS-33")).toBe(true);
+  });
+
+  it("is false for station hardware, debris, and unrelated payloads", () => {
+    expect(isStationVehicle("ISS (ZARYA)")).toBe(false);
+    expect(isStationVehicle("SZ-21 MODULE")).toBe(false);
+    expect(isStationVehicle("STARLINK-30042")).toBe(false);
+    expect(isStationVehicle("KNACKSAT-2")).toBe(false);
+  });
+
+  it("resolves family across both tables without collision", () => {
+    expect(vehicleFamily("CREW DRAGON 12")).toBe("dragon");
+    expect(vehicleFamily("DRAGON CRS-33")).toBe("dragon-cargo");
+    expect(vehicleFamily("CYGNUS NG-24")).toBe("cygnus");
+    expect(vehicleFamily("STARLINK-30042")).toBeNull();
   });
 });
