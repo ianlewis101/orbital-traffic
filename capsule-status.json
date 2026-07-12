@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-12T08:08:04.403Z",
+  "updated": "2026-07-12T10:22:25.499Z",
   "capsules": {
     "66664": {
       "name": "SOYUZ-MS 28",
@@ -47,7 +47,7 @@
       "phase": "docked",
       "stationKey": "iss",
       "since": "2026-07-10T20:18:26.588Z",
-      "distanceKm": 0.4,
+      "distanceKm": 0.5,
       "altitudeKm": 427.3,
       "inclinationDeg": 51.63,
       "l1": "1 68689U 26079A   26192.83098518  .00005501  00000+0  10798-3 0  9991",
@@ -60,7 +60,7 @@
       "phase": "docked",
       "stationKey": "iss",
       "since": "2026-07-10T20:18:26.588Z",
-      "distanceKm": 0.4,
+      "distanceKm": 0.5,
       "altitudeKm": 427.3,
       "inclinationDeg": 51.63,
       "l1": "1 68837U 26093A   26192.83098518  .00005501  00000+0  10798-3 0  9992",
@@ -73,7 +73,7 @@
       "phase": "docked",
       "stationKey": "css",
       "since": "2026-07-10T20:18:26.588Z",
-      "distanceKm": 4,
+      "distanceKm": 5.5,
       "altitudeKm": 402.8,
       "inclinationDeg": 41.469,
       "l1": "1 69049U 26102A   26192.62540877  .00001368  00000+0  21992-4 0  9992",
@@ -86,7 +86,7 @@
       "phase": "docked",
       "stationKey": "css",
       "since": "2026-07-03T10:34:14.509Z",
-      "distanceKm": 4,
+      "distanceKm": 5.5,
       "altitudeKm": 402.8,
       "inclinationDeg": 41.469,
       "l1": "1 69180U 26113A   26192.62540877  .00001368  00000+0  21992-4 0  9990",
