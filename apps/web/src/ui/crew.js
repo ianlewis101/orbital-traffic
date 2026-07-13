@@ -35,6 +35,18 @@ const EXPEDITION_DATA = {
   },
 };
 
+// Escape text that originates from the live /crew feed (astronaut names)
+// before it goes into an innerHTML template — an untrusted name must not be
+// able to inject markup into the crew card.
+function esc(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function initials(name) {
   const p = name.trim().split(/\s+/);
   return p.length >= 2
@@ -110,7 +122,7 @@ export async function fetchAndRenderCrew(s) {
       .map((p, i) => {
         const init = initials(p.name || "??");
         const isCmd = i === 0 || (p.role || "").toLowerCase().includes("commander");
-        return `<div class="crew-av"><div class="crew-av-c${isCmd ? " cmd" : ""}">${init}</div><div class="crew-av-n">${(p.name || "").split(" ").pop()}</div></div>`;
+        return `<div class="crew-av"><div class="crew-av-c${isCmd ? " cmd" : ""}">${esc(init)}</div><div class="crew-av-n">${esc((p.name || "").split(" ").pop())}</div></div>`;
       })
       .join("");
   } else {
