@@ -1,4 +1,4 @@
-import { parseTle, GROUPS, CELESTRAK_BASE } from "@orbital-traffic/catalog";
+import { parseTle, mergeRecords, GROUPS, CELESTRAK_BASE } from "@orbital-traffic/catalog";
 import { WORKER_BASE } from "../config.js";
 import { state, $ } from "../state.js";
 import { ingest, removeSats } from "./ingest.js";
@@ -33,7 +33,11 @@ export async function fetchLive() {
         return parseTle(await r.text(), cat);
       })
     );
-    const recs = results.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
+    // Merge in GROUPS order (not fetch-completion order) so a satellite
+    // already claimed by a specific group is never overwritten by a later,
+    // more generic one — results is in GROUPS order since Promise.allSettled
+    // preserves input order. Mirrors the Worker's buildTLERecords() merge.
+    const recs = mergeRecords(results.map((r) => (r.status === "fulfilled" ? r.value : [])));
     if (recs.length) {
       await applyLive(recs, await capsulesPromise);
     } else {
