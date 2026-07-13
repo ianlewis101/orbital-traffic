@@ -100,6 +100,7 @@ export function updatePositions(date) {
   const budget = n <= 3000 ? n : 3500;
   for (let k = 0; k < budget; k++) {
     const s = state.sats[(propCursor + k) % n];
+    if (state.hidden.has(s._cloud)) continue; // hidden categories aren't rendered — don't waste SGP4 on them
     const cl = clouds[s._cloud];
     if (!cl || !cl.posAttr) continue;
     const a = cl.posAttr.array,
