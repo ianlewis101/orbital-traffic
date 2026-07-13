@@ -33,7 +33,7 @@ export const CREW_TTL = 60 * 60; // 1 hour
 export const TODAY_TTL = 5 * 60; // 5 minutes
 export const CAPSULES_TTL = 10 * 60; // 10 minutes — source refreshes every 4h, so this just bounds edge staleness
 
-const CREW_URL = "http://api.open-notify.org/astros.json";
+const CREW_URL = "https://api.open-notify.org/astros.json";
 const TODAY_URL =
   "https://raw.githubusercontent.com/ianlewis101/orbital-traffic/main/iss-today.json";
 const CAPSULES_URL =
