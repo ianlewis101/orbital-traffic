@@ -25,10 +25,16 @@ data the app uses, what it doesn't, and where anything that does get sent leaves
 <h2>Location</h2>
 <p>The app requests your device location only if you turn on <strong>ISS Pass Alerts</strong>
 in the iOS/Android app (this feature is not present in the web version). Your coordinates
-are sent to our server once, to calculate upcoming ISS passes for your location, and are
-not stored beyond that calculation. Pass alerts themselves are scheduled as local
+are sent to our server each time pass alerts are refreshed (this happens automatically
+each time the app opens, if alerts are enabled), to calculate upcoming ISS passes for
+your location, and are not stored beyond that calculation. Pass alerts themselves are scheduled as local
 notifications directly on your device — we do not know when, or whether, a notification
 is shown to you.</p>
+
+<h2>Fonts</h2>
+<p>The app loads two fonts directly from Google Fonts. As with any third-party font
+host, Google receives the IP address of each visitor's device as part of delivering
+those files. We do not control or receive this data ourselves.</p>
 
 <h2>What we don't collect</h2>
 <ul>
@@ -53,9 +59,8 @@ requests. Orbital Traffic itself does not read, log, or use this information.</p
 
 <h2>Data shown in the app</h2>
 <p>Orbital positions are computed on your own device from cached and periodically
-refreshed public orbital element data. This data is accurate as of each refresh —
-see the "data as of" indicator in the app for current freshness — and is provided
-for informational purposes only, not for navigation or operational use.</p>
+refreshed public orbital element data. This data is accurate as of each refresh, and is
+provided for informational purposes only, not for navigation or operational use.</p>
 
 <h2>Changes to this policy</h2>
 <p>If what the app collects changes, this page will be updated and the "last updated"
