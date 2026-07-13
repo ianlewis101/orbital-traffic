@@ -2,6 +2,7 @@ import { catColorHex } from "../config.js";
 import { state, $ } from "../state.js";
 import { DATA } from "../data/store.js";
 import { select } from "./info.js";
+import { esc } from "../util/html.js";
 
 export function renderToday() {
   const box = $("#today-list");
@@ -13,7 +14,7 @@ export function renderToday() {
     const el = document.createElement("div");
     el.className = "today-row";
     el.innerHTML = `<span class="sw" style="background:${hex};color:${hex}"></span>
-      <div class="info"><div class="nm">${h.name}</div><div class="reason">${h.reason}</div></div>`;
+      <div class="info"><div class="nm">${esc(h.name)}</div><div class="reason">${esc(h.reason)}</div></div>`;
     el.onclick = () => {
       const s = state.byId.get(h.id);
       if (s) select(s);

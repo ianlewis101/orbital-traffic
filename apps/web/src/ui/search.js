@@ -1,6 +1,7 @@
 import { catColorHex } from "../config.js";
 import { state, $ } from "../state.js";
 import { select } from "./info.js";
+import { esc } from "../util/html.js";
 
 export function initSearch() {
   const sIn = $("#search-in"),
@@ -44,7 +45,7 @@ export function initSearch() {
       const hex = catColorHex(s.cat);
       const el = document.createElement("div");
       el.className = "res";
-      el.innerHTML = `<span class="cd" style="background:${hex}"></span><span class="nm">${s.name}</span><span class="meta">#${s.id}</span>`;
+      el.innerHTML = `<span class="cd" style="background:${hex}"></span><span class="nm">${esc(s.name)}</span><span class="meta">#${s.id}</span>`;
       el.onclick = () => {
         select(s);
         sRes.classList.remove("show");

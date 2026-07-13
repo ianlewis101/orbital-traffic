@@ -1,5 +1,6 @@
 import { DATA } from "../data/store.js";
 import { classify } from "./describe.js";
+import { esc } from "../util/html.js";
 
 export function photoKey(s) {
   const n = " " + s.name.toUpperCase() + " ",
@@ -61,7 +62,7 @@ export function figureHTML(s) {
       ? entry.pool[hashStr(String(s.id || s.name)) % entry.pool.length]
       : entry;
     if (photo && photo.path) {
-      return `<img src="${photo.path}" alt="${s.name}"><span class="cred">${photo.credit}</span>`;
+      return `<img src="${photo.path}" alt="${esc(s.name)}"><span class="cred">${photo.credit}</span>`;
     }
   }
   return svgFor(s);

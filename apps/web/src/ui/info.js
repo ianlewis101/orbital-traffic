@@ -14,6 +14,7 @@ import { describe } from "./describe.js";
 import { figureHTML } from "./figures.js";
 import { fetchAndRenderCrew } from "./crew.js";
 import { toast } from "./status.js";
+import { esc } from "../util/html.js";
 
 // =====================================================================
 // MOBILE — swipe-to-collapse detail card
@@ -281,10 +282,10 @@ function setFlagLine(s) {
   const owner = s.ownerName ? { code: s.ownerCode, name: s.ownerName } : inferOwner(s);
   if (desc && desc.a) {
     const flg = agencyFlag(desc.a);
-    el.innerHTML = `<span class="fl">${flg}</span>${desc.a}`;
+    el.innerHTML = `<span class="fl">${flg}</span>${esc(desc.a)}`;
     el.style.display = "flex";
   } else if (owner) {
-    el.innerHTML = `<span class="fl">${FLAGS[owner.code] || "\u{1F6F0}"}</span>${owner.name}`;
+    el.innerHTML = `<span class="fl">${FLAGS[owner.code] || "\u{1F6F0}"}</span>${esc(owner.name)}`;
     el.style.display = "flex";
   } else {
     el.style.display = "none";

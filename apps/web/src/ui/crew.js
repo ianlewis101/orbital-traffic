@@ -2,18 +2,7 @@ import { WORKER_BASE } from "../config.js";
 import { $, state } from "../state.js";
 import { vehicleFamily } from "@orbital-traffic/catalog";
 import { renderCapsuleStatus } from "./capsule-status.js";
-
-// Escape text that originates from the live /crew feed (astronaut names)
-// before it goes into an innerHTML template — an untrusted name must not be
-// able to inject markup into the crew card.
-function esc(s) {
-  return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
+import { esc } from "../util/html.js";
 
 function initials(name) {
   const p = name.trim().split(/\s+/);
@@ -72,7 +61,7 @@ export async function fetchAndRenderCrew(s) {
   const todayItems = activities
     .map(
       (t) =>
-        `<div class="crew-today-item"><div class="crew-today-dot"></div><div class="crew-today-txt">${t}</div></div>`
+        `<div class="crew-today-item"><div class="crew-today-dot"></div><div class="crew-today-txt">${esc(t)}</div></div>`
     )
     .join("");
   const todayDate = (todayData && todayData.updated) || "";
@@ -102,7 +91,7 @@ export async function fetchAndRenderCrew(s) {
       showToday
         ? `<div class="crew-today">
       <div class="crew-today-hd"><div class="crew-today-lbl">Today aboard</div>${
-        todayDate ? `<div class="crew-today-dt">${todayDate}</div>` : ""
+        todayDate ? `<div class="crew-today-dt">${esc(todayDate)}</div>` : ""
       }</div>
       <div class="crew-today-body">${
         hasToday

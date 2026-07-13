@@ -1,5 +1,6 @@
 import { WORKER_BASE } from "../config.js";
 import { state } from "../state.js";
+import { esc } from "../util/html.js";
 
 const STATION_LABEL = { iss: "ISS", css: "Tiangong" };
 const PHASE_LABEL = { docked: "Docked", "free-flying": "Free-flying", landed: "Landed" };
@@ -46,7 +47,7 @@ export async function renderCapsuleStatus(s, el) {
   }
 
   const stationLbl = status.stationKey
-    ? STATION_LABEL[status.stationKey] || status.stationKey
+    ? esc(STATION_LABEL[status.stationKey] || status.stationKey)
     : null;
   const recent = (data.events || [])
     .filter((e) => e.id === s.id)
@@ -60,20 +61,20 @@ export async function renderCapsuleStatus(s, el) {
   const eventsHTML = recent.length
     ? recent
         .map((e) => {
-          const verb = EVENT_LABEL[e.event] || e.event;
+          const verb = esc(EVENT_LABEL[e.event] || e.event);
           const where =
             (e.event === "docked" || e.event === "undocked") && e.stationKey
-              ? ` ${e.event === "docked" ? "at" : "from"} ${STATION_LABEL[e.stationKey] || e.stationKey}`
+              ? ` ${e.event === "docked" ? "at" : "from"} ${esc(STATION_LABEL[e.stationKey] || e.stationKey)}`
               : "";
           return `<div class="crew-today-item"><div class="crew-today-dot"></div><div class="crew-today-txt">${verb}${where} — ${shortDate(e.at)}</div></div>`;
         })
         .join("")
-    : `<div class="crew-today-item"><div class="crew-today-dot"></div><div class="crew-today-txt">${PHASE_LABEL[status.phase] || status.phase} — since ${shortDate(status.since)}</div></div>`;
+    : `<div class="crew-today-item"><div class="crew-today-dot"></div><div class="crew-today-txt">${esc(PHASE_LABEL[status.phase] || status.phase)} — since ${shortDate(status.since)}</div></div>`;
 
   el.innerHTML = `
     <div class="crew-block">
       <div class="crew-exp-hd">
-        <div><div class="crew-exp-name">${PHASE_LABEL[status.phase] || status.phase}</div>
+        <div><div class="crew-exp-name">${esc(PHASE_LABEL[status.phase] || status.phase)}</div>
         <div class="crew-exp-sub">${stationLbl ? "at " + stationLbl + " · " : ""}${timeAgo(status.since)} in this phase</div></div>
       </div>
     </div>
