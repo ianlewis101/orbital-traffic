@@ -17,7 +17,6 @@ import {
 import { initStarfield } from "./scene/starfield.js";
 import { initEarth, earthGroup, earthUniforms } from "./scene/earth.js";
 import { buildClouds, updatePositions } from "./scene/clouds.js";
-import { buildTrail } from "./scene/trail.js";
 import { initNeos, updateNeoPositions } from "./scene/neos.js";
 import { initPicking } from "./scene/picking.js";
 import { updateSelMarker } from "./scene/marker.js";
@@ -61,9 +60,8 @@ function loop(now) {
     state.lastProp = now;
     updatePositions(date);
     if (state.selected) {
-      if (++infoTick % 3 === 0 || state.rate > 1) {
+      if (++infoTick % 3 === 0) {
         refreshInfo();
-        if (state.rate >= 60) buildTrail(state.selected, date);
       }
     }
   }
