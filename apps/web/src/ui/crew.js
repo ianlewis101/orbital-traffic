@@ -1,5 +1,5 @@
 import { WORKER_BASE } from "../config.js";
-import { $ } from "../state.js";
+import { $, state } from "../state.js";
 import { vehicleFamily } from "@orbital-traffic/catalog";
 import { renderCapsuleStatus } from "./capsule-status.js";
 
@@ -75,6 +75,7 @@ export async function fetchAndRenderCrew(s) {
     const people = d.people || [];
     crew = people.filter((p) => (p.craft || p.location || "").includes(craft));
   } catch {}
+  if (state.selected !== s) return; // selection changed while this was in flight
 
   // fetch today's activities from worker (sourced from iss-today.json)
   let todayData = null;
@@ -84,6 +85,7 @@ export async function fetchAndRenderCrew(s) {
       todayData = await r.json();
     } catch {}
   }
+  if (state.selected !== s) return; // selection changed while this was in flight
   const todayItems = showToday
     ? ((todayData && todayData.activities) || exp.today)
         .map(
