@@ -41,43 +41,43 @@ beforeEach(() => {
 });
 
 describe("ingest pruning", () => {
-  it("without the prune flag, absent objects are never removed", () => {
-    ingest([makeRecord("90001", daysAgo(30))]);
-    ingest([makeRecord("90002", now())]);
+  it("without the prune flag, absent objects are never removed", async () => {
+    await ingest([makeRecord("90001", daysAgo(30))]);
+    await ingest([makeRecord("90002", now())]);
     expect(state.sats).toHaveLength(2);
   });
 
-  it("prunes absent objects only once their elset is stale", () => {
-    ingest([
+  it("prunes absent objects only once their elset is stale", async () => {
+    await ingest([
       makeRecord("90001", daysAgo(2)), // absent from live feed, but fresh
       makeRecord("90002", daysAgo(30)), // absent and stale — the de-orbited ghost
       makeRecord("90003", daysAgo(1)), // still in the live feed
     ]);
-    const removed = ingest([makeRecord("90003", now())], { prune: true });
+    const removed = await ingest([makeRecord("90003", now())], { prune: true });
     expect(removed.map((s) => s.id)).toEqual(["90002"]);
     expect(state.byId.has("90001")).toBe(true);
     expect(state.byId.has("90002")).toBe(false);
     expect(state.byId.has("90003")).toBe(true);
   });
 
-  it("a stale object still present in the feed is kept", () => {
-    ingest([makeRecord("90001", daysAgo(30))]);
-    const removed = ingest([makeRecord("90001", daysAgo(30))], { prune: true });
+  it("a stale object still present in the feed is kept", async () => {
+    await ingest([makeRecord("90001", daysAgo(30))]);
+    const removed = await ingest([makeRecord("90001", daysAgo(30))], { prune: true });
     expect(removed).toEqual([]);
     expect(state.byId.has("90001")).toBe(true);
   });
 
-  it("recounts categories after pruning", () => {
-    ingest([makeRecord("90001", daysAgo(30)), makeRecord("90002", now())]);
+  it("recounts categories after pruning", async () => {
+    await ingest([makeRecord("90001", daysAgo(30)), makeRecord("90002", now())]);
     expect(state.cats.other).toBe(2);
-    ingest([makeRecord("90002", now())], { prune: true });
+    await ingest([makeRecord("90002", now())], { prune: true });
     expect(state.cats.other).toBe(1);
   });
 });
 
 describe("removeSats", () => {
-  it("removes by id regardless of epoch age and returns the removed objects", () => {
-    ingest([makeRecord("90001", now()), makeRecord("90002", now())]);
+  it("removes by id regardless of epoch age and returns the removed objects", async () => {
+    await ingest([makeRecord("90001", now()), makeRecord("90002", now())]);
     const removed = removeSats(["90001", "99999"]);
     expect(removed.map((s) => s.id)).toEqual(["90001"]);
     expect(state.byId.has("90001")).toBe(false);

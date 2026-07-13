@@ -12,6 +12,13 @@ import { state } from "../state.js";
  */
 const PRUNE_EPOCH_DAYS = 10;
 
+/**
+ * How many records to process per synchronous batch before yielding a frame
+ * back to the browser. Keeps the boot ingest (~18,500 records) from freezing
+ * the splash screen for a solid 1-2 seconds on slower mobile devices.
+ */
+const INGEST_BATCH = 1000;
+
 function recomputeCats() {
   Object.keys(CATS).forEach((c) => (state.cats[c] = 0));
   state.sats.forEach((s) => state.cats[s.cat]++);
@@ -29,29 +36,39 @@ function recomputeCats() {
  * removed objects so the caller can clear selection state; callers must
  * rebuild clouds afterwards either way.
  */
-export function ingest(records, { prune = false } = {}) {
+export async function ingest(records, { prune = false } = {}) {
   const seen = prune ? new Set() : null;
-  for (const r of records) {
-    let rec;
-    try {
-      rec = satellite.twoline2satrec(r.l1, r.l2);
-    } catch {
-      continue;
+  // Process in batches, yielding a frame to the browser between them, so a
+  // large ingest never blocks the main thread for more than ~one frame at a
+  // time. The per-record work below is byte-for-byte the same as before —
+  // only *when* it runs changes, not what it computes.
+  for (let start = 0; start < records.length; start += INGEST_BATCH) {
+    const end = Math.min(start + INGEST_BATCH, records.length);
+    for (let j = start; j < end; j++) {
+      const r = records[j];
+      let rec;
+      try {
+        rec = satellite.twoline2satrec(r.l1, r.l2);
+      } catch {
+        continue;
+      }
+      if (!rec || rec.error) continue;
+      const id = String(rec.satnum);
+      const cat = categorize(id, r.name, r.cat);
+      const ex = state.byId.get(id);
+      if (ex) {
+        ex.rec = rec;
+        ex.name = r.name || ex.name;
+        ex.cat = cat;
+      } else {
+        const s = { id, name: (r.name || "OBJ " + id).trim(), cat, rec, alive: true };
+        state.sats.push(s);
+        state.byId.set(id, s);
+      }
+      if (seen) seen.add(id);
     }
-    if (!rec || rec.error) continue;
-    const id = String(rec.satnum);
-    const cat = categorize(id, r.name, r.cat);
-    const ex = state.byId.get(id);
-    if (ex) {
-      ex.rec = rec;
-      ex.name = r.name || ex.name;
-      ex.cat = cat;
-    } else {
-      const s = { id, name: (r.name || "OBJ " + id).trim(), cat, rec, alive: true };
-      state.sats.push(s);
-      state.byId.set(id, s);
-    }
-    if (seen) seen.add(id);
+    // No point yielding after the final batch — let prune/recompute run now.
+    if (end < records.length) await new Promise(requestAnimationFrame);
   }
 
   const removed = [];

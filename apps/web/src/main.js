@@ -112,7 +112,7 @@ async function boot() {
   initPassAlerts();
   initPicking();
 
-  ingest(data.sats);
+  await ingest(data.sats);
   buildClouds();
   rebuildLegend();
   updateCount();

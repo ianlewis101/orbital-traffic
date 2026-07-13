@@ -24,7 +24,7 @@ export async function fetchLive() {
     if (!res.ok) throw new Error("worker " + res.status);
     const recs = await res.json();
     if (!recs.length) throw new Error("empty");
-    applyLive(recs, await capsulesPromise);
+    await applyLive(recs, await capsulesPromise);
   } catch {
     const results = await Promise.allSettled(
       GROUPS.map(async ([grp, cat]) => {
@@ -35,7 +35,7 @@ export async function fetchLive() {
     );
     const recs = results.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
     if (recs.length) {
-      applyLive(recs, await capsulesPromise);
+      await applyLive(recs, await capsulesPromise);
     } else {
       toast("Live fetch unavailable — showing cached elements");
       updateCount();
@@ -62,7 +62,7 @@ async function fetchCapsuleStatus() {
  * renders), and a landed one is dropped immediately — no waiting out the
  * generic epoch prune, and never left to render under "other" either.
  */
-function reconcileCapsules(capsules) {
+async function reconcileCapsules(capsules) {
   if (!capsules) return [];
   const inject = [];
   const landedIds = [];
@@ -73,13 +73,13 @@ function reconcileCapsules(capsules) {
       inject.push({ name: c.name, l1: c.l1, l2: c.l2, cat: "stations" });
     }
   }
-  if (inject.length) ingest(inject);
+  if (inject.length) await ingest(inject);
   return removeSats(landedIds);
 }
 
-function applyLive(recs, capsules) {
-  const removed = ingest(recs, { prune: true });
-  removed.push(...reconcileCapsules(capsules));
+async function applyLive(recs, capsules) {
+  const removed = await ingest(recs, { prune: true });
+  removed.push(...(await reconcileCapsules(capsules)));
   if (state.selected && removed.includes(state.selected)) select(null);
   buildClouds();
   state.source = "live";
