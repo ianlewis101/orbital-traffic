@@ -28,20 +28,23 @@ export function initPassAlerts() {
 
   toggle.addEventListener("change", async () => {
     toggle.disabled = true;
-    if (toggle.checked) {
-      status.textContent = "Finding your location…";
-      const result = await enablePassAlerts();
-      if (result.ok) {
-        status.textContent =
-          result.scheduled > 0 ? `${result.scheduled} pass alert(s) scheduled` : "No passes found in the next 48h";
+    try {
+      if (toggle.checked) {
+        status.textContent = "Finding your location…";
+        const result = await enablePassAlerts();
+        if (result.ok) {
+          status.textContent =
+            result.scheduled > 0 ? `${result.scheduled} pass alert(s) scheduled` : "No passes found in the next 48h";
+        } else {
+          toggle.checked = false;
+          status.textContent = REASON_TEXT[result.reason] || "Couldn't schedule alerts";
+        }
       } else {
-        toggle.checked = false;
-        status.textContent = REASON_TEXT[result.reason] || "Couldn't schedule alerts";
+        await disablePassAlerts();
+        status.textContent = "Alerts off";
       }
-    } else {
-      await disablePassAlerts();
-      status.textContent = "Alerts off";
+    } finally {
+      toggle.disabled = false;
     }
-    toggle.disabled = false;
   });
 }
