@@ -71,14 +71,18 @@ export async function renderCapsuleStatus(s, el) {
         .join("")
     : `<div class="crew-today-item"><div class="crew-today-dot"></div><div class="crew-today-txt">${esc(PHASE_LABEL[status.phase] || status.phase)} — since ${shortDate(status.since)}</div></div>`;
 
-  /* eslint-disable orbital/no-unescaped-innerhtml -- stationLbl is esc()'d at its assignment above (const stationLbl = ... ? esc(...) : null); eventsHTML is assembled from esc()-escaped feed values; timeAgo() returns a fixed relative-time string. */
   el.innerHTML = `
     <div class="crew-block">
       <div class="crew-exp-hd">
         <div><div class="crew-exp-name">${esc(PHASE_LABEL[status.phase] || status.phase)}</div>
-        <div class="crew-exp-sub">${stationLbl ? "at " + stationLbl + " · " : ""}${timeAgo(status.since)} in this phase</div></div>
+        <div class="crew-exp-sub">${
+          // eslint-disable-next-line orbital/no-unescaped-innerhtml -- stationLbl is esc()'d at its assignment above (const stationLbl = ... ? esc(...) : null); the surrounding text is a static literal
+          stationLbl ? "at " + stationLbl + " · " : ""
+        }${timeAgo(status.since)} in this phase</div></div>
       </div>
     </div>
-    <div class="crew-today"><div class="crew-today-hd"><div class="crew-today-lbl">Recent activity</div></div><div class="crew-today-body">${eventsHTML}</div></div>`;
-  /* eslint-enable orbital/no-unescaped-innerhtml */
+    <div class="crew-today"><div class="crew-today-hd"><div class="crew-today-lbl">Recent activity</div></div><div class="crew-today-body">${
+      // eslint-disable-next-line orbital/no-unescaped-innerhtml -- eventsHTML is assembled from esc()-escaped feed values via map()/join() above
+      eventsHTML
+    }</div></div>`;
 }

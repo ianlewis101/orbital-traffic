@@ -20,7 +20,7 @@ ruleTester.run("no-unescaped-innerhtml", rule, {
     "el.innerHTML = `<span>static markup only</span>`;",
     // Enumerated internal formatters (fixed-shape output).
     "el.innerHTML = `<b>${timeAgo(s.since)}</b>`;",
-    "el.innerHTML = `<span style=\"background:${catColorHex(s.cat)}\"></span>`;",
+    'el.innerHTML = `<span style="background:${catColorHex(s.cat)}"></span>`;',
     "el.innerHTML = `<b>${fmt(alt, 0)}</b>`;",
     // Number-formatting method calls.
     "el.innerHTML = `<b>${n.a.toFixed(3)}</b>`;",
@@ -35,6 +35,14 @@ ruleTester.run("no-unescaped-innerhtml", rule, {
     "el.textContent = `${rawUntrusted}`;",
     // Non-template right-hand side — out of scope.
     "el.innerHTML = figureHTML(s);",
+    // Resolver: a same-scope const whose initializer is itself safe (a call
+    // to an enumerated formatter) is recognized when interpolated by name.
+    'function f(s) { const hex = catColorHex(s.cat); el.innerHTML = `<span style="background:${hex}"></span>`; }',
+    // Resolver: a const initialized from a ternary of safe branches (the
+    // "escaped/assembled earlier" pattern from capsule-status.js).
+    "function f(status) { const lbl = status.k ? esc(status.k) : null; el.innerHTML = `<b>${lbl}</b>`; }",
+    // Resolver: chains through more than one const hop.
+    "function f(x) { const a = esc(x); const b = a; el.innerHTML = `<b>${b}</b>`; }",
   ],
   invalid: [
     // The regression this rule exists to catch: a raw property interpolation.
@@ -66,6 +74,24 @@ ruleTester.run("no-unescaped-innerhtml", rule, {
     {
       code: 'el["innerHTML"] = `<a>${x}</a><b>${y}</b>`;',
       errors: [{ messageId: "unescaped" }, { messageId: "unescaped" }],
+    },
+    // Resolver deliberately does not resolve `let` — reassignment means the
+    // initializer isn't the only possible value.
+    {
+      code: "function f(c) { let hex = catColorHex(c); el.innerHTML = `<span>${hex}</span>`; }",
+      errors: [{ messageId: "unescaped" }],
+    },
+    // Resolver resolves the const, but its initializer is itself unsafe
+    // (a MemberExpression operand in a LogicalExpression) — stays flagged.
+    {
+      code: 'function f(crew) { const count = crew.length || "?"; el.innerHTML = `<b>${count}</b>`; }',
+      errors: [{ messageId: "unescaped" }],
+    },
+    // Resolver resolves the const, but a .join() call isn't an enumerated
+    // safe method — stays flagged even though every piece joined was esc()'d.
+    {
+      code: 'function f(parts) { const html = parts.map((p) => esc(p)).join(""); el.innerHTML = `<b>${html}</b>`; }',
+      errors: [{ messageId: "unescaped" }],
     },
   ],
 });

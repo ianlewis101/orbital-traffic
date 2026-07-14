@@ -282,7 +282,6 @@ function setFlagLine(s) {
   const owner = s.ownerName ? { code: s.ownerCode, name: s.ownerName } : inferOwner(s);
   if (desc && desc.a) {
     const flg = agencyFlag(desc.a);
-    // eslint-disable-next-line orbital/no-unescaped-innerhtml -- flg is agencyFlag() output (a fixed flag emoji); the untrusted description goes through esc().
     el.innerHTML = `<span class="fl">${flg}</span>${esc(desc.a)}`;
     el.style.display = "flex";
   } else if (owner) {
@@ -373,13 +372,12 @@ export function refreshInfo() {
     `<span class="chip" title="${oc.note}">${oc.name}</span>` +
     `<span class="chip ${lit ? "lit" : "shad"}"><i></i>${lit ? "In sunlight" : "In Earth&rsquo;s shadow"}</span>` +
     `<span class="chip">Over ${regionName(lat, lon)}</span>` +
-    (s.ownerName ? `<span class="chip">${s.ownerName}</span>` : ``) +
+    (s.ownerName ? `<span class="chip">${esc(s.ownerName)}</span>` : ``) +
     `<span class="chip">&asymp;${orbits.toFixed(1)} orbits / day</span>`;
   const ns = lat >= 0 ? "N" : "S",
     ew = lon >= 0 ? "E" : "W",
     MI = 0.621371;
   grid.className = "grid";
-  /* eslint-disable orbital/no-unescaped-innerhtml -- ns/ew are computed "N"/"S"/"E"/"W" literals; every other interpolation in this template is a number via fmt()/toFixed() or a string literal. */
   grid.innerHTML = `
     <div class="stat"><div class="k">Altitude</div><div class="v">${fmt(alt * MI, 0)} <small>mi up</small></div></div>
     <div class="stat"><div class="k">Speed</div><div class="v">${fmt(spd * 3600 * MI, 0)} <small>mph</small></div></div>
@@ -392,7 +390,6 @@ export function refreshInfo() {
     <div class="stat" style="grid-column:1/-1;padding:0">
       <button id="tele-toggle" style="background:none;border:none;cursor:pointer;font-family:var(--mono);font-size:9px;letter-spacing:0.14em;color:${teleOpen ? "var(--ink-dim)" : "var(--signal)"};padding:6px 0;text-align:left;width:100%;touch-action:manipulation">${teleOpen ? "▲ less" : "▼ more"}</button>
     </div>`;
-  /* eslint-enable orbital/no-unescaped-innerhtml */
   // Single click listener only (no separate touchstart/touchend) — touch-action:
   // manipulation above removes the tap delay without needing duplicate handlers.
   // teleOpen is module-level state so it survives the periodic refreshInfo()

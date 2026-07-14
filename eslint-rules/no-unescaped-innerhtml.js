@@ -19,12 +19,22 @@
  * Anything else — a bare variable (`${hex}`), a property access (`${s.name}`),
  * a string concatenation, or an un-enumerated call — is reported.
  *
- * The rule deliberately does NOT trace variables (no data-flow analysis), to
- * stay small and readable. When an interpolation is nonetheless safe because
- * the value was escaped or assembled from esc() earlier in the same function
- * (e.g. `const stationLbl = status.stationKey ? esc(...) : null`, later used as
- * `${stationLbl}`), silence that one spot with an eslint-disable comment that
- * says why it is safe.
+ * The rule resolves ONE hop of same-scope `const` initializers (see
+ * resolveConstInit below) — e.g. `const stationLbl = status.stationKey ? esc(...)
+ * : null` used later as `${stationLbl}` is recognized as safe because its
+ * initializer is. This is deliberately not general data-flow analysis: only a
+ * bare Identifier whose nearest-scope declaration is a `const` with a directly
+ * inspectable initializer gets resolved (chained through further Identifiers up
+ * to a small hop limit); `let`/`var`, reassignment, destructuring, and
+ * initializers built from anything else (e.g. a `.map().join()` call chain, or
+ * string concatenation) are left unresolved. Where a value is nonetheless safe
+ * for a reason the resolver can't see, silence that one spot with an
+ * eslint-disable comment that says why — placed inside the `${ }` slot on its
+ * own line if the interpolation sits inside a multi-line template (a comment
+ * cannot be placed directly in template-literal text without becoming part of
+ * the rendered HTML, but `${ }` is a real expression position, so a comment
+ * there is safe and reformatting an expression onto its own line does not
+ * change the interpolated value).
  *
  * SCOPE: only a direct `X.innerHTML = <TemplateLiteral>` assignment is
  * inspected. A right-hand side assembled by `+` string concatenation (e.g.
@@ -49,15 +59,41 @@ const SAFE_FUNCTIONS = new Set([
 // SAFE_FUNCTIONS: it falls back to returning its raw input unchanged.)
 const SAFE_METHODS = new Set(["toFixed", "toLocaleString"]);
 
+// Chained Identifier -> Identifier resolution stops here, so a runaway/cyclic
+// chain (which valid JS `const` can't actually produce, but defend anyway)
+// can't hang the linter.
+const MAX_RESOLVE_HOPS = 5;
+
+/**
+ * If `node` is an Identifier whose nearest-scope declaration is a `const`
+ * with an initializer, return that initializer's AST node. Otherwise null.
+ * Single scope hop only — no attempt to model reassignment, destructuring,
+ * or which branch of control flow actually ran.
+ */
+function resolveConstInit(sourceCode, node) {
+  if (node.type !== "Identifier") return null;
+  let scope = sourceCode.getScope(node);
+  while (scope) {
+    const variable = scope.variables.find((v) => v.name === node.name);
+    if (variable) {
+      const def = variable.defs[0];
+      const isConst = def && def.type === "Variable" && def.parent.kind === "const";
+      return isConst && def.node.init ? def.node.init : null;
+    }
+    scope = scope.upper;
+  }
+  return null;
+}
+
 /** Is `node` an expression that cannot inject markup into innerHTML? */
-function isSafe(node) {
+function isSafe(sourceCode, node, hops = 0) {
   if (!node) return false;
   switch (node.type) {
     case "Literal":
       return true;
     case "TemplateLiteral":
       // A nested template is safe iff all of ITS interpolations are safe.
-      return node.expressions.every(isSafe);
+      return node.expressions.every((e) => isSafe(sourceCode, e, hops));
     case "CallExpression": {
       const callee = node.callee;
       if (callee.type === "Identifier") return SAFE_FUNCTIONS.has(callee.name);
@@ -70,9 +106,14 @@ function isSafe(node) {
       return false;
     }
     case "ConditionalExpression":
-      return isSafe(node.consequent) && isSafe(node.alternate);
+      return isSafe(sourceCode, node.consequent, hops) && isSafe(sourceCode, node.alternate, hops);
     case "LogicalExpression":
-      return isSafe(node.left) && isSafe(node.right);
+      return isSafe(sourceCode, node.left, hops) && isSafe(sourceCode, node.right, hops);
+    case "Identifier": {
+      if (hops >= MAX_RESOLVE_HOPS) return false;
+      const init = resolveConstInit(sourceCode, node);
+      return init ? isSafe(sourceCode, init, hops + 1) : false;
+    }
     default:
       return false;
   }
@@ -103,13 +144,14 @@ export default {
   },
 
   create(context) {
+    const sourceCode = context.sourceCode;
     return {
       AssignmentExpression(node) {
         if (node.operator !== "=") return;
         if (!isInnerHTMLTarget(node.left)) return;
         if (node.right.type !== "TemplateLiteral") return;
         for (const expr of node.right.expressions) {
-          if (!isSafe(expr)) {
+          if (!isSafe(sourceCode, expr)) {
             context.report({ node: expr, messageId: "unescaped" });
           }
         }

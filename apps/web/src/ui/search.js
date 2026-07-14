@@ -45,8 +45,10 @@ export function initSearch() {
       const hex = catColorHex(s.cat);
       const el = document.createElement("div");
       el.className = "res";
-      // eslint-disable-next-line orbital/no-unescaped-innerhtml -- hex is catColorHex() output (a "#rrggbb" string); s.id is a numeric NORAD id; the untrusted name goes through esc().
-      el.innerHTML = `<span class="cd" style="background:${hex}"></span><span class="nm">${esc(s.name)}</span><span class="meta">#${s.id}</span>`;
+      el.innerHTML = `<span class="cd" style="background:${hex}"></span><span class="nm">${esc(s.name)}</span><span class="meta">#${
+        // eslint-disable-next-line orbital/no-unescaped-innerhtml -- s.id is a numeric NORAD catalog id, not free text
+        s.id
+      }</span>`;
       el.onclick = () => {
         select(s);
         sRes.classList.remove("show");

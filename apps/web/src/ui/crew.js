@@ -79,16 +79,22 @@ export async function fetchAndRenderCrew(s) {
     avHTML = `<div style="font-size:10px;color:var(--ink-faint);padding:4px 0;letter-spacing:0.05em">Crew names unavailable</div>`;
   }
   const count = crew.length || "?";
-  /* eslint-disable orbital/no-unescaped-innerhtml -- craft is a fixed "ISS"/"Tiangong" literal; count is a crew-count number; avHTML and todayItems are assembled from esc()-escaped feed values (crew names / activity text) in the map() loops above. */
   el.innerHTML = `
     <div class="crew-block">
       <div class="crew-exp-hd">
         <div><div class="crew-exp-name">${craft}</div></div>
-        <div class="crew-count-wrap"><div class="crew-count">${count}</div><div class="crew-count-lbl">ABOARD</div></div>
+        <div class="crew-count-wrap"><div class="crew-count">${
+          // eslint-disable-next-line orbital/no-unescaped-innerhtml -- count is crew.length (a number) or the literal "?" fallback
+          count
+        }</div><div class="crew-count-lbl">ABOARD</div></div>
       </div>
-      <div class="crew-avs">${avHTML}</div>
+      <div class="crew-avs">${
+        // eslint-disable-next-line orbital/no-unescaped-innerhtml -- avHTML is assembled from esc()-escaped crew data in the map() loop above
+        avHTML
+      }</div>
     </div>
     ${
+      // eslint-disable-next-line orbital/no-unescaped-innerhtml -- todayItems (used below) is assembled from esc()-escaped activity text in the map() loop above
       showToday
         ? `<div class="crew-today">
       <div class="crew-today-hd"><div class="crew-today-lbl">Today aboard</div>${
@@ -102,5 +108,4 @@ export async function fetchAndRenderCrew(s) {
     </div>`
         : ""
     }`;
-  /* eslint-enable orbital/no-unescaped-innerhtml */
 }
