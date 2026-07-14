@@ -79,6 +79,7 @@ export async function fetchAndRenderCrew(s) {
     avHTML = `<div style="font-size:10px;color:var(--ink-faint);padding:4px 0;letter-spacing:0.05em">Crew names unavailable</div>`;
   }
   const count = crew.length || "?";
+  /* eslint-disable orbital/no-unescaped-innerhtml -- craft is a fixed "ISS"/"Tiangong" literal; count is a crew-count number; avHTML and todayItems are assembled from esc()-escaped feed values (crew names / activity text) in the map() loops above. */
   el.innerHTML = `
     <div class="crew-block">
       <div class="crew-exp-hd">
@@ -101,4 +102,5 @@ export async function fetchAndRenderCrew(s) {
     </div>`
         : ""
     }`;
+  /* eslint-enable orbital/no-unescaped-innerhtml */
 }

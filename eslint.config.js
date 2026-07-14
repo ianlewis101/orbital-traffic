@@ -1,5 +1,6 @@
 import js from "@eslint/js";
 import globals from "globals";
+import noUnescapedInnerhtml from "./eslint-rules/no-unescaped-innerhtml.js";
 
 export default [
   {
@@ -22,6 +23,12 @@ export default [
   {
     files: ["apps/web/**/*.js"],
     languageOptions: { globals: { ...globals.browser } },
+  },
+  {
+    // Local safety-net rule: forbid unescaped interpolation into .innerHTML.
+    files: ["apps/web/src/**/*.js"],
+    plugins: { orbital: { rules: { "no-unescaped-innerhtml": noUnescapedInnerhtml } } },
+    rules: { "orbital/no-unescaped-innerhtml": "error" },
   },
   {
     files: ["apps/web/public/sw.js"],

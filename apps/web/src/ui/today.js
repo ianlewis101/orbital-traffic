@@ -13,6 +13,7 @@ export function renderToday() {
     const hex = catColorHex(sat ? sat.cat : "other");
     const el = document.createElement("div");
     el.className = "today-row";
+    // eslint-disable-next-line orbital/no-unescaped-innerhtml -- hex is catColorHex() output (a "#rrggbb" string); the untrusted name/reason go through esc() on the next line.
     el.innerHTML = `<span class="sw" style="background:${hex};color:${hex}"></span>
       <div class="info"><div class="nm">${esc(h.name)}</div><div class="reason">${esc(h.reason)}</div></div>`;
     el.onclick = () => {

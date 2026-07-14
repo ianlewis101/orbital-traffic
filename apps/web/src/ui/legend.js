@@ -13,8 +13,10 @@ export function rebuildLegend() {
     const hex = catColorHex(c);
     const el = document.createElement("div");
     el.className = "cat" + (state.hidden.has(c) ? " off" : "");
+    /* eslint-disable orbital/no-unescaped-innerhtml -- hex is catColorHex() output (a "#rrggbb" string); CATS[c].label is a fixed category label from config.js; the count uses toLocaleString(). */
     el.innerHTML = `<span class="sw" style="background:${hex};color:${hex}"></span>
       <span class="nm">${CATS[c].label}</span><span class="ct">${state.cats[c].toLocaleString()}</span>`;
+    /* eslint-enable orbital/no-unescaped-innerhtml */
     el.onclick = () => {
       if (state.hidden.has(c)) state.hidden.delete(c);
       else state.hidden.add(c);
