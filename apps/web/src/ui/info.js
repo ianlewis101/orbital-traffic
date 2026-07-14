@@ -285,6 +285,7 @@ function setFlagLine(s) {
     el.innerHTML = `<span class="fl">${flg}</span>${esc(desc.a)}`;
     el.style.display = "flex";
   } else if (owner) {
+    // eslint-disable-next-line orbital/no-unescaped-innerhtml -- FLAGS[] is a fixed emoji lookup with a literal fallback; the untrusted owner name goes through esc().
     el.innerHTML = `<span class="fl">${FLAGS[owner.code] || "\u{1F6F0}"}</span>${esc(owner.name)}`;
     el.style.display = "flex";
   } else {
@@ -371,7 +372,7 @@ export function refreshInfo() {
     `<span class="chip" title="${oc.note}">${oc.name}</span>` +
     `<span class="chip ${lit ? "lit" : "shad"}"><i></i>${lit ? "In sunlight" : "In Earth&rsquo;s shadow"}</span>` +
     `<span class="chip">Over ${regionName(lat, lon)}</span>` +
-    (s.ownerName ? `<span class="chip">${s.ownerName}</span>` : ``) +
+    (s.ownerName ? `<span class="chip">${esc(s.ownerName)}</span>` : ``) +
     `<span class="chip">&asymp;${orbits.toFixed(1)} orbits / day</span>`;
   const ns = lat >= 0 ? "N" : "S",
     ew = lon >= 0 ? "E" : "W",

@@ -14,7 +14,10 @@ export function rebuildLegend() {
     const el = document.createElement("div");
     el.className = "cat" + (state.hidden.has(c) ? " off" : "");
     el.innerHTML = `<span class="sw" style="background:${hex};color:${hex}"></span>
-      <span class="nm">${CATS[c].label}</span><span class="ct">${state.cats[c].toLocaleString()}</span>`;
+      <span class="nm">${
+        // eslint-disable-next-line orbital/no-unescaped-innerhtml -- CATS[c].label is a fixed category label from config.js, not user/feed data
+        CATS[c].label
+      }</span><span class="ct">${state.cats[c].toLocaleString()}</span>`;
     el.onclick = () => {
       if (state.hidden.has(c)) state.hidden.delete(c);
       else state.hidden.add(c);

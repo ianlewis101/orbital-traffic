@@ -83,11 +83,18 @@ export async function fetchAndRenderCrew(s) {
     <div class="crew-block">
       <div class="crew-exp-hd">
         <div><div class="crew-exp-name">${craft}</div></div>
-        <div class="crew-count-wrap"><div class="crew-count">${count}</div><div class="crew-count-lbl">ABOARD</div></div>
+        <div class="crew-count-wrap"><div class="crew-count">${
+          // eslint-disable-next-line orbital/no-unescaped-innerhtml -- count is crew.length (a number) or the literal "?" fallback
+          count
+        }</div><div class="crew-count-lbl">ABOARD</div></div>
       </div>
-      <div class="crew-avs">${avHTML}</div>
+      <div class="crew-avs">${
+        // eslint-disable-next-line orbital/no-unescaped-innerhtml -- avHTML is assembled from esc()-escaped crew data in the map() loop above
+        avHTML
+      }</div>
     </div>
     ${
+      // eslint-disable-next-line orbital/no-unescaped-innerhtml -- todayItems (used below) is assembled from esc()-escaped activity text in the map() loop above
       showToday
         ? `<div class="crew-today">
       <div class="crew-today-hd"><div class="crew-today-lbl">Today aboard</div>${
