@@ -50,6 +50,9 @@
     background:linear-gradient(95deg,#eef1f8 12%,#5eead4 55%,#a78bfa 92%);-webkit-background-clip:text;
     background-clip:text;color:transparent}
   #brand .wm em{font-style:normal}
+  #brand .wm .tm{font-size:0.34em;font-weight:600;letter-spacing:0;vertical-align:super;
+    margin-left:2px;-webkit-text-fill-color:var(--ink-faint);color:var(--ink-faint);
+    background:none;-webkit-background-clip:initial;background-clip:initial;opacity:0.8}
   #brand .wm-sub{font-size:8.5px;letter-spacing:0.4em;text-transform:uppercase;color:var(--ink-faint);margin-top:8px;padding-left:2px}
 
   /* ---------- clock ---------- */
@@ -220,6 +223,9 @@
     background:linear-gradient(95deg,#eef1f8 12%,#5eead4 55%,#a78bfa 92%);-webkit-background-clip:text;
     background-clip:text;color:transparent}
   #splash .ttl em{font-style:normal}
+  #splash .ttl .tm{font-size:0.32em;font-weight:600;letter-spacing:0;vertical-align:super;
+    margin-left:3px;-webkit-text-fill-color:var(--ink-faint);color:var(--ink-faint);
+    background:none;-webkit-background-clip:initial;background-clip:initial;opacity:0.8}
   #splash .ld{width:220px;height:1px;background:var(--line-bright);overflow:hidden;position:relative}
   #splash .ld i{position:absolute;inset:0;background:var(--amber);transform:translateX(-100%);animation:load 1.2s ease-in-out infinite}
   @keyframes load{to{transform:translateX(100%)}}
