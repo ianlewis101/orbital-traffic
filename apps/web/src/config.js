@@ -13,11 +13,11 @@ export const CATS = {
   kuiper: { label: "Kuiper", color: 0x8fd6ff, px: 4 },
   communications: { label: "Communications", color: 0xff8c00, px: 4 },
   science: { label: "Science", color: 0xff8fb0, px: 4 },
-  other: { label: "Other", color: 0xc3cede, px: 4 },
   classified: { label: "CLASSIFIED", color: 0x8b0000, px: 4 },
-  debris: { label: "DEBRIS", color: 0x7a8899, px: 4 },
   hazardous: { label: "Hazardous NEOs", color: 0xff4422, px: 5 },
   cool: { label: "COOL SHIT", color: 0xa78bfa, px: 4 },
+  other: { label: "Other", color: 0xc3cede, px: 4 },
+  debris: { label: "DEBRIS", color: 0x7a8899, px: 4 },
 };
 
 export function catColorHex(cat) {

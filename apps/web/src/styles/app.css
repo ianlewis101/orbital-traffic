@@ -40,6 +40,7 @@
   .ph-t{font-size:9px;letter-spacing:0.24em;text-transform:uppercase;color:var(--ink-dim);font-weight:500}
   .ph-i{font-size:9px;letter-spacing:0.12em;color:var(--amber);font-weight:700}
   .ph-i.loading{color:var(--ink-faint);animation:pulse 1s ease-in-out infinite}
+  .ph-r{display:flex;align-items:center;gap:8px}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.35}}
   .lab{font-size:9px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);font-weight:500}
 
@@ -113,6 +114,7 @@
   /* ---------- legend ---------- */
   #leftstack{position:fixed;left:24px;bottom:24px;width:214px;display:flex;flex-direction:column;gap:12px;animation:rise .8s both .2s}
   #legend{position:static;width:100%}
+  #legend.collapsed .ph{cursor:pointer}
   #legend .body{padding:5px 7px 7px}
   .cat{display:flex;align-items:center;gap:10px;padding:6px 7px;cursor:pointer;user-select:none;transition:background .12s}
   .cat:hover{background:var(--amber-soft)}

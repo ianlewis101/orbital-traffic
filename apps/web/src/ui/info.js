@@ -15,6 +15,7 @@ import { figureHTML } from "./figures.js";
 import { fetchAndRenderCrew } from "./crew.js";
 import { toast } from "./status.js";
 import { esc } from "../util/html.js";
+import { collapseLegend } from "./legend.js";
 
 // =====================================================================
 // MOBILE — swipe-to-collapse detail card
@@ -132,6 +133,7 @@ export function select(s) {
     return;
   }
   teleOpen = true; // start each newly selected object with telemetry detail expanded
+  collapseLegend(); // hand screen space to the info card; user must reopen it manually
   fetchAndRenderCrew(s);
   info.classList.add("show");
   info.scrollTop = 0;

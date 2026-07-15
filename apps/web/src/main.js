@@ -21,7 +21,7 @@ import { initNeos, updateNeoPositions } from "./scene/neos.js";
 import { initPicking } from "./scene/picking.js";
 import { updateSelMarker } from "./scene/marker.js";
 import { refreshInfo, initInfoCard } from "./ui/info.js";
-import { rebuildLegend } from "./ui/legend.js";
+import { rebuildLegend, initLegendToggle } from "./ui/legend.js";
 import { renderToday, initTodayToggle } from "./ui/today.js";
 import { initTimeMachine } from "./ui/time.js";
 import { initGlobeStyle } from "./ui/globeStyle.js";
@@ -108,6 +108,7 @@ async function boot() {
   initTimeMachine();
   initGlobeStyle();
   initTodayToggle();
+  initLegendToggle();
   initSearch();
   initPassAlerts();
   initPicking();
