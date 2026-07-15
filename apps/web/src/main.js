@@ -24,6 +24,7 @@ import { refreshInfo, initInfoCard } from "./ui/info.js";
 import { rebuildLegend } from "./ui/legend.js";
 import { renderToday, initTodayToggle } from "./ui/today.js";
 import { initTimeMachine } from "./ui/time.js";
+import { initGlobeStyle } from "./ui/globeStyle.js";
 import { initSearch } from "./ui/search.js";
 import { initPassAlerts } from "./ui/alerts.js";
 import { updateCount } from "./ui/status.js";
@@ -105,6 +106,7 @@ async function boot() {
   initNeos();
   initInfoCard();
   initTimeMachine();
+  initGlobeStyle();
   initTodayToggle();
   initSearch();
   initPassAlerts();
