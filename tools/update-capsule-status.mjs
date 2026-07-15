@@ -57,7 +57,7 @@ async function fetchTleText(url) {
  * The stations group is load-bearing (hubs + docked vehicles) and fails
  * the whole run; parseTle() runs each record through the full categorize()
  * pipeline, so debris is correctly tagged and crew/cargo vehicles from
- * the generic feeds are promoted to "stations" by name.
+ * the generic feeds are promoted to "capsules" by name.
  */
 async function fetchStationsGroup() {
   const recs = parseTle(await fetchTleText(CELESTRAK_BASE + "stations"), "stations");

@@ -140,11 +140,11 @@ describe("buildCapsuleSnapshot", () => {
 
   const records = [
     { name: "ISS (ZARYA)", l1: ISS_L1, l2: ISS_L2, cat: "stations" },
-    { name: "CREW DRAGON 12", l1: dockedL1, l2: dockedL2, cat: "stations" },
-    { name: "SOYUZ-MS 30", l1: awayL1, l2: awayL2, cat: "stations" },
-    { name: "PROGRESS-MS 33", l1: progressL1, l2: progressL2, cat: "stations" },
+    { name: "CREW DRAGON 12", l1: dockedL1, l2: dockedL2, cat: "capsules" },
+    { name: "SOYUZ-MS 30", l1: awayL1, l2: awayL2, cat: "capsules" },
+    { name: "PROGRESS-MS 33", l1: progressL1, l2: progressL2, cat: "capsules" },
     // A co-orbiting cubesat, not a docking vehicle — must still be excluded.
-    { name: "KNACKSAT-2", l1: cubesatL1, l2: cubesatL2, cat: "stations" },
+    { name: "KNACKSAT-2", l1: cubesatL1, l2: cubesatL2, cat: "capsules" },
   ];
 
   it("tracks crewed capsules and cargo vehicles, with correct kind/family/station/phase", () => {
@@ -189,7 +189,7 @@ describe("buildCapsuleSnapshot", () => {
     const snap = buildCapsuleSnapshot(
       [
         { name: "ISS (ZARYA)", l1: ISS_L1, l2: ISS_L2, cat: "stations" },
-        { name: "CREW DRAGON 9", l1: frozenL1, l2: ghostL2, cat: "stations" },
+        { name: "CREW DRAGON 9", l1: frozenL1, l2: ghostL2, cat: "capsules" },
       ],
       FIXED_AT
     );

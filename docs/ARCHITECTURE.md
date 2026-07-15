@@ -29,9 +29,12 @@ TLE parsing (`parseTle`, `mergeRecords`, `noradId`), CelesTrak group definitions
 
 Classification runs in a fixed, canonical order:
 
-1. **Station allowlist** — only the 10 real ISS/Tiangong module NORAD IDs (plus
-   currently-docked crew vehicles by name) keep `stations`; CelesTrak's stations group
-   also contains cargo ships, cubesats and released hardware.
+1. **Station allowlist** — only the 10 real ISS/Tiangong module NORAD IDs keep
+   `stations`. Crewed capsules and cargo vehicles (docked or not) earn their own
+   `capsules` category by name instead — split out from `stations` 2026-07-16 so
+   structural modules and docking vehicles can be shown/hidden independently.
+   CelesTrak's stations group also contains cubesats and released hardware, which
+   fall through to `other`/`debris`.
 2. **Debris backstop** — rocket bodies, fragments and jettisoned station hardware are
    reclassified by name regardless of source group. Hand-curated `cool` objects are
    never overridden.
@@ -44,11 +47,12 @@ Every ingestion path runs this same pipeline: the web app's `ingest()`, the Work
 copies (JS ×2 + Python) that drifted; now a classification fix is one change plus a test.
 
 `capsules.js` is a sibling module, not part of `categorize()`: it derives each tracked
-crewed capsule's **phase** (`docked` / `free-flying` / `landed`) from orbital elements —
-propagated 3D separation from the capsule's associated station, not just orbit shape, so
-two objects sharing an altitude/inclination on opposite sides of Earth aren't mistaken for
-"docked". A capsule keeps `cat:"stations"` for its whole tracked lifetime regardless of
-phase; phase is additional per-capsule status, never a category swap.
+crewed capsule's or cargo vehicle's **phase** (`docked` / `free-flying` / `landed`) from
+orbital elements — propagated 3D separation from the capsule's associated station, not
+just orbit shape, so two objects sharing an altitude/inclination on opposite sides of
+Earth aren't mistaken for "docked". A vehicle keeps `cat:"capsules"` for its whole tracked
+lifetime regardless of phase; phase is additional per-vehicle status, never a category
+swap.
 
 ### `apps/web` — the PWA
 

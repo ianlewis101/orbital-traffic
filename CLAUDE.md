@@ -74,10 +74,10 @@ those against this document instead.
 
    CREW/CARGO VEHICLE PROMOTION: categorize()'s other-rescue
    promotes any isStationVehicle() name that arrives via the
-   generic catch-alls ("active", "last-30-days") back to
-   "stations" — the mirror of correctStationCat()'s demotion.
-   Without it, a free-flying or just-launched vehicle classifies
-   as "other", which the app hides by default. isStationVehicle()
+   generic catch-alls ("active", "last-30-days") into "capsules"
+   — the mirror of correctStationCat()'s demotion. Without it, a
+   free-flying or just-launched vehicle classifies as "other",
+   which the app hides by default. isStationVehicle()
    is isDockedCrewVehicle() (CREW_VEHICLE_PATTERNS table — also
    the source of capsuleFamily()) OR isCargoVehicle()
    (CARGO_VEHICLE_PATTERNS table — also the source of
@@ -96,11 +96,12 @@ those against this document instead.
    (any CREW_VEHICLE_PATTERNS family — Dragon/Soyuz/Starliner/
    Shenzhou, plus Mengzhou/Gaganyaan/Orion pre-added) or cargo
    vehicle (any CARGO_VEHICLE_PATTERNS family — Progress/Cygnus/
-   Tianzhou/cargo Dragon) keeps cat:"stations" for its entire
+   Tianzhou/cargo Dragon) keeps cat:"capsules" for its entire
    tracked lifetime — launch through landing — regardless of
-   whether it's actually docked. Its live docked/free-flying/
-   landed phase is tracked separately in
-   packages/catalog/src/capsules.js and served via the Worker's
+   whether it's actually docked. (Before 2026-07-16 this was
+   cat:"stations"; see Critical Rule #6 for the split.) Its
+   live docked/free-flying/landed phase is tracked separately
+   in packages/catalog/src/capsules.js and served via the Worker's
    /capsules endpoint (see below); this is additional per-vehicle
    status, not a category. Each tracked entry also carries a
    "kind" field ("crew" | "cargo"). Never make categorize() itself
@@ -143,30 +144,56 @@ those against this document instead.
    the same change, fetched from JPL's Small-Body Database
    (ssd-api.jpl.nasa.gov/sbdb.api), never estimated or guessed.
 
-6. STATION ALLOWLIST: The "stations" category is earned two
-   ways, both in packages/catalog/src/classify.js. Permanent
-   structural modules must be in STATION_CORE_IDS (an ID
-   allowlist — ISS/CSS modules only; nothing transient ever
-   goes in this set). Crewed capsules and cargo vehicles earn
-   "stations" separately, by name, via isStationVehicle() —
-   for as long as they're actively tracked; see VEHICLE PHASE
-   IS SEPARATE FROM CATEGORY above for what happens on landing
-   (hidden entirely, never "other"). Never trust CelesTrak's
-   raw GROUP=stations feed directly — it also includes
-   co-orbiting cubesats and decaying hardware that are
-   genuinely not station traffic. correctStationCat() enforces
-   this and demotes anything not on STATION_CORE_IDS or matched
-   by isStationVehicle() to "other".
+6. STATION ALLOWLIST & CAPSULES CATEGORY: "stations" and
+   "capsules" are two separate categories, both governed in
+   packages/catalog/src/classify.js. "stations" is earned
+   exactly one way: permanent structural modules in
+   STATION_CORE_IDS (an ID allowlist — ISS/CSS modules only;
+   nothing transient ever goes in this set). Crewed capsules
+   and cargo vehicles earn "capsules" instead, by name, via
+   isStationVehicle() — for as long as they're actively
+   tracked; see VEHICLE PHASE IS SEPARATE FROM CATEGORY above
+   for what happens on landing (hidden entirely, never
+   "other"). Never trust CelesTrak's raw GROUP=stations feed
+   directly — it also includes co-orbiting cubesats and
+   decaying hardware that are genuinely neither station nor
+   capsule traffic. correctStationCat() enforces this: matched
+   vehicle names go to "capsules", everything else not on
+   STATION_CORE_IDS demotes to "other".
 
    (Policy change, 2026-07-10, PR #71: cargo vehicles were
    previously excluded from "stations" and fell to "other"
    permanently. Ian decided cargo vehicles should be treated
    identically to crewed capsules — both are "Famous Objects"
-   users specifically search for, and both should read
-   "stations" while flying and disappear completely, not
-   demote to "other", once landed/de-orbited. If you find
-   older docs, commits, or test names describing cargo vehicles
-   as excluded from "stations", they predate this change.)
+   users specifically search for, and both should stay visible
+   while flying and disappear completely, not demote to
+   "other", once landed/de-orbited. If you find older docs,
+   commits, or test names describing cargo vehicles as
+   excluded from "stations"/"capsules", they predate this
+   change.)
+
+   (Policy change, 2026-07-16: crewed capsules and cargo
+   vehicles used to share the "stations" category with the
+   permanent structural modules. Ian split them into their own
+   "capsules" category so the two can be shown/hidden
+   independently in the legend. Six files move together for
+   any future change here: classify.js
+   (correctStationCat()/correctOtherCat() — the actual
+   category-assignment logic), capsules.js's
+   buildCapsuleSnapshot() candidate filter (checks
+   r.cat !== "capsules" — the single most likely place to
+   silently break if classify.js's output ever changes without
+   a matching update here, since phase tracking would then find
+   zero candidates and stop working for every capsule with no
+   error), crew.js's docked-capsule detection
+   (s.cat === "capsules"), live.js's capsule-injection tag
+   (reconcileCapsules() — cat: "capsules"), config.js's CATS
+   entry, and state.js (capsules visible by default, same as
+   stations — nothing to change there, since state.cats and
+   the default-hidden set are both driven generically off
+   CATS). If you find older docs, commits, or test names
+   describing capsules as part of "stations", they predate this
+   change.)
 
 7. SHARED UTILITIES — USE THESE, DON'T REINVENT THEM:
    - apps/web/src/util/html.js's esc() is the standard way to
@@ -294,12 +321,12 @@ a tested, modular monorepo v2.0.0"):
   stale/inaccurate — there is no PWABuilder step in this
   project's actual iOS pipeline.)
 
-- 13 object categories (packages/catalog/src/classify.js's
+- 14 object categories (packages/catalog/src/classify.js's
   CATEGORY_IDS, mirrored in apps/web/src/config.js's CATS):
-  stations, navigation, geostationary, starlink, oneweb, kuiper,
-  communications, science, other, classified, debris,
-  hazardous, cool — each with its own color/size defined in
-  config.js.
+  stations, capsules, navigation, geostationary, starlink,
+  oneweb, kuiper, communications, science, other, classified,
+  debris, hazardous, cool — each with its own color/size
+  defined in config.js.
 
   (Correction, 2026-07-15: this doc previously said "12 object
   categories" and that "kuiper" had no group fetch and no
@@ -313,6 +340,11 @@ a tested, modular monorepo v2.0.0"):
   same mechanism already used for other constellations with no
   dedicated CelesTrak group.)
 
+  (Correction, 2026-07-16: this doc previously said "13 object
+  categories" and didn't list "capsules". Crewed capsules and
+  cargo vehicles were split out of "stations" into their own
+  category that day — see Critical Rule #6.)
+
 ── KNOWN BUGS THAT MUST NOT BE REINTRODUCED ─────────────────
 
 - Globe flipY: THREE texture flipY must be false — currently
@@ -322,7 +354,7 @@ a tested, modular monorepo v2.0.0"):
   Cloudflare cache or wait up to 20 minutes (TLE_TTL) for edge
   nodes to refresh
 - SZ-\d+ MODULE pattern: matches jettisoned Shenzhou modules —
-  must classify as debris, not stations (see ISS_HARDWARE_RE
+  must classify as debris, not capsules (see ISS_HARDWARE_RE
   in packages/catalog/src/classify.js)
 - POISK (36086): must be in STATION_CORE_IDS — it is ISS
   MRM-2, a permanent module (confirmed still present)
@@ -335,7 +367,7 @@ a tested, modular monorepo v2.0.0"):
   (the shared table behind isDockedCrewVehicle() and
   capsuleFamily()) — without it, a docked or in-transit
   Starliner falls out of the station allowlist to "other"
-  instead of "stations"
+  instead of "capsules"
 - The dragon pattern must never match bare DRAGON (cargo
   "DRAGON CRS-nn" is uncrewed) and GRACE must keep its
   (?! FO) guard — bare GRACE would swallow the GRACE-FO
@@ -352,7 +384,7 @@ a tested, modular monorepo v2.0.0"):
   CREW_VEHICLE_PATTERNS' dragon entry
 - Cargo vehicles (Progress, Cygnus, Tianzhou, cargo Dragon)
   must never be added to STATION_CORE_IDS — that allowlist is
-  for permanent structural modules only. They earn "stations"
+  for permanent structural modules only. They earn "capsules"
   transiently through isStationVehicle()'s name check
   (CARGO_VEHICLE_PATTERNS), same mechanism as crewed capsules,
   not through the ID allowlist
@@ -389,6 +421,18 @@ a tested, modular monorepo v2.0.0"):
   KUIPER_NAME_RE rescue in correctOtherCat() (audit F10, same
   date): both exist because relying on the upstream group tag
   alone leaves a stale-data gap.
+- capsules.js's buildCapsuleSnapshot() candidate filter
+  (r.cat !== "capsules") must always match whatever string
+  classify.js's correctStationCat()/correctOtherCat() actually
+  return for a docking vehicle. The two aren't type-checked
+  against each other — if a future change renames or re-splits
+  the category on one side without the other, buildCapsuleSnapshot()
+  silently finds zero candidates and phase tracking stops for
+  every capsule with no error anywhere. This filter used to check
+  r.cat !== "stations" and was updated in lockstep with
+  classify.js during the 2026-07-16 capsules-category split (see
+  Critical Rule #6) — the next time either side changes, update
+  both in the same commit.
 
 ── DEPLOY COMMANDS (reference) ───────────────────────────────
 
@@ -419,7 +463,9 @@ Verify the Worker is returning data correctly:
   "cat":"classified", "cat":"debris" etc. all appear in this
   raw response, and every crewed capsule or cargo vehicle
   (Progress/Cygnus/Tianzhou/cargo Dragon included) must show
-  "cat":"stations" no matter which group it arrived from.
+  "cat":"capsules" no matter which group it arrived from — only
+  the permanent structural modules (STATION_CORE_IDS) show
+  "cat":"stations".
 
   curl https://orbital-traffic.ianlewis101.workers.dev/capsules
   Check for a "capsules" object keyed by NORAD ID with a

@@ -7,6 +7,7 @@ export const MU = 398600.4418;
 // ---------- display categories ----------
 export const CATS = {
   stations: { label: "Stations", color: 0xffd23d, px: 5 },
+  capsules: { label: "Capsules", color: 0x2dd4bf, px: 4 },
   navigation: { label: "Navigation", color: 0xb39bff, px: 4 },
   geostationary: { label: "Geostationary", color: 0x4ff0c0, px: 4 },
   starlink: { label: "Starlink", color: 0x8fd6ff, px: 4 },

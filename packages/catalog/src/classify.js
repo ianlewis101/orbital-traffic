@@ -12,6 +12,7 @@
 /** Known display categories. Anything else is normalized to "other". */
 export const CATEGORY_IDS = [
   "stations",
+  "capsules",
   "navigation",
   "geostationary",
   "starlink",
@@ -29,10 +30,11 @@ const CATEGORY_SET = new Set(CATEGORY_IDS);
 
 /**
  * Only permanent, structural station modules may carry the "stations"
- * category by ID alone. CelesTrak's GROUP=stations dump also includes
+ * category, and only by ID. CelesTrak's GROUP=stations dump also includes
  * docking vehicles (crewed capsules, cargo ships), released hardware, and
- * co-orbiting cubesats — docking vehicles earn "stations" separately, by
- * name, via isStationVehicle() below; everything else demotes to "other".
+ * co-orbiting cubesats — docking vehicles earn their own "capsules"
+ * category separately, by name, via isStationVehicle() below; everything
+ * else demotes to "other".
  */
 export const STATION_CORE_IDS = new Set([
   "25544",
@@ -100,7 +102,7 @@ export function isDockedCrewVehicle(name) {
 /**
  * Which crewed-vehicle family a name belongs to, or null. A name can be
  * crewed-but-unrecognized (generic \bCREW\b match with no family pattern):
- * it still classifies as "stations", but callers get null here.
+ * it still classifies as "capsules", but callers get null here.
  */
 export function capsuleFamily(name) {
   const n = normalizeVehicleName(name);
@@ -112,10 +114,12 @@ export function capsuleFamily(name) {
 
 /**
  * Uncrewed cargo/resupply vehicles — the counterpart to CREW_VEHICLE_PATTERNS.
- * 2026-07-10: Ian decided cargo vehicles should count as "stations" while
- * actively tracked, same as crewed capsules, and disappear immediately (not
- * demote to "other") once landed/de-orbited — both families are "Famous
- * Objects" users specifically search for. Kept as a separate table from
+ * 2026-07-10: Ian decided cargo vehicles should count as station traffic
+ * while actively tracked, same as crewed capsules, and disappear immediately
+ * (not demote to "other") once landed/de-orbited — both families are "Famous
+ * Objects" users specifically search for. (2026-07-16: both now earn their
+ * own "capsules" category rather than "stations" — see isStationVehicle()'s
+ * comment.) Kept as a separate table from
  * CREW_VEHICLE_PATTERNS rather than merged in, because the two must never
  * be allowed to overlap on the same name — dragon-cargo below anchors on
  * "DRAGON CRS", which CREW_VEHICLE_PATTERNS' dragon entry deliberately
@@ -145,10 +149,12 @@ export function cargoFamily(name) {
 }
 
 /**
- * True for anything that should count as "stations" traffic while tracked —
- * crewed capsule or cargo vehicle alike. The single check shared by
- * correctStationCat() and correctOtherCat() so both directions (demotion
- * and promotion) agree on exactly the same set of vehicles.
+ * True for anything that should earn the "capsules" category while tracked —
+ * crewed capsule or cargo vehicle alike (split out from "stations" 2026-07-16,
+ * so structural modules and docking vehicles can be shown/hidden
+ * independently). The single check shared by correctStationCat() and
+ * correctOtherCat() so both directions (demotion and promotion) agree on
+ * exactly the same set of vehicles.
  */
 export function isStationVehicle(name) {
   return isDockedCrewVehicle(name) || isCargoVehicle(name);
@@ -162,7 +168,7 @@ export function vehicleFamily(name) {
 export function correctStationCat(id, name, cat) {
   if (cat !== "stations") return cat;
   if (STATION_CORE_IDS.has(id)) return "stations";
-  if (isStationVehicle(name)) return "stations";
+  if (isStationVehicle(name)) return "capsules";
   return "other";
 }
 
@@ -306,10 +312,11 @@ export const CLASSIFIED_IDS = new Set(["57757"]);
  * via the generic "active"/"last-30-days" catch-alls (a free-flying private
  * mission, or a fresh launch not yet in CelesTrak's stations group) would
  * otherwise stay "other" — which the app hides by default — instead of
- * "stations". This is the promotion mirror of correctStationCat(): both
- * directions use isStationVehicle(), so the stations category stays exactly
- * STATION_CORE_IDS + crew/cargo vehicle names. Jettisoned crew hardware
- * can't sneak in — the debris backstop runs before this rescue.
+ * "capsules". This is the promotion mirror of correctStationCat(): both
+ * directions use isStationVehicle(), so the capsules category stays exactly
+ * the set of crew/cargo vehicle names (the "stations" category itself stays
+ * exactly STATION_CORE_IDS — permanent structural modules only). Jettisoned
+ * crew hardware can't sneak in — the debris backstop runs before this rescue.
  *
  * The four *_IDS allowlists are checked next, before any name regex: they
  * are individually-verified objects with no safe shared pattern, so ID
@@ -317,7 +324,7 @@ export const CLASSIFIED_IDS = new Set(["57757"]);
  */
 export function correctOtherCat(id, name, cat) {
   if (cat !== "other") return cat;
-  if (isStationVehicle(name)) return "stations";
+  if (isStationVehicle(name)) return "capsules";
   if (SCIENCE_IDS.has(id)) return "science";
   if (DEBRIS_IDS.has(id)) return "debris";
   if (COMMS_IDS.has(id)) return "communications";
@@ -334,11 +341,12 @@ export function correctOtherCat(id, name, cat) {
 
 /**
  * Canonical classification pipeline, in the canonical order:
- *   1. station allowlist (drops bogus "stations" tags to "other")
+ *   1. station allowlist (keeps "stations" for STATION_CORE_IDS only; drops
+ *      docking vehicles to "capsules", everything else to "other")
  *   2. starlink allowlist (reclaims stale/mistagged OneWeb records by name)
  *   3. debris name backstop
  *   4. name-pattern rescue for whatever is still "other" (crew/cargo vehicle
- *      promotion back to "stations" first, then nav/comms/science/classified/
+ *      promotion to "capsules" first, then nav/comms/science/classified/
  *      kuiper)
  * Unknown input categories normalize to "other" first.
  */

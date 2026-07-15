@@ -19,17 +19,17 @@ describe("correctStationCat", () => {
     expect(correctStationCat("48274", "CSS (TIANHE)", "stations")).toBe("stations");
   });
 
-  it("keeps currently-docked crewed vehicles by name", () => {
-    expect(correctStationCat("99001", "CREW DRAGON 11", "stations")).toBe("stations");
-    expect(correctStationCat("99002", "SOYUZ-MS 29", "stations")).toBe("stations");
-    expect(correctStationCat("99003", "SHENZHOU-21 (SZ-21)", "stations")).toBe("stations");
+  it("moves currently-docked crewed vehicles to capsules by name (audit: capsules split, 2026-07-16)", () => {
+    expect(correctStationCat("99001", "CREW DRAGON 11", "stations")).toBe("capsules");
+    expect(correctStationCat("99002", "SOYUZ-MS 29", "stations")).toBe("capsules");
+    expect(correctStationCat("99003", "SHENZHOU-21 (SZ-21)", "stations")).toBe("capsules");
   });
 
-  it("keeps cargo vehicles too — 2026-07-10 policy: stations while tracked, hidden on landing", () => {
-    expect(correctStationCat("99004", "PROGRESS-MS 32", "stations")).toBe("stations");
-    expect(correctStationCat("99005", "CYGNUS NG-24", "stations")).toBe("stations");
-    expect(correctStationCat("99006", "TIANZHOU-9", "stations")).toBe("stations");
-    expect(correctStationCat("99009", "DRAGON CRS-33", "stations")).toBe("stations");
+  it("moves cargo vehicles to capsules too — 2026-07-10 policy (tracked, hidden on landing) still applies, just under the capsules category since 2026-07-16", () => {
+    expect(correctStationCat("99004", "PROGRESS-MS 32", "stations")).toBe("capsules");
+    expect(correctStationCat("99005", "CYGNUS NG-24", "stations")).toBe("capsules");
+    expect(correctStationCat("99006", "TIANZHOU-9", "stations")).toBe("capsules");
+    expect(correctStationCat("99009", "DRAGON CRS-33", "stations")).toBe("capsules");
   });
 
   it("still demotes co-orbiting cubesats and other non-vehicle objects to other", () => {
@@ -38,6 +38,22 @@ describe("correctStationCat", () => {
 
   it("never touches non-station categories", () => {
     expect(correctStationCat("99008", "PROGRESS-MS 32", "science")).toBe("science");
+  });
+});
+
+describe("stations vs capsules split (2026-07-16)", () => {
+  it("only STATION_CORE_IDS permanent structural modules ever carry stations", () => {
+    expect(categorize("25544", "ISS (ZARYA)", "stations")).toBe("stations");
+    expect(categorize("48274", "CSS (TIANHE)", "stations")).toBe("stations");
+  });
+
+  it("no docking vehicle name ever resolves to stations, from either entry point", () => {
+    expect(categorize("99018", "CREW DRAGON 14", "stations")).toBe("capsules");
+    expect(categorize("99019", "CYGNUS NG-26", "other")).toBe("capsules");
+  });
+
+  it("capsules is a real category the pipeline can output as an input tag too, unchanged", () => {
+    expect(categorize("99001", "CREW DRAGON 11", "capsules")).toBe("capsules");
   });
 });
 
@@ -176,8 +192,8 @@ describe("categorize (canonical pipeline)", () => {
     expect(categorize("99010", "ISS DEB (PANEL)", "stations")).toBe("debris");
   });
 
-  it("cargo vehicles pass the station allowlist by name, same as crew vehicles", () => {
-    expect(categorize("99011", "TIANZHOU-9", "stations")).toBe("stations");
+  it("cargo vehicles pass the station allowlist into capsules, same as crew vehicles", () => {
+    expect(categorize("99011", "TIANZHOU-9", "stations")).toBe("capsules");
   });
 
   it("normalizes unknown input categories to other, then rescues", () => {
@@ -201,8 +217,8 @@ describe("categorize (canonical pipeline)", () => {
     expect(categorize("99017", "KUIPER-00423", "other")).toBe("kuiper");
   });
 
-  it("crewed vehicles keep stations; ISS hardware becomes debris", () => {
-    expect(categorize("99014", "SOYUZ-MS 29", "stations")).toBe("stations");
+  it("crewed vehicles become capsules; ISS hardware becomes debris", () => {
+    expect(categorize("99014", "SOYUZ-MS 29", "stations")).toBe("capsules");
     expect(categorize("99015", "ISS OBJECT KX", "stations")).toBe("debris");
   });
 });
@@ -245,17 +261,17 @@ describe("isDockedCrewVehicle", () => {
 });
 
 describe("crew/cargo vehicle promotion", () => {
-  it("promotes capsules arriving via the generic catch-alls to stations", () => {
-    expect(correctOtherCat("90001", "CREW DRAGON 13", "other")).toBe("stations");
-    expect(categorize("90002", "SOYUZ-MS 29", "other")).toBe("stations");
-    expect(categorize("90003", "SHENZHOU-24 (SZ-24)", "other")).toBe("stations");
+  it("promotes capsules arriving via the generic catch-alls to capsules", () => {
+    expect(correctOtherCat("90001", "CREW DRAGON 13", "other")).toBe("capsules");
+    expect(categorize("90002", "SOYUZ-MS 29", "other")).toBe("capsules");
+    expect(categorize("90003", "SHENZHOU-24 (SZ-24)", "other")).toBe("capsules");
   });
 
   it("promotes cargo vehicles arriving via the generic catch-alls too", () => {
-    expect(categorize("90004", "PROGRESS-MS 34", "other")).toBe("stations");
-    expect(categorize("90005", "DRAGON CRS-33", "other")).toBe("stations");
-    expect(categorize("90009", "CYGNUS NG-25", "other")).toBe("stations");
-    expect(categorize("90010", "TIANZHOU-11", "other")).toBe("stations");
+    expect(categorize("90004", "PROGRESS-MS 34", "other")).toBe("capsules");
+    expect(categorize("90005", "DRAGON CRS-33", "other")).toBe("capsules");
+    expect(categorize("90009", "CYGNUS NG-25", "other")).toBe("capsules");
+    expect(categorize("90010", "TIANZHOU-11", "other")).toBe("capsules");
   });
 
   it("keeps jettisoned crew hardware in debris — the backstop runs first", () => {
