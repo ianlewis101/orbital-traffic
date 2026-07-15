@@ -9,7 +9,7 @@ mentions it briefly — no need to ask permission each time. Actually syncing
 a new version into the repo (or re-uploading here) still needs a deliberate
 step, since Claude has no write access to GitHub.
 
-**Last synced:** 2026-07-13
+**Last synced:** 2026-07-15
 
 **Status values:** Not started · In progress · Fixed, not deployed · Fixed
 and live · Won't fix · N/A (audit itself was corrected, no code issue)
@@ -28,7 +28,7 @@ and live · Won't fix · N/A (audit itself was corrected, no code issue)
 | 6 | Rename mismatched color tokens | Not started | — | |
 | 7 | Type/spacing scale | Not started | — | |
 | 8 | Loading/empty/error state system | Not started | — | |
-| 9 | Starlink/Kuiper duplicate color | Not started | — | Same root cause as Finding F10 |
+| 9 | Starlink/Kuiper duplicate color | Fixed, not deployed | branch `claude/oneweb-kuiper-categories-g6g4uz`, PR open | Fixed alongside F10, 2026-07-15 — kuiper's color changed from 0x8fd6ff (duplicate of starlink) to 0xa3e635; oneweb also gets its own distinct color (0x3d8bfd) as part of the same change |
 | 10 | Motion system consistency | Not started | — | |
 | 11 | CSS grid instead of hand-measured positions | Not started | — | |
 | 12 | Decide mobile Time Machine / close-button parity | Not started | — | Blocked on Open Question: was this intentional? |
@@ -68,8 +68,8 @@ and live · Won't fix · N/A (audit itself was corrected, no code issue)
 | # | Finding | Status | PR / Branch | Notes |
 |---|---|---|---|---|
 | F8 | Fallback merge-priority inversion | Not started | — | |
-| F9 | OneWeb labeled Starlink | Not started | — | |
-| F10 | Kuiper category unreachable | Not started | — | |
+| F9 | OneWeb labeled Starlink | Fixed, not deployed | branch `claude/oneweb-kuiper-categories-g6g4uz`, PR open | Fixed 2026-07-15. groups.js now tags GROUP=oneweb records "oneweb" (was "starlink"); classify.js's new correctStarlinkCat() rescues by name any record still tagged "starlink" (stale bundled satellites.json, or any fetch that predates this fix), so the fix doesn't wait on a data refresh. info.js's inferOwner() now resolves OneWeb to GBR/"OneWeb (Eutelsat)" instead of "United States" — the task spec's literal regex (`/ STARLINK \| ONEWEB /`, space-padded) turned out to silently match zero real objects against hyphenated real names ("ONEWEB-0012"), the same bug class as F36, so it's matched via normalizeVehicleName()+\b instead. Verified against real catalog data: 651/651 OneWeb-named objects → oneweb category, correct ownership. Merging auto-deploys the web app (GitHub Pages); client-side ingest() re-running categorize() on every load means the fix is effective even against currently-stale bundled/cached data. The Worker's own /tle API output won't reflect it until a manual `wrangler deploy` (packages/catalog is bundled into the Worker even though worker/src/index.js itself isn't touched) — not required for app correctness, but needed for the Worker's raw API output and the CLAUDE.md verification curl command to match. |
+| F10 | Kuiper category unreachable | Fixed, not deployed | branch `claude/oneweb-kuiper-categories-g6g4uz`, PR open | Fixed 2026-07-15 — classify.js gets a KUIPER_NAME_RE rescue in correctOtherCat(), same mechanism already used for other constellations with no dedicated CelesTrak group. Verified: 393/393 real Kuiper-named objects → kuiper category. Same merge/deploy notes as F9. |
 | F11b | Decayed objects never pruned | Not started | — | |
 | F11c | Capsule-status wipes history on corrupt file | Not started | — | |
 | F11 | GSAT attributed to ESA | Not started | — | |
@@ -123,4 +123,5 @@ and live · Won't fix · N/A (audit itself was corrected, no code issue)
 ## Change log
 *(newest first — brief, one line per sync)*
 
+- 2026-07-15 — F9 and F10 fixed (OneWeb/Kuiper categories), both "Fixed, not deployed" pending PR review/merge; Design item 9 (Starlink/Kuiper duplicate color) fixed alongside F10 as the same root-cause change. Verified against real catalog data: 651/651 OneWeb and 393/393 Kuiper objects resolve correctly.
 - 2026-07-13 — Initial tracker created. Seeded F16 as "Fixed, not deployed" (PR #72), the Worker-classification Architecture item as N/A (audit corrected), F34 as partially addressed, and the iOS App Store open question as answered (internal testing).
