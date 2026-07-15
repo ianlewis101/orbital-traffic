@@ -16,6 +16,41 @@ and live · Won't fix · N/A (audit itself was corrected, no code issue)
 
 ---
 
+## 📦 iOS build batch tracker
+
+**Rule:** trigger a new internal TestFlight build (via the `iOS Build &
+Upload` GitHub Actions workflow, `workflow_dispatch`, no Xcode needed) once
+3–5 merged-but-undeployed fixes have piled up. Ian is currently the only
+tester, so there's no urgency to ship a build for any single fix alone.
+
+**Known extra step after every build:** a freshly uploaded build shows
+"Missing Compliance" in App Store Connect → TestFlight → iOS Builds and
+won't reach testers until you click "Manage" next to it and answer the
+export-compliance question (No, for standard HTTPS — no custom encryption
+in this app). This isn't a failure, just a one-time click needed per
+build. Until it's answered, testers keep seeing the previous build with
+no error — which is exactly what caused the "it didn't make it" confusion
+on 2026-07-13.
+
+**Merged, not yet in an iOS build (count: 3/3–5 — all three already live on orbitaltraffic.app; holding off on cutting a TestFlight build for now, per Ian):**
+
+| # | Item | PR | Merged date |
+|---|---|---|---|
+| F4 | SGP4 wasted on hidden objects | #79 | 2026-07-13 |
+| F5 | Boot ingest blocks main thread | #80 | 2026-07-13 |
+| F6 | Time-machine × selection perf cliff | #81 | 2026-07-13 |
+
+**Last build cut:** 2026-07-13 — via the "iOS Build & Upload" GitHub Actions
+workflow, after PR #78 fixed the recurring build-number collision
+(`CURRENT_PROJECT_VERSION` was hardcoded to 1; now auto-increments via
+`github.run_number`). This build carried F16, F7, F3, F1, and F2.
+Confirmed installed and running via TestFlight.
+
+**Last build cut:** none yet since tracking started (2026-07-13) — build
+number and date to be filled in once the first batch ships.
+
+---
+
 ## Design & Polish (16 items — see audit §2)
 
 | # | Item | Status | PR / Branch | Notes |
@@ -28,7 +63,7 @@ and live · Won't fix · N/A (audit itself was corrected, no code issue)
 | 6 | Rename mismatched color tokens | Not started | — | |
 | 7 | Type/spacing scale | Not started | — | |
 | 8 | Loading/empty/error state system | Not started | — | |
-| 9 | Starlink/Kuiper duplicate color | Fixed, not deployed | PR #92 (`claude/oneweb-kuiper-categories-g6g4uz`), open, not merged | Fixed alongside F10, 2026-07-15 — kuiper's color changed from 0x8fd6ff (duplicate of starlink) to 0xa3e635; oneweb also gets its own distinct color (0x3d8bfd) as part of the same change |
+| 9 | Starlink/Kuiper duplicate color | **Fixed, not deployed** | PR #92 (`claude/oneweb-kuiper-categories-g6g4uz`), open | Fixed alongside F10, 2026-07-15 — kuiper's color changed from 0x8fd6ff (duplicate of starlink) to 0xa3e635; oneweb also gets its own distinct color (0x3d8bfd) as part of the same change |
 | 10 | Motion system consistency | Not started | — | |
 | 11 | CSS grid instead of hand-measured positions | Not started | — | |
 | 12 | Decide mobile Time Machine / close-button parity | Not started | — | Blocked on Open Question: was this intentional? |
@@ -55,29 +90,29 @@ and live · Won't fix · N/A (audit itself was corrected, no code issue)
 
 | # | Finding | Status | PR / Branch | Notes |
 |---|---|---|---|---|
-| F1 | Crew HTTP → innerHTML XSS | Not started | — | Live, exploitable, hit by every visitor who taps ISS |
-| F2 | Fabricated expedition data | Not started | — | |
-| F3 | Crew fetch no stale-selection guard | Not started | — | |
-| F4 | SGP4 wasted on hidden objects | Not started | — | |
-| F5 | Boot ingest blocks main thread | Not started | — | |
-| F6 | Time-machine × selection perf cliff | Not started | — | |
-| F7 | Pass-alerts toggle can get stuck | Not started | — | |
+| F1 | Crew HTTP → innerHTML XSS | **Fixed and live** | PR #76, merged; Worker deployed 2026-07-13; in TestFlight build | Live, exploitable, hit by every visitor who taps ISS |
+| F2 | Fabricated expedition data | **Fixed and live** | PR #77, merged; in TestFlight build | |
+| F3 | Crew fetch no stale-selection guard | **Fixed and live** | PR #75, merged; in TestFlight build | |
+| F4 | SGP4 wasted on hidden objects | **Fixed and live on web** (not yet in an iOS build) | PR #79 (`fix/skip-hidden-category-propagation`), merged | Client-side only — auto-deployed to orbitaltraffic.app on merge, no Worker involved |
+| F5 | Boot ingest blocks main thread | **Fixed and live on web** (not yet in an iOS build) | PR #80 (`fix/chunk-boot-ingest`), merged | Client-side only — auto-deployed to orbitaltraffic.app on merge, no Worker involved |
+| F6 | Time-machine × selection perf cliff | **Fixed and live on web** (not yet in an iOS build) | PR #81 (`fix/time-machine-perf-cliff`), merged | Client-side only — auto-deployed to orbitaltraffic.app on merge, no Worker involved |
+| F7 | Pass-alerts toggle can get stuck | **Fixed and live** | PR #74, merged; in TestFlight build | |
 
 ## Bugs — Medium (F8–F18)
 
 | # | Finding | Status | PR / Branch | Notes |
 |---|---|---|---|---|
-| F8 | Fallback merge-priority inversion | Not started | — | |
-| F9 | OneWeb labeled Starlink | Fixed, not deployed | PR #92 (`claude/oneweb-kuiper-categories-g6g4uz`), open, not merged | Fixed 2026-07-15. groups.js now tags GROUP=oneweb records "oneweb" (was "starlink"); classify.js's new correctStarlinkCat() rescues by name any record still tagged "starlink" (stale bundled satellites.json, or any fetch that predates this fix), so the fix doesn't wait on a data refresh. info.js's inferOwner() now resolves OneWeb to GBR/"OneWeb (Eutelsat)" instead of "United States" — the task spec's literal regex (`/ STARLINK \| ONEWEB /`, space-padded) turned out to silently match zero real objects against hyphenated real names ("ONEWEB-0012"), the same bug class as F36, so it's matched via normalizeVehicleName()+\b instead. Verified against real catalog data: 651/651 OneWeb-named objects → oneweb category, correct ownership. Merging auto-deploys the web app (GitHub Pages); client-side ingest() re-running categorize() on every load means the fix is effective even against currently-stale bundled/cached data. The Worker's own /tle API output won't reflect it until a manual `wrangler deploy` (packages/catalog is bundled into the Worker even though worker/src/index.js itself isn't touched) — not required for app correctness, but needed for the Worker's raw API output and the CLAUDE.md verification curl command to match. |
-| F10 | Kuiper category unreachable | Fixed, not deployed | PR #92 (`claude/oneweb-kuiper-categories-g6g4uz`), open, not merged | Fixed 2026-07-15 — classify.js gets a KUIPER_NAME_RE rescue in correctOtherCat(), same mechanism already used for other constellations with no dedicated CelesTrak group. Verified: 393/393 real Kuiper-named objects → kuiper category. Same merge/deploy notes as F9. |
-| F11b | Decayed objects never pruned | Not started | — | |
+| F8 | Fallback merge-priority inversion | **Fixed, not deployed** | PR #82 (`fix/fallback-merge-priority`), open | Web-app only, no Worker change — will auto-deploy to orbitaltraffic.app on merge |
+| F9 | OneWeb labeled Starlink | **Fixed, not deployed** | PR #92 (`claude/oneweb-kuiper-categories-g6g4uz`), open | Fixed 2026-07-15. groups.js now tags GROUP=oneweb records "oneweb" (was "starlink"); classify.js's new correctStarlinkCat() rescues by name any record still tagged "starlink" (stale bundled satellites.json, or any fetch that predates this fix), so the fix doesn't wait on a data refresh. info.js's inferOwner() now resolves OneWeb to GBR/"OneWeb (Eutelsat)" instead of "United States" — the task spec's literal regex (`/ STARLINK \| ONEWEB /`, space-padded) turned out to silently match zero real objects against hyphenated real names ("ONEWEB-0012"), the same bug class as F36, so it's matched via normalizeVehicleName()+\b instead. Verified against real catalog data: 651/651 OneWeb-named objects → oneweb category, correct ownership. Merging auto-deploys the web app (GitHub Pages); client-side ingest() re-running categorize() on every load means the fix is effective even against currently-stale bundled/cached data. The Worker's own /tle API output won't reflect it until a manual `wrangler deploy` (packages/catalog is bundled into the Worker even though worker/src/index.js itself isn't touched) — not required for app correctness, but needed for the Worker's raw API output and the CLAUDE.md verification curl command to match. |
+| F10 | Kuiper category unreachable | **Fixed, not deployed** | PR #92 (`claude/oneweb-kuiper-categories-g6g4uz`), open | Fixed 2026-07-15 — classify.js gets a KUIPER_NAME_RE rescue in correctOtherCat(), same mechanism already used for other constellations with no dedicated CelesTrak group. Verified: 393/393 real Kuiper-named objects → kuiper category. Same merge/deploy notes as F9. |
+| F11b | Decayed objects never pruned | **Fixed and live** | Pre-existing (predates this conversation's work) | Verified 2026-07-13: ingest.js's epoch-guard prune (10-day threshold) correctly protects against the "partial fallback" risk the audit flagged — confirmed via dedicated tests in ingest-prune.test.js. No further work needed. |
 | F11c | Capsule-status wipes history on corrupt file | Not started | — | |
-| F11 | GSAT attributed to ESA | Not started | — | |
-| F12 | Systemic unescaped-innerHTML (9 sinks) | Not started | — | F1 is the flagship instance of this same class |
+| F11 | GSAT attributed to ESA | **Fixed, not deployed** | PR #89 (`fix/gsat-owner-attribution`), open | Correct and matches the finding, but verified against real current catalog data to have no visible effect today — real GSAT satellites already get curated "ISRO" descriptions that take priority, and real Galileo satellites' names don't match either the old or new pattern due to the F36 tokenization issue. Defensive fix for future/uncurated data, not a visible behavior change right now. |
+| F12 | Systemic unescaped-innerHTML (9 sinks) | **Fixed, not deployed** | PR #83 (`fix/escape-remaining-innerhtml-sinks`) + PR #84 (`feat/lint-unescaped-innerhtml`, includes an additional real gap found via the new lint rule: `s.ownerName` in info.js's chips row) | Web-app only — auto-deploys to orbitaltraffic.app on merge. Also added a permanent custom ESLint rule (with a same-scope const-resolver) preventing future unescaped innerHTML/attribute interpolations, not just a one-time fix. |
 | F13 | 12:00 UTC workflow collision | Not started | — | |
 | F14 | Per-user direct SATCAT fetch | Not started | — | |
 | F15 | Worker logs unrounded coordinates | Not started | — | |
-| F16 | Privacy policy / iOS permission-string inaccuracies | **Fixed, not deployed** | PR #72 (`fix/privacy-policy-location-accuracy`), open, not merged | Fixed 2026-07-13. Needs: (1) merge PR, (2) cut new internal TestFlight build — merging alone does not update what testers have installed |
+| F16 | Privacy policy / iOS permission-string inaccuracies | **Fixed and live** | PR #72, merged; in TestFlight build | Fixed 2026-07-13, confirmed live in TestFlight the same day |
 | F17 | `/passes` unauthenticated abuse risk | Not started | — | |
 | F18 | Mobile rendering hotspots | Not started | — | |
 
@@ -95,14 +130,14 @@ and live · Won't fix · N/A (audit itself was corrected, no code issue)
 | F26 | NEO catalog frozen, no refresh path | Not started | — | |
 | F27 | Worker `/tle` cache stampede | Not started | — | |
 | F28 | Service worker rough edges | Not started | — | |
-| F29 | `fetchLive` no in-flight guard | Not started | — | Must ship alongside any periodic-refresh work (§4.1 of audit) |
+| F29 | `fetchLive` no in-flight guard | Not started | — | Must ship alongside any periodic-refresh work (§4.1 of audit). **Note added 2026-07-13:** F5's async-ingest fix (PR #80) slightly widens the window where two overlapping live syncs could interleave, since ingest() no longer runs as one uninterrupted block. Not a live risk today since nothing triggers periodic syncs yet — but this makes F29 more important to actually do once periodic refresh is built, not just nice-to-have. |
 | F30 | GPU/asset misc | Not started | — | |
 | F31 | Stale hotlist facts stated as "now" | Not started | — | |
 | F32 | Time-machine position tearing | Not started | — | |
 | F33 | passAlerts non-atomic cancel+reschedule | Not started | — | |
 | F34 | Project-doc drift (CLAUDE.md/ARCHITECTURE.md) | **Partially addressed** | — | The specific Worker-classification contradiction was resolved 2026-07-13 (audit corrected). The /passes-endpoint-missing-from-CLAUDE.md part of this finding is still open. |
 | F35 | Capsule phase can flap | Not started | — | |
-| F36 | Hyphen-bounded name regexes mislabel 61% of catalog | Not started | — | |
+| F36 | Hyphen-bounded name regexes mislabel 61% of catalog | **Fixed, not deployed** | PR #90 (`fix/name-matching-tokenization-f36`), open | Full empirical breakdown verified 2026-07-15 against all 18,697 real catalog objects: STARLINK\|ONEWEB 11,439→0 fixed to 11,439 matched; capsule pattern and station pattern also fixed; GALILEO 32→0 fixed to 32 matched (previously zero Galileo satellites got ESA attribution at all); BEIDOU/FENGYUN/etc gap (1,925 of 2,146) fully closed, traced to 1,911 objects sharing the literal name "FENGYUN 1C DEB" (debris from China's 2007 ASAT test), not a bug. Telescope pattern and GPS/NAVSTAR pattern deliberately left untouched — confirmed the two "LEMUR-2-HUBBLE" Spire cubesats still correctly do NOT match "telescope" after the fix (a naive fix would have caused a new false-positive). Reused the already-proven normalizeVehicleName() helper (now exported from packages/catalog) rather than inventing new normalization logic. |
 | F37 | predictPasses window-edge inaccuracies | Not started | — | |
 
 ## Open Questions (decisions, not fixes — see audit §10)
@@ -117,11 +152,18 @@ and live · Won't fix · N/A (audit itself was corrected, no code issue)
 | Comfort level with adding accounts | Undecided |
 | "COOL SHIT" category label | Undecided |
 | Hotlist — hand-curated vs. derived | Undecided |
+| Pass alerts feature — keep, remove entirely, or replace with a link to NASA's Spot the Station | **Raised 2026-07-13. Real reason:** Ian doesn't want Orbital Traffic's identity to become centered on/associated with pass alerts — not primarily a NASA-redundancy or maintenance-burden argument, though those are true supporting points. Worth remembering if a middle-ground option is chosen later (e.g. a link out): it should stay deliberately low-key in the UI, not a featured element, since a prominent toggle with its own permission dialog and push notifications naturally risks becoming the app's headline association almost by accident. Removing (or replacing with a link out) would also eliminate six audit findings by deletion (F7, F15, F17, F33, F37, and the location half of F16) and drop the location permission from the app entirely — but that's a side benefit, not the actual motivation. Full removal-scope mapped: apps/web/src/ui/alerts.js, apps/web/src/native/passAlerts.js, packages/catalog/src/passes.js + its tests, the Worker's /passes endpoint + its tests, the toggle markup in index.html, two lines in main.js, the Location section of privacy.html, and the NSLocationWhenInUseUsageDescription key in Info.plist. Undecided — no urgency, revisit whenever ready. |
 
 ---
 
 ## Change log
 *(newest first — brief, one line per sync)*
 
-- 2026-07-15 — F9 and F10 fixed (OneWeb/Kuiper categories), both "Fixed, not deployed" pending PR review/merge; Design item 9 (Starlink/Kuiper duplicate color) fixed alongside F10 as the same root-cause change. Verified against real catalog data: 651/651 OneWeb and 393/393 Kuiper objects resolve correctly.
+- 2026-07-15 — Resynced from Ian's working copy, which had drifted from the repo since 2026-07-13 (F1–F8, F11, F11b, F12, F16, F36, the iOS build-batch tracker, and the pass-alerts open question had never been committed back). Combined with this session's own F9/F10 fix: both now "Fixed, not deployed" (PR #92), along with Design item 9 (Starlink/Kuiper duplicate color, same root-cause change as F10). Verified against real catalog data: 651/651 OneWeb and 393/393 Kuiper objects resolve correctly. Note: the working copy's F9/F10/Design-9 rows still said "Not started" at the time it was captured — updated here to reflect this PR instead of taken verbatim, since that's what the rest of its own content (and Ian's own description of it) clearly intended.
+- 2026-07-15 — CLAUDE.md updated (PR #91, merged) with new shared-utility conventions (esc(), normalizeVehicleName()), the missing /passes endpoint, corrected iOS build description, and two new Known Bugs entries.
+- 2026-07-13 — F12 fully closed via PR #83 + #84, including a genuine additional gap (info.js's ownerName chips row) that the new custom ESLint rule surfaced on its own. That rule is now a permanent safety net, not just a one-time fix — includes a same-scope const-resolver so it checks inside previously-blanket-exempted multi-line templates too.
+- 2026-07-13 — F8 merged (PR #82) — fallback data path now uses the same priority-preserving merge as the Worker.
+- 2026-07-13 — F11b verified as already fixed (pre-existing, predates this conversation) — traced the epoch-guard prune mechanism and its dedicated test coverage, confirmed it fully addresses the finding.
+- 2026-07-13 — F4, F5, F6 all merged (F4 fixed the GitHub-connector PR-opening snag along the way). Holding off on a new TestFlight build for now, per Ian — queue sitting at 3/3-5 until he's ready.
+- 2026-07-13 — F16, F7, F3, F1, F2 all confirmed fixed and live via TestFlight build (after PR #78 fixed a build-number auto-increment bug that was blocking the upload). Build queue cleared.
 - 2026-07-13 — Initial tracker created. Seeded F16 as "Fixed, not deployed" (PR #72), the Worker-classification Architecture item as N/A (audit corrected), F34 as partially addressed, and the iOS App Store open question as answered (internal testing).
