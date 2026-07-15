@@ -16,6 +16,7 @@ import { fetchAndRenderCrew } from "./crew.js";
 import { toast } from "./status.js";
 import { esc } from "../util/html.js";
 import { collapseLegend } from "./legend.js";
+import { normalizeVehicleName } from "@orbital-traffic/catalog";
 
 // =====================================================================
 // MOBILE — swipe-to-collapse detail card
@@ -224,6 +225,10 @@ const FLAGS = {
 
 function inferOwner(s) {
   const n = " " + s.name.toUpperCase() + " ";
+  // Catalogs hyphenate these inconsistently ("SHENZHOU-23 (SZ-23)", "BEIDOU-2
+  // G1", "GSAT0101 (GALILEO-PFM)") — matched against the shared normalized
+  // form + \b instead of space padding.
+  const vn = normalizeVehicleName(s.name);
   // Classified satellites get their operating agency, not just a country —
   // checked first so it isn't shadowed by the generic country lines below
   // (YAOGAN, for instance, would otherwise match the generic China line).
@@ -235,9 +240,9 @@ function inferOwner(s) {
   if (/ STARLINK | ONEWEB /.test(n)) return { code: "US", name: "United States" };
   if (/ GLONASS | SOYUZ | PROGRESS | COSMOS | METEOR | RESURS /.test(n))
     return { code: "CIS", name: "Russia" };
-  if (/ BEIDOU | FENGYUN | TIANGONG | TIANZHOU | SHENZHOU | YAOGAN | CHANGGUANG /.test(n))
+  if (/\bBEIDOU\b|\bFENGYUN\b|\bTIANGONG\b|\bTIANZHOU\b|\bSHENZHOU\b|\bYAOGAN\b|\bCHANGGUANG\b/.test(vn))
     return { code: "PRC", name: "China" };
-  if (/ GALILEO /.test(n)) return { code: "ESA", name: "European Space Agency" };
+  if (/\bGALILEO\b/.test(vn)) return { code: "ESA", name: "European Space Agency" };
   if (/ GPS | NAVSTAR /.test(n)) return { code: "US", name: "United States" };
   if (/ GOES | NOAA | LANDSAT | TERRA | AQUA | TESS | KEPLER | DSCOVR | HUBBLE | CHANDRA | FERMI /.test(n))
     return { code: "US", name: "United States" };
