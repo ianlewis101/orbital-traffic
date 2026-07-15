@@ -3,27 +3,31 @@ import {
   NAV_NAME_RE,
   WEATHER_NAME_RE,
   EO_NAME_RE,
+  normalizeVehicleName,
 } from "@orbital-traffic/catalog";
 import { DATA } from "../data/store.js";
 
 /** Fine-grained display type used to choose descriptions and artwork. */
 export function classify(s) {
   const n = " " + s.name.toUpperCase() + " ",
+    // Catalogs hyphenate these inconsistently ("SOYUZ-MS 28", "CSS (TIANHE)") —
+    // matched against the shared normalized form + \b instead of space padding.
+    vn = normalizeVehicleName(s.name),
     id = s.id,
     t = s.objType || "";
   if (t === "DEB" || t === "R/B" || isDebrisName(s.name)) return "debris";
   if (/ OBJECT | TBA | UNIDENTIFIED | UNKNOWN /.test(n)) return "unknown";
   if (s.cat === "cool") return "telescope"; // hero objects — described individually
   if (s.cat === "classified") return "classified";
-  if (id === "25544" || / ZARYA | TIANHE | TIANGONG | WENTIAN | MENGTIAN /.test(n))
+  if (id === "25544" || /\bZARYA\b|\bTIANHE\b|\bTIANGONG\b|\bWENTIAN\b|\bMENGTIAN\b/.test(vn))
     return "station";
   if (
-    / SOYUZ | PROGRESS | DRAGON | CYGNUS | SHENZHOU | TIANZHOU | STARLINER | ENDEAVOUR | ENDURANCE | RESILIENCE | FREEDOM /.test(
-      n
+    /\bSOYUZ\b|\bPROGRESS\b|\bDRAGON\b|\bCYGNUS\b|\bSHENZHOU\b|\bTIANZHOU\b|\bSTARLINER\b|\bENDEAVOUR\b|\bENDURANCE\b|\bRESILIENCE\b|\bFREEDOM\b/.test(
+      vn
     )
   )
     return "capsule";
-  if (/ STARLINK | ONEWEB /.test(n)) return "starlink";
+  if (/\bSTARLINK\b|\bONEWEB\b/.test(vn)) return "starlink";
   if (
     id === "20580" ||
     / HUBBLE | HST | KEPLER | SPITZER | TESS | WEBB | JWST | CHANDRA | CXO | FERMI | FGRST | GLAST /.test(

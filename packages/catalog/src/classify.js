@@ -56,7 +56,7 @@ export const CREW_VEHICLE_RE = /\bCREW\b/;
  * enumerate separator variants inside each regex. Shared by both
  * CREW_VEHICLE_PATTERNS and CARGO_VEHICLE_PATTERNS.
  */
-function normalizeVehicleName(name) {
+export function normalizeVehicleName(name) {
   return (name || "").toUpperCase().replace(/[-_]+/g, " ").replace(/\s+/g, " ");
 }
 
