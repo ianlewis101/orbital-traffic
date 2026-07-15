@@ -3,6 +3,19 @@ Mobile Developer, DevOps Engineer, Full-Stack Developer, and
 Software Architect for Orbital Traffic. Ian is the CEO. Your
 role covers every technical and design decision.
 
+── AUDIT & FIX TRACKING ──────────────────────────────────────
+
+A full codebase audit (design, architecture, security, and 37
+numbered bug findings) exists at docs/audit-status.md, which
+tracks the live status of every finding (not started / fixed /
+deployed / won't fix) plus a build-batch queue for when merged
+fixes actually reach TestFlight. Check this before assuming
+something is broken or already fixed — several findings citing
+"Low" severity turned out to have much larger real-world impact
+than described once verified against actual catalog data (e.g.
+Finding F36 affected 61% of the tracked catalog), so don't assume
+the severity label alone tells you the true impact.
+
 ── BEFORE STARTING ANY TASK ──────────────────────────────────
 
 Always read the transcript before beginning work in a new
@@ -155,6 +168,40 @@ those against this document instead.
    older docs, commits, or test names describing cargo vehicles
    as excluded from "stations", they predate this change.)
 
+7. SHARED UTILITIES — USE THESE, DON'T REINVENT THEM:
+   - apps/web/src/util/html.js's esc() is the standard way to
+     safely insert any untrusted or semi-trusted text into
+     innerHTML or an HTML attribute anywhere in the app. Added
+     2026-07-15 after Findings F1/F12 (a crew-data XSS hole and
+     eight more unescaped-innerHTML sinks). A custom ESLint rule
+     (eslint-rules/no-unescaped-innerhtml.js) enforces this in CI —
+     it fails the build on any new .innerHTML interpolation that
+     doesn't go through esc() or one of a small allow-listed set of
+     provably-safe formatters. If you hit this lint error, wrap the
+     interpolation in esc(), don't disable the rule.
+   - packages/catalog/src/classify.js's normalizeVehicleName()
+     (now exported) is the standard way to match satellite names
+     tolerantly of hyphens, underscores, and parentheses — real
+     catalog names are inconsistently punctuated ("SOYUZ-MS 28",
+     "CSS (TIANHE)", "GSAT0101 (GALILEO-PFM)"). Added 2026-07-15
+     after Finding F36, which found several name-matching regexes
+     across describe.js and info.js were silently matching zero
+     real objects because they used space-padding instead of this
+     helper. Any new name-pattern matching code should normalize
+     with this + use \b-bounded regexes, not space-padding.
+
+     EXCEPTION — do not "fix" describe.js's telescope pattern
+     (HUBBLE|HST|KEPLER|etc.) to use normalizeVehicleName(). Two
+     Spire Global cubesats are named "LEMUR-2-HUBBLE-4" and
+     "LEMUR-2-HUBBLE-5" — a commemorative naming scheme, not the
+     actual Hubble telescope. Making this pattern hyphen-aware
+     causes it to incorrectly match these two objects as
+     "telescope". The real Hubble telescope is already safely
+     matched earlier in the same function via its hardcoded NORAD
+     ID (id === "20580"), so this pattern's current space-bounded
+     behavior is deliberately left broken-but-harmless. Confirmed
+     via direct testing against the real catalog, 2026-07-15.
+
 ── BRANCH AND PR DISCIPLINE ──────────────────────────────────
 
 - Never commit directly to main
@@ -195,10 +242,19 @@ a tested, modular monorepo v2.0.0"):
   for categorize().
 
 - worker/ — Cloudflare Worker (worker/src/index.js), proxies
-  and edge-caches four endpoints: /tle, /crew, /today,
-  /capsules. Deploy is manual (see Critical Rule #1). Cache
-  TTLs: /tle 20 min, /crew 1 hour, /today 5 min, /capsules
-  10 min.
+  and edge-caches FIVE endpoints: /tle, /crew, /today,
+  /capsules, /passes. Deploy is manual (see Critical Rule #1).
+  Cache TTLs: /tle 20 min, /crew 1 hour, /today 5 min,
+  /capsules 10 min. /passes has no fixed TTL — it's cached
+  per unique (satellite, rounded lat/lng) combination.
+
+  (Correction, 2026-07-15: this doc previously listed only
+  four endpoints, omitting /passes. That was stale — /passes
+  predicts ISS visibility windows for the iOS pass-alerts
+  feature. Note: as of 2026-07-15 the future of the pass-alerts
+  feature itself is an open product question — see Open
+  Questions in docs/audit-status.md — do not assume this
+  endpoint is permanent.)
 
 - GitHub Actions also handles daily TLE refresh
   (refresh-tle-data.yml), ISS Today data updates
@@ -217,8 +273,26 @@ a tested, modular monorepo v2.0.0"):
   — cargo vehicles included as of 2026-07-10 (Critical Rule #6).
 
 - PWA: manifest.json, sw.js, icons under apps/web/public/.
-  App Store submission via PWABuilder iOS package — check with
-  Ian on current status before assuming it's still pending.
+  iOS app is a Capacitor wrapper (apps/web/ios/), built and
+  uploaded to App Store Connect via the "iOS Build & Upload"
+  GitHub Actions workflow (.github/workflows/ios-build.yml,
+  manually triggered via workflow_dispatch with an "upload"
+  toggle) — no local Xcode/Mac needed to cut a build. Currently
+  in internal TestFlight testing (confirmed 2026-07-15, one
+  internal tester). Every fresh upload lands in "Missing
+  Compliance" status in App Store Connect until someone
+  manually answers the export-compliance question (Manage →
+  No, standard HTTPS only) — this blocks testers from seeing
+  the new build silently, with no error, until answered. Build
+  numbers auto-increment via github.run_number in the workflow
+  (fixed 2026-07-15 after a hardcoded CURRENT_PROJECT_VERSION
+  caused every upload to collide with the last one) — do not
+  hardcode a build number anywhere in this pipeline again.
+
+  (Correction, 2026-07-15: this doc previously said submission
+  was "via PWABuilder iOS package" with status TBD. That was
+  stale/inaccurate — there is no PWABuilder step in this
+  project's actual iOS pipeline.)
 
 - 12 object categories (packages/catalog/src/classify.js's
   CATEGORY_IDS, mirrored in apps/web/src/config.js's CATS):
@@ -282,6 +356,20 @@ a tested, modular monorepo v2.0.0"):
   feed AND epoch >10 days) — pruning on absence alone would
   wipe healthy categories whenever one CelesTrak group fetch
   fails mid-sync
+- GSAT (India/ISRO's satellite series) must resolve to India, not
+  ESA, in info.js's inferOwner() — GSAT was previously bundled into
+  the same pattern as Galileo (ESA's satellites). Fixed 2026-07-15
+  (Finding F11); GSAT now lives in the existing India/ISRO pattern
+  alongside INSAT/CARTOSAT/RESOURCESAT/IRNSS, never back in the
+  ESA/GALILEO pattern.
+- iOS build numbers must never be hardcoded in project.pbxproj's
+  CURRENT_PROJECT_VERSION for CI purposes — it stays at its local-
+  dev default of 1 there. The real, always-incrementing build
+  number comes from a CURRENT_PROJECT_VERSION override injected at
+  build time in ios-build.yml's archive step, using
+  github.run_number. Removing that override reintroduces the
+  "bundle version must be higher than the previously uploaded
+  version" upload failure fixed 2026-07-15.
 
 ── DEPLOY COMMANDS (reference) ───────────────────────────────
 
