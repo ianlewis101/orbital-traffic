@@ -237,13 +237,13 @@ function inferOwner(s) {
     return { code: "CIS", name: "Russia" };
   if (/ BEIDOU | FENGYUN | TIANGONG | TIANZHOU | SHENZHOU | YAOGAN | CHANGGUANG /.test(n))
     return { code: "PRC", name: "China" };
-  if (/ GALILEO | GSAT /.test(n)) return { code: "ESA", name: "European Space Agency" };
+  if (/ GALILEO /.test(n)) return { code: "ESA", name: "European Space Agency" };
   if (/ GPS | NAVSTAR /.test(n)) return { code: "US", name: "United States" };
   if (/ GOES | NOAA | LANDSAT | TERRA | AQUA | TESS | KEPLER | DSCOVR | HUBBLE | CHANDRA | FERMI /.test(n))
     return { code: "US", name: "United States" };
   if (/ ZARYA | ISS /.test(n) || s.id === "25544") return { code: "ISS", name: "ISS Partners" };
   if (/ HIMAWARI | ALOS | HAYABUSA /.test(n)) return { code: "JPN", name: "Japan" };
-  if (/ INSAT | CARTOSAT | RESOURCESAT | IRNSS /.test(n)) return { code: "IND", name: "India" };
+  if (/ INSAT | CARTOSAT | RESOURCESAT | IRNSS | GSAT /.test(n)) return { code: "IND", name: "India" };
   if (/ AEOLUS | ENVISAT | CRYOSAT | SWARM /.test(n))
     return { code: "ESA", name: "European Space Agency" };
   if (s.cat === "starlink") return { code: "US", name: "United States" };
