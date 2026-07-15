@@ -15,6 +15,7 @@ export const CATEGORY_IDS = [
   "navigation",
   "geostationary",
   "starlink",
+  "oneweb",
   "kuiper",
   "communications",
   "science",
@@ -166,6 +167,22 @@ export function correctStationCat(id, name, cat) {
 }
 
 /**
+ * OneWeb shares its CelesTrak group history with Starlink (audit F9):
+ * groups.js now tags GROUP=oneweb records "oneweb" directly, but any record
+ * fetched or bundled before that fix — including apps/web/public/data/
+ * satellites.json until its next scheduled refresh — still carries the old
+ * "starlink" tag. Reclassified by name here, the same way correctOtherCat()
+ * rescues Kuiper, so the fix is correct immediately instead of depending on
+ * exactly when the data was last refreshed.
+ */
+const ONEWEB_NAME_RE = /ONEWEB/;
+
+export function correctStarlinkCat(name, cat) {
+  if (cat !== "starlink") return cat;
+  return ONEWEB_NAME_RE.test((name || "").toUpperCase()) ? "oneweb" : cat;
+}
+
+/**
  * Rocket bodies and debris fragments merge into one "debris" category.
  * Feeds tag these inconsistently — some have dedicated debris groups,
  * others bury stragglers under "active" — so names are matched regardless
@@ -212,6 +229,8 @@ export function correctDebrisCat(name, cat) {
  * false-positive risk.
  */
 export const NAV_NAME_RE = /GPS|NAVSTAR|GALILEO|GLONASS|BEIDOU|CENTISPACE/;
+/** Amazon's Kuiper broadband constellation ("KUIPER-00008"); no dedicated CelesTrak group yet. */
+export const KUIPER_NAME_RE = /KUIPER/;
 export const WEATHER_NAME_RE = /GOES|METEOSAT|HIMAWARI|NOAA|METOP|METEOR|DMSP|ELEKTRO|FENGYUN/;
 export const EO_NAME_RE = /LANDSAT|SENTINEL|TERRA|AQUA|WORLDVIEW|SPOT|DOVE|ICEYE|PLEIADES/;
 /** Major LEO/MEO comms and IoT/AIS constellations with no dedicated CelesTrak group. */
@@ -309,18 +328,25 @@ export function correctOtherCat(id, name, cat) {
   if (WEATHER_NAME_RE.test(n) || EO_NAME_RE.test(n) || SCI_CONSTELLATION_RE.test(n))
     return "science";
   if (CLASSIFIED_NAME_RE.test(n)) return "classified";
+  if (KUIPER_NAME_RE.test(n)) return "kuiper";
   return "other";
 }
 
 /**
  * Canonical classification pipeline, in the canonical order:
  *   1. station allowlist (drops bogus "stations" tags to "other")
- *   2. debris name backstop
- *   3. name-pattern rescue for whatever is still "other" (crew/cargo vehicle
- *      promotion back to "stations" first, then nav/comms/science/classified)
+ *   2. starlink allowlist (reclaims stale/mistagged OneWeb records by name)
+ *   3. debris name backstop
+ *   4. name-pattern rescue for whatever is still "other" (crew/cargo vehicle
+ *      promotion back to "stations" first, then nav/comms/science/classified/
+ *      kuiper)
  * Unknown input categories normalize to "other" first.
  */
 export function categorize(id, name, cat) {
   const base = CATEGORY_SET.has(cat) ? cat : "other";
-  return correctOtherCat(id, name, correctDebrisCat(name, correctStationCat(id, name, base)));
+  return correctOtherCat(
+    id,
+    name,
+    correctDebrisCat(name, correctStarlinkCat(name, correctStationCat(id, name, base)))
+  );
 }

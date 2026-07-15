@@ -294,16 +294,24 @@ a tested, modular monorepo v2.0.0"):
   stale/inaccurate — there is no PWABuilder step in this
   project's actual iOS pipeline.)
 
-- 12 object categories (packages/catalog/src/classify.js's
+- 13 object categories (packages/catalog/src/classify.js's
   CATEGORY_IDS, mirrored in apps/web/src/config.js's CATS):
-  stations, navigation, geostationary, starlink, kuiper,
+  stations, navigation, geostationary, starlink, oneweb, kuiper,
   communications, science, other, classified, debris,
   hazardous, cool — each with its own color/size defined in
-  config.js. Note "kuiper" currently has no group fetch and no
-  name-pattern rescue anywhere in classify.js — Amazon Kuiper
-  satellites will misclassify as "other" or "starlink" until
-  that's added. Worth fixing, but hasn't been yet as of this
-  writing.
+  config.js.
+
+  (Correction, 2026-07-15: this doc previously said "12 object
+  categories" and that "kuiper" had no group fetch and no
+  name-pattern rescue, so Kuiper satellites would misclassify
+  as "other" or "starlink". Both fixed together (audit F9/F10):
+  OneWeb is now its own category — groups.js tags GROUP=oneweb
+  records "oneweb" directly, with correctStarlinkCat() in
+  classify.js rescuing by name any record still tagged
+  "starlink" from data fetched/bundled before this fix — and
+  Kuiper gets a KUIPER_NAME_RE rescue in correctOtherCat(), the
+  same mechanism already used for other constellations with no
+  dedicated CelesTrak group.)
 
 ── KNOWN BUGS THAT MUST NOT BE REINTRODUCED ─────────────────
 
@@ -370,6 +378,17 @@ a tested, modular monorepo v2.0.0"):
   github.run_number. Removing that override reintroduces the
   "bundle version must be higher than the previously uploaded
   version" upload failure fixed 2026-07-15.
+- OneWeb records can still arrive tagged "starlink" — from
+  apps/web/public/data/satellites.json until its next scheduled
+  refresh, or any other fetch that predates the groups.js fix.
+  classify.js's correctStarlinkCat() rescues these by name before
+  the debris/other rescues run (audit F9, fixed 2026-07-15). Don't
+  remove it as "redundant" with the groups.js tag fix — it's the
+  only thing that makes already-bundled data correct without
+  waiting for a data refresh. Same reasoning as Kuiper's
+  KUIPER_NAME_RE rescue in correctOtherCat() (audit F10, same
+  date): both exist because relying on the upstream group tag
+  alone leaves a stale-data gap.
 
 ── DEPLOY COMMANDS (reference) ───────────────────────────────
 

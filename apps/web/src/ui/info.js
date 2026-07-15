@@ -218,7 +218,7 @@ const FLAGS = {
   JPN: "\u{1F1EF}\u{1F1F5}", IND: "\u{1F1EE}\u{1F1F3}", CA: "\u{1F1E8}\u{1F1E6}",
   GER: "\u{1F1E9}\u{1F1EA}", SES: "\u{1F1F1}\u{1F1FA}", LUXE: "\u{1F1F1}\u{1F1FA}",
   GLOB: "\u{1F1FA}\u{1F1F8}", NOR: "\u{1F1F3}\u{1F1F4}", SPN: "\u{1F1EA}\u{1F1F8}",
-  O3B: "\u{1F1EC}\u{1F1E7}",
+  O3B: "\u{1F1EC}\u{1F1E7}", GBR: "\u{1F1EC}\u{1F1E7}",
   ISS: "\u{1F1FA}\u{1F1F8}\u{1F1F7}\u{1F1FA}\u{1F1EF}\u{1F1F5}\u{1F1EA}\u{1F1FA}\u{1F1E8}\u{1F1E6}",
   CHBZ: "\u{1F1E8}\u{1F1F3}\u{1F1E7}\u{1F1F7}",
 };
@@ -237,7 +237,11 @@ function inferOwner(s) {
   if (/\bYAOGAN\b/.test(n) || /\bSHIJIAN[-\s]*\d+[A-Z]?\b/.test(n))
     return { code: "PRC", name: "People's Liberation Army" };
   if (/\bPRAETORIAN\b/.test(n)) return { code: "US", name: "US Space Development Agency" };
-  if (/ STARLINK | ONEWEB /.test(n)) return { code: "US", name: "United States" };
+  // Real catalog names are hyphenated ("STARLINK-30042", "ONEWEB-0012") — like
+  // the BEIDOU/GALILEO checks below, matched against vn + \b, not space padding
+  // (a space-padded pattern here would silently match zero real objects).
+  if (/\bSTARLINK\b/.test(vn)) return { code: "US", name: "United States" };
+  if (/\bONEWEB\b/.test(vn)) return { code: "GBR", name: "OneWeb (Eutelsat)" };
   if (/ GLONASS | SOYUZ | PROGRESS | COSMOS | METEOR | RESURS /.test(n))
     return { code: "CIS", name: "Russia" };
   if (/\bBEIDOU\b|\bFENGYUN\b|\bTIANGONG\b|\bTIANZHOU\b|\bSHENZHOU\b|\bYAOGAN\b|\bCHANGGUANG\b/.test(vn))

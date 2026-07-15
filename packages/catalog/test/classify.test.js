@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   categorize,
   correctStationCat,
+  correctStarlinkCat,
   correctDebrisCat,
   correctOtherCat,
   isDebrisName,
@@ -37,6 +38,22 @@ describe("correctStationCat", () => {
 
   it("never touches non-station categories", () => {
     expect(correctStationCat("99008", "PROGRESS-MS 32", "science")).toBe("science");
+  });
+});
+
+describe("correctStarlinkCat", () => {
+  it("reclassifies OneWeb records still tagged starlink by name (audit F9)", () => {
+    expect(correctStarlinkCat("ONEWEB-0012", "starlink")).toBe("oneweb");
+    expect(correctStarlinkCat("ONEWEB-0651", "starlink")).toBe("oneweb");
+  });
+
+  it("leaves real Starlink records alone", () => {
+    expect(correctStarlinkCat("STARLINK-30042", "starlink")).toBe("starlink");
+  });
+
+  it("never touches non-starlink categories", () => {
+    expect(correctStarlinkCat("ONEWEB-0012", "other")).toBe("other");
+    expect(correctStarlinkCat("ONEWEB-0012", "oneweb")).toBe("oneweb");
   });
 });
 
@@ -99,6 +116,11 @@ describe("correctOtherCat", () => {
   it("rescues LEMUR and MERIDIAN comms series by name", () => {
     expect(correctOtherCat("63262", "LEMUR-2-MARACHE-FRAN", "other")).toBe("communications");
     expect(correctOtherCat("44453", "MERIDIAN 8", "other")).toBe("communications");
+  });
+
+  it("rescues Kuiper broadband satellites by name (audit F10)", () => {
+    expect(correctOtherCat("13", "KUIPER-00423", "other")).toBe("kuiper");
+    expect(correctOtherCat("14", "KUIPER-00008", "other")).toBe("kuiper");
   });
 
   it("rescues 2026-07-10 curated batch objects by NORAD ID", () => {
@@ -165,6 +187,18 @@ describe("categorize (canonical pipeline)", () => {
   it("keeps well-formed specific categories untouched", () => {
     expect(categorize("99013", "STARLINK-30042", "starlink")).toBe("starlink");
     expect(categorize("25544", "ISS (ZARYA)", "stations")).toBe("stations");
+  });
+
+  it("keeps the oneweb group tag distinct from starlink (audit F9)", () => {
+    expect(categorize("99016", "ONEWEB-0651", "oneweb")).toBe("oneweb");
+  });
+
+  it("reclassifies OneWeb records from stale bundled data still tagged starlink (audit F9)", () => {
+    expect(categorize("44057", "ONEWEB-0012", "starlink")).toBe("oneweb");
+  });
+
+  it("rescues Kuiper through the full pipeline even without a dedicated group (audit F10)", () => {
+    expect(categorize("99017", "KUIPER-00423", "other")).toBe("kuiper");
   });
 
   it("crewed vehicles keep stations; ISS hardware becomes debris", () => {

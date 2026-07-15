@@ -22,7 +22,7 @@ export const GROUPS = [
   ["iridium-33-debris", "debris"],
   ["fengyun-1c-debris", "debris"],
   ["starlink", "starlink"],
-  ["oneweb", "starlink"],
+  ["oneweb", "oneweb"],
   ["science", "science"],
   // Fresh launches take a while to graduate into "active"; without this
   // group a just-launched object (a new crewed capsule especially) is
