@@ -13,16 +13,22 @@ import { noradId, tleAgeDays } from "./tle.js";
  * isStationVehicle() only ever says "this name looks like a crew or cargo
  * vehicle"; it has no notion of *when* that vehicle actually docked,
  * undocked, or landed. This module answers that, and is a sibling to
- * classify.js, not a replacement for it — a vehicle keeps cat:"stations"
+ * classify.js, not a replacement for it — a vehicle keeps cat:"capsules"
  * for its whole tracked lifetime regardless of phase; phase is additional
  * per-vehicle status, never a category swap.
  *
  * 2026-07-10: extended from crewed-capsule-only to also cover cargo
  * vehicles (Progress/Cygnus/Tianzhou/cargo Dragon) — Ian's call, since both
  * are "Famous Objects" users specifically search for and both should behave
- * identically: "stations" while tracked, gone (not "other") once landed.
+ * identically: tracked while active, gone (not "other") once landed.
  * Every entry carries a `kind` ("crew" | "cargo") alongside `family` so
  * consumers can still tell them apart.
+ *
+ * 2026-07-16: crew/cargo vehicles split out of "stations" into their own
+ * "capsules" category (classify.js's correctStationCat()/correctOtherCat())
+ * so structural modules and docking vehicles can be shown/hidden
+ * independently in the legend. This module's own phase-tracking logic is
+ * unaffected — only the `cat` value its candidate filter checks for changed.
  */
 
 // Same physical constants apps/web/src/astro/orbital.js's orbital(rec)
@@ -118,7 +124,7 @@ export function determinePhase(distanceKm) {
  * batch of TLE records (typically CelesTrak's "stations" group) and
  * computes its phase/family/station association. Records are expected to
  * already carry a categorize()-derived `cat` (parseTle() does this) — only
- * records still tagged "stations" and name-matched by isStationVehicle are
+ * records tagged "capsules" and name-matched by isStationVehicle are
  * eligible, so jettisoned hardware and co-orbiting cubesats are excluded
  * the same way the rest of the pipeline excludes them.
  */
@@ -135,7 +141,7 @@ export function buildCapsuleSnapshot(records, at = new Date()) {
   for (const r of records) {
     const id = noradId(r.l1);
     if (STATION_CORE_IDS.has(id)) continue; // station hardware itself, not a vehicle
-    if (r.cat !== "stations" || !isStationVehicle(r.name)) continue;
+    if (r.cat !== "capsules" || !isStationVehicle(r.name)) continue;
     // A frozen elset means the vehicle de-orbited but the feed hasn't
     // dropped it yet — treat it as absent so it lands promptly instead of
     // being tracked on a ghost orbit. Unparseable epochs count as stale.

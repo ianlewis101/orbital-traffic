@@ -74,7 +74,7 @@ async function reconcileCapsules(capsules) {
     if (c.phase === "landed") {
       if (state.byId.has(id)) landedIds.push(id);
     } else if (c.l1 && c.l2 && !state.byId.has(id)) {
-      inject.push({ name: c.name, l1: c.l1, l2: c.l2, cat: "stations" });
+      inject.push({ name: c.name, l1: c.l1, l2: c.l2, cat: "capsules" });
     }
   }
   if (inject.length) await ingest(inject);

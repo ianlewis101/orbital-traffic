@@ -24,7 +24,7 @@ export async function fetchAndRenderCrew(s) {
   if (!isISS && !isTG) {
     // Not a station hub — if it's a tracked crewed capsule or cargo vehicle,
     // show its own phase/status instead of hiding the card entirely.
-    const family = s.cat === "stations" ? vehicleFamily(s.name) : null;
+    const family = s.cat === "capsules" ? vehicleFamily(s.name) : null;
     if (family) return renderCapsuleStatus(s, el);
     el.style.display = "none";
     el.innerHTML = "";

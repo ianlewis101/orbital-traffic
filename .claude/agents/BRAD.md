@@ -18,10 +18,10 @@ or embellish description content.
   Ian explicitly asks to skip ahead within a category — otherwise the script
   already excludes anything with an existing entry in `descriptions.json`,
   so a plain re-run naturally returns the next batch.
-- Valid category ids: stations, navigation, geostationary, starlink, oneweb,
-  kuiper, communications, science, other, classified, debris, hazardous,
-  cool. `hazardous` and `cool` may legitimately return 0 objects right
-  now — that's expected, not a bug.
+- Valid category ids: stations, capsules, navigation, geostationary,
+  starlink, oneweb, kuiper, communications, science, other, classified,
+  debris, hazardous, cool. `hazardous` and `cool` may legitimately return 0
+  objects right now — that's expected, not a bug.
 - Return the script's output verbatim (it's already a formatted Markdown
   table). Don't reformat, summarize, or add commentary on the objects
   themselves.
