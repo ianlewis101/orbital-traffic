@@ -19,6 +19,12 @@ describe("correctStationCat", () => {
     expect(correctStationCat("48274", "CSS (TIANHE)", "stations")).toBe("stations");
   });
 
+  it("keeps ISS Unity/Zvezda/Destiny — added 2026-07-16, found hidden under other during PR #93's verification", () => {
+    expect(correctStationCat("25575", "ISS (UNITY)", "stations")).toBe("stations");
+    expect(correctStationCat("26400", "ISS (ZVEZDA)", "stations")).toBe("stations");
+    expect(correctStationCat("26700", "ISS (DESTINY)", "stations")).toBe("stations");
+  });
+
   it("moves currently-docked crewed vehicles to capsules by name (audit: capsules split, 2026-07-16)", () => {
     expect(correctStationCat("99001", "CREW DRAGON 11", "stations")).toBe("capsules");
     expect(correctStationCat("99002", "SOYUZ-MS 29", "stations")).toBe("capsules");
@@ -38,6 +44,14 @@ describe("correctStationCat", () => {
 
   it("never touches non-station categories", () => {
     expect(correctStationCat("99008", "PROGRESS-MS 32", "science")).toBe("science");
+  });
+});
+
+describe("STATION_CORE_IDS completeness (audit, fixed 2026-07-16)", () => {
+  it("resolves ISS Unity/Zvezda/Destiny to stations through the full pipeline, from either entry point", () => {
+    expect(categorize("25575", "ISS (UNITY)", "stations")).toBe("stations");
+    expect(categorize("26400", "ISS (ZVEZDA)", "other")).toBe("stations");
+    expect(categorize("26700", "ISS (DESTINY)", "other")).toBe("stations");
   });
 });
 
@@ -98,6 +112,16 @@ describe("isDebrisName / correctDebrisCat", () => {
 });
 
 describe("correctOtherCat", () => {
+  it("promotes STATION_CORE_IDS modules that arrive tagged other, not just stations (fixed 2026-07-16)", () => {
+    // Real catalog data: Unity/Zvezda/Destiny weren't showing up in
+    // CelesTrak's actual GROUP=stations feed, so they arrived tagged
+    // "other" — correctStationCat() alone never got a chance to apply
+    // STATION_CORE_IDS to them, since it only fires for cat === "stations".
+    expect(correctOtherCat("25575", "ISS (UNITY)", "other")).toBe("stations");
+    expect(correctOtherCat("26400", "ISS (ZVEZDA)", "other")).toBe("stations");
+    expect(correctOtherCat("26700", "ISS (DESTINY)", "other")).toBe("stations");
+  });
+
   it("rescues navigation constellations from the active catch-all", () => {
     expect(correctOtherCat("1", "BEIDOU-2 M3", "other")).toBe("navigation");
     expect(correctOtherCat("2", "GLONASS-M 758", "other")).toBe("navigation");
