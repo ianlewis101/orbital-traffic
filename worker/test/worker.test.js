@@ -66,7 +66,7 @@ describe("worker routes", () => {
 
     fetch.mockRejectedValue(new Error("down"));
     res = await worker.fetch(new Request("https://x/crew"), {}, ctx);
-    expect(await res.json()).toEqual({ people: [], number: 0 });
+    expect(await res.json()).toEqual({ people: [], number: 0, ok: false });
   });
 
   it("serves /today and degrades to an empty feed", async () => {

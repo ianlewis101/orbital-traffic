@@ -63,9 +63,12 @@ export async function buildTLERecords() {
 export async function buildCrew() {
   try {
     const r = await fetch(CREW_URL, { cf: { cacheTtl: CREW_TTL, cacheEverything: true } });
-    if (r.ok) return await r.json();
+    if (r.ok) {
+      const d = await r.json();
+      if (Array.isArray(d.people)) return { people: d.people, number: d.number ?? d.people.length, ok: true };
+    }
   } catch {}
-  return { people: [], number: 0 };
+  return { people: [], number: 0, ok: false };
 }
 
 export async function buildToday() {
@@ -168,22 +171,28 @@ function jsonResponse(data, ttl) {
 /**
  * Edge-cache wrapper. `caches.default` only exists in the workerd
  * runtime; under tests it is absent and every request builds fresh.
+ *
+ * `shouldCache` guards against locking in a failed upstream fetch for the
+ * full `ttl` window — most routes always cache (default), but /crew skips
+ * caching when buildCrew() couldn't reach Open Notify, so the next request
+ * retries instead of repeating a stale failure for a full hour.
  */
-async function cached(ctx, path, ttl, build) {
+async function cached(ctx, path, ttl, build, shouldCache = () => true) {
   const cache = typeof caches !== "undefined" ? caches.default : null;
   const cacheKey = new Request(`https://orbital-traffic.internal${path}`, { method: "GET" });
   if (cache) {
     const hit = await cache.match(cacheKey);
     if (hit) return hit;
   }
-  const res = jsonResponse(await build(), ttl);
-  if (cache) ctx.waitUntil(cache.put(cacheKey, res.clone()));
+  const data = await build();
+  const res = jsonResponse(data, ttl);
+  if (cache && shouldCache(data)) ctx.waitUntil(cache.put(cacheKey, res.clone()));
   return res;
 }
 
 const ROUTES = {
   "/tle": (ctx) => cached(ctx, "/tle", TLE_TTL, buildTLERecords),
-  "/crew": (ctx) => cached(ctx, "/crew", CREW_TTL, buildCrew),
+  "/crew": (ctx) => cached(ctx, "/crew", CREW_TTL, buildCrew, (d) => d.ok !== false),
   "/today": (ctx) => cached(ctx, "/today", TODAY_TTL, buildToday),
   "/capsules": (ctx) => cached(ctx, "/capsules", CAPSULES_TTL, buildCapsules),
   "/passes": (ctx, request) => handlePasses(ctx, request),

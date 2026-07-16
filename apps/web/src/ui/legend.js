@@ -27,7 +27,7 @@ function expandLegend() {
 
 export function initLegendToggle() {
   const ph = $("#legend-ph");
-  if (ph) ph.onclick = () => legendCollapsed && expandLegend();
+  if (ph) ph.onclick = () => (legendCollapsed ? expandLegend() : collapseLegend());
 }
 
 export function rebuildLegend() {
