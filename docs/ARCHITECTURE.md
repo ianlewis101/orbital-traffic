@@ -29,7 +29,7 @@ TLE parsing (`parseTle`, `mergeRecords`, `noradId`), CelesTrak group definitions
 
 Classification runs in a fixed, canonical order:
 
-1. **Station allowlist** — only the 10 real ISS/Tiangong module NORAD IDs keep
+1. **Station allowlist** — only the 13 real ISS/Tiangong module NORAD IDs keep
    `stations`. Crewed capsules and cargo vehicles (docked or not) earn their own
    `capsules` category by name instead — split out from `stations` 2026-07-16 so
    structural modules and docking vehicles can be shown/hidden independently.
@@ -39,8 +39,10 @@ Classification runs in a fixed, canonical order:
    reclassified by name regardless of source group. Hand-curated `cool` objects are
    never overridden.
 3. **"Other" rescue** — records that arrived via the generic `active` catch-all are
-   promoted by constellation name patterns (navigation, communications, science) or
-   military naming schemes (`classified`).
+   promoted by constellation name patterns (navigation, communications, science),
+   military naming schemes (`classified`), or the station allowlist by ID again
+   (a permanent module doesn't always arrive tagged `stations` from CelesTrak —
+   fixed 2026-07-16 after three real ISS modules turned up misclassified this way).
 
 Every ingestion path runs this same pipeline: the web app's `ingest()`, the Worker's
 `/tle` handler, and the daily data refresh. Historically these were three hand-synced

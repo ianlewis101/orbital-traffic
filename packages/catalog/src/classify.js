@@ -44,6 +44,11 @@ export const STATION_CORE_IDS = new Set([
   "37224",
   "37820",
   "36086", // ISS modules
+  // 25575/26400/26700 added 2026-07-16 — found hidden under "other" during
+  // PR #93's verification; see docs/audit-status.md.
+  "25575", // ISS (Unity)
+  "26400", // ISS (Zvezda)
+  "26700", // ISS (Destiny)
   "48274",
   "53239",
   "54216", // CSS Tiangong modules
@@ -308,15 +313,26 @@ export const CLASSIFIED_IDS = new Set(["57757"]);
  * debris check. Never touches a record a dedicated CelesTrak group already
  * claimed — only "other" records are eligible.
  *
- * Crew and cargo vehicles are checked first: a docking vehicle that arrives
+ * STATION_CORE_IDS is checked first: correctStationCat() only ever consults
+ * it when a record already arrives tagged "stations", but not every
+ * permanent structural module keeps showing up in CelesTrak's actual
+ * GROUP=stations feed run to run (confirmed 2026-07-16 — ISS's Unity/
+ * Zvezda/Destiny modules were arriving tagged "other" in real catalog
+ * data, so simply adding their IDs to STATION_CORE_IDS had no effect
+ * without this promotion path too). This is the promotion mirror of
+ * correctStationCat()'s STATION_CORE_IDS check, the same way the
+ * isStationVehicle() check right below it mirrors correctStationCat()'s
+ * isStationVehicle() check.
+ *
+ * Crew and cargo vehicles are checked next: a docking vehicle that arrives
  * via the generic "active"/"last-30-days" catch-alls (a free-flying private
  * mission, or a fresh launch not yet in CelesTrak's stations group) would
  * otherwise stay "other" — which the app hides by default — instead of
- * "capsules". This is the promotion mirror of correctStationCat(): both
- * directions use isStationVehicle(), so the capsules category stays exactly
- * the set of crew/cargo vehicle names (the "stations" category itself stays
- * exactly STATION_CORE_IDS — permanent structural modules only). Jettisoned
- * crew hardware can't sneak in — the debris backstop runs before this rescue.
+ * "capsules". Between the two checks, the capsules category stays exactly
+ * the set of crew/cargo vehicle names, and the "stations" category stays
+ * exactly STATION_CORE_IDS — permanent structural modules only. Jettisoned
+ * crew hardware can't sneak into either — the debris backstop runs before
+ * this rescue.
  *
  * The four *_IDS allowlists are checked next, before any name regex: they
  * are individually-verified objects with no safe shared pattern, so ID
@@ -324,6 +340,7 @@ export const CLASSIFIED_IDS = new Set(["57757"]);
  */
 export function correctOtherCat(id, name, cat) {
   if (cat !== "other") return cat;
+  if (STATION_CORE_IDS.has(id)) return "stations";
   if (isStationVehicle(name)) return "capsules";
   if (SCIENCE_IDS.has(id)) return "science";
   if (DEBRIS_IDS.has(id)) return "debris";

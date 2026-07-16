@@ -159,7 +159,11 @@ those against this document instead.
    decaying hardware that are genuinely neither station nor
    capsule traffic. correctStationCat() enforces this: matched
    vehicle names go to "capsules", everything else not on
-   STATION_CORE_IDS demotes to "other".
+   STATION_CORE_IDS demotes to "other". A STATION_CORE_IDS
+   member doesn't always arrive tagged "stations" from
+   CelesTrak, though — correctOtherCat() has its own
+   STATION_CORE_IDS promotion check for exactly that case (see
+   the 2026-07-16 STATION_CORE_IDS completeness note below).
 
    (Policy change, 2026-07-10, PR #71: cargo vehicles were
    previously excluded from "stations" and fell to "other"
@@ -194,6 +198,27 @@ those against this document instead.
    CATS). If you find older docs, commits, or test names
    describing capsules as part of "stations", they predate this
    change.)
+
+   (STATION_CORE_IDS completeness, fixed 2026-07-16: PR #93's
+   verification found three real ISS modules — Unity (25575),
+   Zvezda (26400), Destiny (26700) — resolving to "other"
+   (hidden by default) instead of "stations", because they
+   weren't in STATION_CORE_IDS. Adding their IDs alone did
+   NOT fix this against real catalog data, and re-verifying
+   caught it before shipping: correctStationCat() only ever
+   checks STATION_CORE_IDS when a record already arrives
+   tagged "stations", but these three modules arrive tagged
+   "other" in CelesTrak's real feed today — they've evidently
+   dropped out of the actual GROUP=stations dump, whatever the
+   reason. The real fix needed a second, symmetric check:
+   correctOtherCat() now also promotes any STATION_CORE_IDS
+   member straight to "stations", the same way it already
+   promoted isStationVehicle() names to "capsules". Lesson for
+   next time: adding an ID to an allowlist that only one
+   direction of the pipeline consults is not verified until
+   you've actually run categorize() on the real record and
+   confirmed the category flips — don't trust the allowlist
+   membership alone.)
 
 7. SHARED UTILITIES — USE THESE, DON'T REINVENT THEM:
    - apps/web/src/util/html.js's esc() is the standard way to
@@ -358,6 +383,20 @@ a tested, modular monorepo v2.0.0"):
   in packages/catalog/src/classify.js)
 - POISK (36086): must be in STATION_CORE_IDS — it is ISS
   MRM-2, a permanent module (confirmed still present)
+- ISS Unity (25575), Zvezda (26400), Destiny (26700): must be
+  in STATION_CORE_IDS — all three are permanent ISS modules,
+  confirmed missing 2026-07-16 (found hidden under "other" via
+  PR #93's real-catalog verification, fixed via PR #94).
+  Removing any of the three reintroduces the same gap.
+- correctOtherCat()'s STATION_CORE_IDS promotion check (added
+  alongside the fix above) must not be removed as "redundant"
+  with correctStationCat()'s STATION_CORE_IDS check — they
+  cover different real scenarios (a module already tagged
+  "stations" vs. one that arrived tagged "other" because it
+  dropped out of CelesTrak's actual GROUP=stations feed) and
+  both are needed for STATION_CORE_IDS membership to actually
+  guarantee "stations" regardless of which raw group a record
+  arrives under.
 - correctStationCat runs BEFORE the debris check and the
   "other" name-pattern rescue inside categorize()'s pipeline,
   and ingest() (which calls categorize()) always runs before
