@@ -2,6 +2,7 @@ import { catColorHex } from "../config.js";
 import { state, $ } from "../state.js";
 import { select } from "./info.js";
 import { esc } from "../util/html.js";
+import { neoSats } from "../scene/neos.js";
 
 export function initSearch() {
   const sIn = $("#search-in"),
@@ -35,6 +36,7 @@ export function initSearch() {
       return;
     }
     const hits = state.sats
+      .concat(neoSats)
       .filter((s) => s.name.toLowerCase().includes(q) || s.id.includes(q))
       .slice(0, 40);
     if (!hits.length) {

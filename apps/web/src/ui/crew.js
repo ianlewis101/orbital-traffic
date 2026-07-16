@@ -36,12 +36,16 @@ export async function fetchAndRenderCrew(s) {
   el.innerHTML = `<div class="crew-block"><div style="padding:14px;text-align:center;font-size:9.5px;color:var(--ink-faint);letter-spacing:0.1em">Fetching crew…</div></div>`;
   // fetch crew from worker
   let crew = [];
+  let crewFetchFailed = false;
   try {
     const r = await fetch(WORKER_BASE + "/crew", { cache: "no-store" });
+    if (!r.ok) throw new Error("bad status");
     const d = await r.json();
-    const people = d.people || [];
-    crew = people.filter((p) => (p.craft || p.location || "").includes(craft));
-  } catch {}
+    if (d.ok === false || !Array.isArray(d.people)) throw new Error("bad shape");
+    crew = d.people.filter((p) => (p.craft || p.location || "").includes(craft));
+  } catch {
+    crewFetchFailed = true;
+  }
   if (state.selected !== s) return; // selection changed while this was in flight
 
   // fetch today's activities from worker (sourced from iss-today.json)
@@ -75,6 +79,8 @@ export async function fetchAndRenderCrew(s) {
         return `<div class="crew-av"><div class="crew-av-c${isCmd ? " cmd" : ""}">${esc(init)}</div><div class="crew-av-n">${esc((p.name || "").split(" ").pop())}</div></div>`;
       })
       .join("");
+  } else if (crewFetchFailed) {
+    avHTML = `<div style="font-size:10px;color:var(--ink-faint);padding:4px 0;letter-spacing:0.05em">Crew data temporarily unavailable</div>`;
   } else {
     avHTML = `<div style="font-size:10px;color:var(--ink-faint);padding:4px 0;letter-spacing:0.05em">Crew names unavailable</div>`;
   }

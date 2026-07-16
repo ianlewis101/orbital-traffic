@@ -70,12 +70,12 @@
   #count{font-size:9.5px;letter-spacing:0.1em;color:var(--ink-dim);text-transform:uppercase}
   #count b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
 
-  /* ISS Pass Alerts — low-profile chip, top-right, right under the clock.
-     Position measured against the clock's real rendered bottom edge
-     (98px mobile / 118px desktop after the clock card layout redesign
-     dropped the header row and status row) — not guessed. Mobile override
-     lives in the @media block below, same pattern as #clock. */
-  #alerts{position:fixed;top:133px;right:24px;z-index:5;max-width:200px;
+  /* ISS Pass Alerts — low-profile chip, top-right, right under the
+     Globe Style card, which itself sits right under the clock. Position
+     measured against the Globe Style card's real rendered bottom edge —
+     not guessed. Mobile override lives in the @media block below, same
+     pattern as #clock. */
+  #alerts{position:fixed;top:204px;right:24px;z-index:5;max-width:200px;
     padding:8px 12px;
     background:rgba(17,22,42,0.55);backdrop-filter:blur(18px) saturate(1.2);-webkit-backdrop-filter:blur(18px) saturate(1.2);
     border:1px solid rgba(255,255,255,0.12);border-radius:14px;
@@ -114,7 +114,7 @@
   /* ---------- legend ---------- */
   #leftstack{position:fixed;left:24px;bottom:24px;width:214px;display:flex;flex-direction:column;gap:12px;animation:rise .8s both .2s}
   #legend{position:static;width:100%}
-  #legend.collapsed .ph{cursor:pointer}
+  #legend .ph{cursor:pointer}
   #legend .body{padding:5px 7px 7px}
   .cat{display:flex;align-items:center;gap:10px;padding:6px 7px;cursor:pointer;user-select:none;transition:background .12s}
   .cat:hover{background:var(--amber-soft)}
@@ -151,14 +151,17 @@
   .jbtn:hover{color:var(--ink);border-color:var(--line-bright)}
   .jbtn.now{color:var(--amber);border-color:rgba(94,234,212,0.35)}
 
-  /* ---------- globe style toggle ---------- */
-  #globe-style{position:static;width:100%}
-  #globe-style .ph{padding:7px 11px}
-  #globe-style .body{padding:8px 9px 9px}
+  /* ---------- globe style toggle ----------
+     Low-profile chip, top-right, right under the clock (position measured
+     against the clock's real rendered bottom edge — not guessed). Mobile
+     override lives in the @media block below, same pattern as #alerts. */
+  #globe-style{position:fixed;top:133px;right:24px;width:200px;z-index:5}
+  #globe-style .ph{padding:5px 10px}
+  #globe-style .body{padding:6px 7px 7px}
   #globe-style .btns{display:flex;gap:3px}
-  #globe-style-lbl{color:var(--amber);font-weight:700;font-size:8.5px}
-  .gbtn{flex:1;font-family:var(--mono);font-size:9.5px;font-weight:500;padding:6px 0;text-align:center;color:var(--ink-dim);
-    background:rgba(255,255,255,0.04);border:1px solid var(--line);border-radius:7px;cursor:pointer;transition:all .12s;letter-spacing:0.02em}
+  #globe-style-lbl{color:var(--amber);font-weight:700;font-size:8px}
+  .gbtn{flex:1;font-family:var(--mono);font-size:8.5px;font-weight:500;padding:4px 0;text-align:center;color:var(--ink-dim);
+    background:rgba(255,255,255,0.04);border:1px solid var(--line);border-radius:6px;cursor:pointer;transition:all .12s;letter-spacing:0.02em}
   .gbtn:hover{color:var(--ink);border-color:var(--line-bright)}
   .gbtn.on{color:#06122a;background:var(--amber);border-color:var(--amber);font-weight:700}
 
@@ -209,6 +212,7 @@
   /* ---------- meta ---------- */
   #meta{bottom:14px;left:50%;transform:translateX(-50%);text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;animation:rise .8s both .34s;pointer-events:none}
   #attr{font-size:8.5px;letter-spacing:0.08em;color:var(--ink-faint);opacity:0.35}
+  #attr a{pointer-events:auto}
 
   /* ---------- hint ---------- */
   #hint{position:fixed;bottom:78px;left:50%;transform:translateX(-50%);z-index:10;font-family:var(--mono);font-size:9.5px;
@@ -333,7 +337,10 @@
        suffix (the time row already labels itself "UTC") lets the header, and so the
        whole card, shrink to roughly match the compact content. */
     #clock{top:10px;right:10px;width:fit-content;min-width:0;animation:none}
-    #alerts{top:111px;right:10px;max-width:150px}
+    #globe-style{top:111px;right:10px;width:150px}
+    #globe-style .ph{padding:4px 8px}
+    #globe-style .body{padding:5px 6px 6px}
+    #alerts{top:186px;right:10px;max-width:150px}
     #alerts .alerts-row{font-size:9.5px}
     #clock .body{padding:7px 11px 8px}
     #clock .utc{font-size:20px;letter-spacing:0.01em;text-align:center;margin-top:4px}
@@ -415,10 +422,11 @@
     #info .foot{padding:10px 15px 16px;display:flex;gap:8px}
     #info-track{padding:12px 0}
 
-    /* Hint — below the clock card. Clock's real rendered bottom edge on
-       mobile is 98px (see #alerts comment above); top:111px matches the
-       same 13px clearance #alerts uses to clear it. */
-    #hint{bottom:auto;top:111px;font-size:9px}
+    /* Hint — below the clock + Globe Style stack (Globe Style now sits
+       right under the clock on mobile too; its real rendered bottom edge
+       is 173px). top:186px matches the same 13px clearance #alerts uses
+       to clear its own card above. */
+    #hint{bottom:auto;top:186px;font-size:9px}
 
     /* Meta attribution — inset clear of the leftstack card, centered in remaining space */
     #meta{left:205px;right:10px;bottom:10px;transform:none;width:auto}
