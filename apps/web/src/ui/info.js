@@ -139,11 +139,21 @@ export function select(s) {
   info.classList.add("show");
   info.scrollTop = 0;
   updateFavBtn(s);
-  // objects with no curated description get a frosted veil over the detail
-  // sections (see #info-veil in index.html) — header, figure and flag stay
-  // visible. Content-based, not category-based: plenty of "other" objects
-  // (CubeSats, imaging sats) have real descriptions and shouldn't be veiled.
-  info.classList.toggle("veiled", !s._neo && !(DATA.descs[s.id] && DATA.descs[s.id].d));
+  // "other"-category objects with no curated description get a frosted veil
+  // over the detail sections (see #info-veil in index.html) — header, figure
+  // and flag stay visible. Content-based within "other", not purely
+  // category-based: plenty of "other" objects (CubeSats, imaging sats) have
+  // real descriptions and shouldn't be veiled. Deliberately scoped to
+  // cat === "other" only — every other category (stations, capsules,
+  // starlink, navigation, debris, ...) falls back to a quality generic
+  // description from describe.js's name-pattern/classify() matching rather
+  // than a per-object descriptions.json entry, so checking descs[id].d alone
+  // across all categories would wrongly veil the ISS and every megaconstellation
+  // satellite (confirmed against real catalog data, 2026-07-17).
+  info.classList.toggle(
+    "veiled",
+    !s._neo && s.cat === "other" && !(DATA.descs[s.id] && DATA.descs[s.id].d)
+  );
   const hex = catColorHex(s.cat);
   $("#info-cat").querySelector(".d").style.cssText = `background:${hex};color:${hex}`;
   $("#info-cat").querySelector("span:last-child").textContent = (CATS[s.cat] || CATS.other).label;
