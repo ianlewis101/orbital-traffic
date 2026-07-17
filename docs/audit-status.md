@@ -70,7 +70,7 @@ number and date to be filled in once the first batch ships.
 | 13 | Self-host fonts | Not started | — | Also closes part of the Google Fonts privacy gap (see F16) |
 | 14 | Standardize icons | Not started | — | |
 | 15 | Tablet breakpoint | Not started | — | |
-| 16 | Rework "Catalogued. Not curated." veil | Not started | — | |
+| 16 | Rework "Catalogued. Not curated." veil | **Fixed, not deployed** | PR #104 (`fix/science-allowlist-and-veil-trigger`), open | 2026-07-17 — veil now triggers on whether an object has a curated description (matching the lookup already used in `setFlagLine`/`describe()`) instead of `s.cat === "other"`; fixes ~142 already-described `other` objects (GAOFEN, SkySat, CORAL, etc.) that were wrongly veiled. Also moves 20 individually-verified objects (AJISAI, AURA, BIOMASS, ETALON 1/2, GOSAT/GOSAT-GW, GPM-CORE, ICESAT-2, JASON-3, LAGEOS 1/2, LARES/LARES-2, LARETS, MICROCARB, SMOS, STARLETTE, STELLA, SUOMI NPP) from `other` to `SCIENCE_IDS`. Client-side only (`packages/catalog` + `apps/web`) — no Worker changes, auto-deploys to web on merge. |
 
 ## Architecture (8 items — see audit §3)
 
