@@ -74,8 +74,13 @@
      Globe Style card, which itself sits right under the clock. Position
      measured against the Globe Style card's real rendered bottom edge —
      not guessed. Mobile override lives in the @media block below, same
-     pattern as #clock. */
-  #alerts{position:fixed;top:204px;right:24px;z-index:5;max-width:200px;
+     pattern as #clock. No explicit z-index (same as #clock/#globe-style)
+     so the mobile #info bottom-sheet — later in DOM order and taller than
+     any of these top-right cards' clearance from it — always paints above
+     when its top edge runs this high; giving this a z-index would put it
+     ahead of #info regardless of DOM order and cover the card's header
+     (confirmed bug: it blocked the fav-btn/close controls). */
+  #alerts{position:fixed;top:204px;right:24px;max-width:200px;
     padding:8px 12px;
     background:rgba(17,22,42,0.55);backdrop-filter:blur(18px) saturate(1.2);-webkit-backdrop-filter:blur(18px) saturate(1.2);
     border:1px solid rgba(255,255,255,0.12);border-radius:14px;
@@ -154,8 +159,12 @@
   /* ---------- globe style toggle ----------
      Low-profile chip, top-right, right under the clock (position measured
      against the clock's real rendered bottom edge — not guessed). Mobile
-     override lives in the @media block below, same pattern as #alerts. */
-  #globe-style{position:fixed;top:133px;right:24px;width:200px;z-index:5}
+     override lives in the @media block below, same pattern as #alerts.
+     No explicit z-index (same as #clock) — see the #alerts comment above
+     for why: giving this a z-index above #info's z-index:auto would let
+     it cover the mobile info sheet's header whenever the sheet's top edge
+     runs this high (confirmed bug: covered the fav-btn/close controls). */
+  #globe-style{position:fixed;top:133px;right:24px;width:200px}
   #globe-style .ph{padding:5px 10px}
   #globe-style .body{padding:6px 7px 7px}
   #globe-style .btns{display:flex;gap:3px}
