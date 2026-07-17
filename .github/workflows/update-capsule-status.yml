@@ -35,4 +35,11 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add capsule-status.json
           git diff --cached --quiet || git commit -m "chore: update capsule status $(date -u +'%Y-%m-%d %H:%M UTC')"
-          git push
+
+          # Rebase onto whatever another scheduled job may have just pushed
+          # (e.g. update-iss-today.yml) and retry, instead of failing outright
+          # on a losing push.
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main
+            git push && break
+          done

@@ -2,8 +2,9 @@ name: Update ISS Today Log
 
 on:
   schedule:
-    # Every day at 12:00 UTC
-    - cron: "0 12 * * *"
+    # Daily at 12:07 UTC — offset from the top of the hour so this never
+    # technically overlaps update-capsule-status.yml's hourly "0 * * * *" run.
+    - cron: "7 12 * * *"
   workflow_dispatch:
 
 jobs:
@@ -34,4 +35,11 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add iss-today.json
           git diff --cached --quiet || git commit -m "chore: update ISS today log $(date -u +'%Y-%m-%d')"
-          git push
+
+          # Rebase onto whatever another scheduled job may have just pushed
+          # (e.g. update-capsule-status.yml) and retry, instead of failing
+          # outright on a losing push.
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main
+            git push && break
+          done
