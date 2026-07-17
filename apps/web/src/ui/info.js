@@ -139,9 +139,11 @@ export function select(s) {
   info.classList.add("show");
   info.scrollTop = 0;
   updateFavBtn(s);
-  // uncatalogued "other" objects get a frosted veil over the detail sections
-  // (see #info-veil in index.html) — header, figure and flag stay visible
-  info.classList.toggle("veiled", s.cat === "other");
+  // objects with no curated description get a frosted veil over the detail
+  // sections (see #info-veil in index.html) — header, figure and flag stay
+  // visible. Content-based, not category-based: plenty of "other" objects
+  // (CubeSats, imaging sats) have real descriptions and shouldn't be veiled.
+  info.classList.toggle("veiled", !s._neo && !(DATA.descs[s.id] && DATA.descs[s.id].d));
   const hex = catColorHex(s.cat);
   $("#info-cat").querySelector(".d").style.cssText = `background:${hex};color:${hex}`;
   $("#info-cat").querySelector("span:last-child").textContent = (CATS[s.cat] || CATS.other).label;

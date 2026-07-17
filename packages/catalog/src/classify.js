@@ -300,6 +300,26 @@ export const SCIENCE_IDS = new Set([
   "65301",
   "66657",
   "67556",
+  "16908", // AJISAI (EGS)
+  "28376", // AURA
+  "63772", // BIOMASS
+  "19751", // COSMOS 1989 (ETALON 1)
+  "20026", // COSMOS 2024 (ETALON 2)
+  "33492", // GOSAT (IBUKI)
+  "64694", // GOSAT-GW (IBUKI GW)
+  "39574", // GPM-CORE
+  "43613", // ICESAT-2
+  "41240", // JASON-3
+  "08820", // LAGEOS 1
+  "22195", // LAGEOS 2
+  "38077", // LARES
+  "53105", // LARES-2
+  "27944", // LARETS
+  "64899", // MICROCARB
+  "36036", // SMOS
+  "07646", // STARLETTE
+  "22824", // STELLA
+  "37849", // SUOMI NPP
 ]);
 /** Cataloged fragments/sub-payloads with no name DEBRIS_NAME_RE can match. */
 export const DEBRIS_IDS = new Set(["51950", "69320"]);
