@@ -11,6 +11,7 @@
  *   GET /crew      — ISS/Tiangong crew roster
  *   GET /today     — ISS "Today aboard" activity feed
  *   GET /capsules  — crewed-capsule/cargo-vehicle phase (docked/free-flying/landed) + event log
+ *   GET /satcat    — per-object SATCAT metadata (launch date, owner, launch site)
  *
  * TLE parsing lives in @orbital-traffic/catalog (shared with the web
  * app). This Worker only tags the coarse group a record came from (see
@@ -90,6 +91,28 @@ export async function buildCapsules() {
     if (r.ok) return await r.json();
   } catch {}
   return { updated: null, capsules: {}, events: [] };
+}
+
+const SATCAT_URL = "https://celestrak.org/satcat/records.php?FORMAT=JSON&CATNR=";
+export const SATCAT_TTL = 7 * 24 * 60 * 60; // 7 days — launch date/owner/site are effectively permanent once catalogued
+
+/**
+ * Fetches a single object's SATCAT record (launch date, object type, owner,
+ * launch site) server-side, so visitors' browsers never hit CelesTrak
+ * directly (audit F14). Mirrors fetchIssTle()'s degrade-to-null shape below.
+ */
+export async function fetchSatcat(catnr) {
+  try {
+    const res = await fetch(SATCAT_URL + encodeURIComponent(catnr), {
+      headers: FETCH_HEADERS,
+      cf: { cacheTtl: SATCAT_TTL, cacheEverything: true },
+    });
+    if (!res.ok) return null;
+    const arr = await res.json();
+    return Array.isArray(arr) && arr.length ? arr[0] : null;
+  } catch {
+    return null;
+  }
 }
 
 const ISS_NORAD_ID = "25544";
@@ -196,6 +219,12 @@ const ROUTES = {
   "/today": (ctx) => cached(ctx, "/today", TODAY_TTL, buildToday),
   "/capsules": (ctx) => cached(ctx, "/capsules", CAPSULES_TTL, buildCapsules),
   "/passes": (ctx, request) => handlePasses(ctx, request),
+  "/satcat": (ctx, request) => {
+    const url = new URL(request.url);
+    const catnr = url.searchParams.get("id");
+    if (!catnr) return badRequest("id query param is required");
+    return cached(ctx, `/satcat?id=${catnr}`, SATCAT_TTL, () => fetchSatcat(catnr));
+  },
 };
 
 export default {

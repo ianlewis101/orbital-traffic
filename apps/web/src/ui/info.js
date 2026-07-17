@@ -1,5 +1,5 @@
 import * as satellite from "satellite.js";
-import { catColorHex, CATS } from "../config.js";
+import { catColorHex, CATS, WORKER_BASE } from "../config.js";
 import { state, $ } from "../state.js";
 import { DATA } from "../data/store.js";
 import { safeProp } from "../astro/propagation.js";
@@ -309,13 +309,12 @@ function enrichSatcat(s) {
   if (s._neo || !s.rec) return; // skip NEOs and objects without TLE
   if (s.satcatDone || s._satcatTry) return;
   s._satcatTry = true;
-  fetch("https://celestrak.org/satcat/records.php?CATNR=" + encodeURIComponent(s.id) + "&FORMAT=JSON", {
+  fetch(`${WORKER_BASE}/satcat?id=${encodeURIComponent(s.id)}`, {
     cache: "force-cache",
   })
-    .then((r) => (r.ok ? r.json() : null))
-    .then((arr) => {
-      if (!arr || !arr.length) return;
-      const r = arr[0];
+    .then((res) => (res.ok ? res.json() : null))
+    .then((r) => {
+      if (!r) return;
       s.satcatDone = true;
       if (r.LAUNCH_DATE) s.launchDate = r.LAUNCH_DATE;
       if (r.OBJECT_TYPE) s.objType = r.OBJECT_TYPE;
