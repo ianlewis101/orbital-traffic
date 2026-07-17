@@ -223,6 +223,24 @@ const FLAGS = {
   O3B: "\u{1F1EC}\u{1F1E7}", GBR: "\u{1F1EC}\u{1F1E7}",
   ISS: "\u{1F1FA}\u{1F1F8}\u{1F1F7}\u{1F1FA}\u{1F1EF}\u{1F1F5}\u{1F1EA}\u{1F1FA}\u{1F1E8}\u{1F1E6}",
   CHBZ: "\u{1F1E8}\u{1F1F3}\u{1F1E7}\u{1F1F7}",
+  // Added 2026-07-17 — countries with curated descriptions (apps/web/public/
+  // data/descriptions.json's "a" field) that previously had no FLAGS entry
+  // at all, so agencyFlag() fell through to the generic satellite-icon
+  // fallback for them regardless of how well its keyword matching worked.
+  ALG: "\u{1F1E9}\u{1F1FF}", ARG: "\u{1F1E6}\u{1F1F7}", AUS: "\u{1F1E6}\u{1F1FA}",
+  AUT: "\u{1F1E6}\u{1F1F9}", AZE: "\u{1F1E6}\u{1F1FF}", BEL: "\u{1F1E7}\u{1F1EA}",
+  BGD: "\u{1F1E7}\u{1F1E9}", BLR: "\u{1F1E7}\u{1F1FE}", BOL: "\u{1F1E7}\u{1F1F4}",
+  BR: "\u{1F1E7}\u{1F1F7}", BUL: "\u{1F1E7}\u{1F1EC}", EGY: "\u{1F1EA}\u{1F1EC}",
+  FIN: "\u{1F1EB}\u{1F1EE}", GRC: "\u{1F1EC}\u{1F1F7}", HKG: "\u{1F1ED}\u{1F1F0}",
+  IDN: "\u{1F1EE}\u{1F1E9}", IRN: "\u{1F1EE}\u{1F1F7}", ISR: "\u{1F1EE}\u{1F1F1}",
+  KAZ: "\u{1F1F0}\u{1F1FF}", KOR: "\u{1F1F0}\u{1F1F7}", LAO: "\u{1F1F1}\u{1F1E6}",
+  MAR: "\u{1F1F2}\u{1F1E6}", MEX: "\u{1F1F2}\u{1F1FD}", MNG: "\u{1F1F2}\u{1F1F3}",
+  MYS: "\u{1F1F2}\u{1F1FE}", NGA: "\u{1F1F3}\u{1F1EC}", PAK: "\u{1F1F5}\u{1F1F0}",
+  PHL: "\u{1F1F5}\u{1F1ED}", POL: "\u{1F1F5}\u{1F1F1}", QAT: "\u{1F1F6}\u{1F1E6}",
+  SAU: "\u{1F1F8}\u{1F1E6}", SGP: "\u{1F1F8}\u{1F1EC}", SUI: "\u{1F1E8}\u{1F1ED}",
+  SVN: "\u{1F1F8}\u{1F1EE}", SWE: "\u{1F1F8}\u{1F1EA}", THA: "\u{1F1F9}\u{1F1ED}",
+  TKM: "\u{1F1F9}\u{1F1F2}", TUR: "\u{1F1F9}\u{1F1F7}", TWN: "\u{1F1F9}\u{1F1FC}", UAE: "\u{1F1E6}\u{1F1EA}",
+  VNM: "\u{1F1FB}\u{1F1F3}", AGO: "\u{1F1E6}\u{1F1F4}",
 };
 
 function inferOwner(s) {
@@ -262,29 +280,106 @@ function inferOwner(s) {
   return null;
 }
 
+// Keyword → FLAGS code lookup for agencyFlag(), checked in order (first
+// match wins). Every result comes from FLAGS — no raw emoji duplicated here
+// (previously Canada/France/Germany/Korea/Brazil/Algeria/Sweden/Italy each
+// hardcoded their own copy of a flag that already existed in FLAGS).
+// Short/ambiguous keywords (asi, uae, uk, ses, pla, usa, cast, rscc...) are
+// \b-bounded so they can't match as a substring of an unrelated word — e.g.
+// bare "asi" previously matched "Asia Broadcast Satellite" and wrongly
+// showed the Italy flag, and "cast" matched "Broadcast". Same \b convention
+// normalizeVehicleName() callers use elsewhere in this codebase (see
+// packages/catalog/src/classify.js).
+//
+// Compiled from a full audit of every unique agency ("a" field) string in
+// apps/web/public/data/descriptions.json (2026-07-17) — 1,461 of 1,472
+// curated objects now resolve to a real flag; the 11 that don't have no
+// single-country agency to show ("Commercial", "RASCOM / Africa",
+// "Unidentified / Launch Debris", "Unspecified (Rideshare Payload)", the
+// multinational "Asia Broadcast Satellite" / "AsiaSat / AMOS" operators).
+const AGENCY_KEYWORDS = [
+  ["nasa", "US"], ["\\busaf\\b", "US"], ["us air", "US"], ["us space", "US"],
+  ["us navy", "US"], ["us coast", "US"], ["us government", "US"],
+  ["us intelligence", "US"], ["\\bnro\\b", "US"], ["\\bplanet\\b", "US"],
+  ["hawkeye", "US"], ["terrestar", "US"], ["worldspace", "US"], ["ligado", "US"],
+  ["capella", "US"], ["digitalglobe", "US"], ["geoeye", "US"], ["globalstar", "US"],
+  ["echostar", "US"], ["hughes", "US"], ["\\bico\\b", "US"], ["nuview", "US"],
+  ["iridium", "US"], ["lincoln laboratory", "US"], ["northrop", "US"],
+  ["orbcomm", "US"], ["siriusxm", "US"], ["spacequest", "US"], ["spire", "US"],
+  ["aerospace corporation", "US"], ["viasat", "US"], ["at&t", "US"],
+  ["directv", "US"], ["\\busa\\b", "US"],
+  ["esa", "ESA"], ["european space", "ESA"], ["eumetsat", "ESA"],
+  ["jaxa", "JPN"], ["japan", "JPN"], ["nasda", "JPN"], ["tokyo", "JPN"],
+  ["jsat", "JPN"], ["sky perfect", "JPN"],
+  ["isro", "IND"], ["india", "IND"], ["indian", "IND"],
+  ["cnsa", "PRC"], ["china", "PRC"], ["chinese", "PRC"], ["casc", "PRC"],
+  ["\\bcma\\b", "PRC"], ["cgstl", "PRC"], ["chang guang", "PRC"], ["\\bpla\\b", "PRC"],
+  ["\\bmws\\b", "PRC"], ["head aerospace", "PRC"], ["\\bcast\\b", "PRC"],
+  ["roscosmos", "CIS"], ["russia", "CIS"], ["russian", "CIS"], ["soviet", "CIS"],
+  ["gazprom", "CIS"], ["rosto", "CIS"], ["\\brscc\\b", "CIS"],
+  ["canadian", "CA"], ["canada", "CA"], ["csa/mda", "CA"], ["csa /", "CA"],
+  ["cnes", "FR"], ["france", "FR"], ["french", "FR"], ["eutelsat", "FR"],
+  ["dlr", "GER"], ["german", "GER"], ["bundeswehr", "GER"], ["tu berlin", "GER"],
+  ["stuttgart", "GER"],
+  ["vienna", "AUT"], ["\\bgraz\\b", "AUT"],
+  ["kari", "KOR"], ["korea", "KOR"],
+  ["inpe", "BR"], ["brazil", "BR"], ["embratel", "BR"], ["telebras", "BR"],
+  ["asal", "ALG"], ["algeria", "ALG"],
+  ["swedish", "SWE"], ["sweden", "SWE"], ["ovzon", "SWE"],
+  ["telenor", "NOR"],
+  ["\\basi\\b", "IT"], ["italy", "IT"], ["italian", "IT"], ["sapienza", "IT"],
+  ["\\buk\\b", "GBR"], ["britain", "GBR"], ["british", "GBR"], ["sstl", "GBR"],
+  ["surrey", "GBR"], ["avanti", "GBR"], ["inmarsat", "GBR"],
+  ["spain", "SPN"], ["spanish", "SPN"], ["hispasat", "SPN"], ["deimos imaging", "SPN"],
+  ["argentina", "ARG"],
+  ["bolivia", "BOL"],
+  ["mongolia", "MNG"],
+  ["angola", "AGO"],
+  ["\\buae\\b", "UAE"], ["mbrsc", "UAE"], ["thuraya", "UAE"],
+  ["azerbaijan", "AZE"], ["azercosmos", "AZE"],
+  ["bangladesh", "BGD"],
+  ["indonesia", "IDN"], ["lapan", "IDN"],
+  ["belarus", "BLR"],
+  ["bulgaria", "BUL"],
+  ["switzerland", "SUI"], ["epfl", "SUI"],
+  ["egypt", "EGY"], ["egyptian", "EGY"], ["nilesat", "EGY"],
+  ["israel", "ISR"], ["dror satellite", "ISR"], ["spacecom", "ISR"], ["technion", "ISR"],
+  ["kazakhstan", "KAZ"], ["kazcosmos", "KAZ"],
+  ["thailand", "THA"], ["thaicom", "THA"], ["gistda", "THA"],
+  ["singapore", "SGP"],
+  ["laos", "LAO"],
+  ["mexico", "MEX"], ["méxico", "MEX"], ["quetzsat", "MEX"],
+  ["malaysia", "MYS"], ["measat", "MYS"],
+  ["morocco", "MAR"],
+  ["nigeria", "NGA"],
+  ["pakistan", "PAK"], ["suparco", "PAK"],
+  ["philippines", "PHL"],
+  ["poland", "POL"],
+  ["qatar", "QAT"],
+  ["saudi", "SAU"], ["kacst", "SAU"], ["arabsat", "SAU"],
+  ["slovenia", "SVN"],
+  ["taiwan", "TWN"], ["nspo", "TWN"], ["chunghwa", "TWN"],
+  ["turkey", "TUR"], ["turkish", "TUR"], ["turksat", "TUR"], ["tubitak", "TUR"],
+  ["tübi", "TUR"],
+  ["turkmen", "TKM"],
+  ["vietnam", "VNM"],
+  ["australia", "AUS"], ["nbn co", "AUS"], ["optus", "AUS"],
+  ["greece", "GRC"], ["hellas-sat", "GRC"],
+  ["finland", "FIN"], ["iceye", "FIN"],
+  ["belgium", "BEL"],
+  ["hong kong", "HKG"],
+  ["iran", "IRN"],
+  ["\\bses\\b", "SES"], ["intelsat", "SES"],
+  // Generic pan-European fallback — Airbus SE has no single national
+  // affiliation; the more specific matches above (dlr/cnes/uk/etc.) win
+  // first whenever an Airbus entry names a particular country.
+  ["airbus", "ESA"],
+].map(([kw, code]) => [new RegExp(kw, "i"), code]);
+
 function agencyFlag(a) {
-  const s = a.toLowerCase();
-  if (
-    s.includes("nasa") || s.includes("us air") || s.includes("us space") ||
-    s.includes("us navy") || s.includes("us coast") || s === "planet" || s.includes("hawkeye")
-  )
-    return FLAGS["US"];
-  if (s.includes("esa") || s.includes("european space")) return FLAGS["ESA"];
-  if (s.includes("jaxa") || s.includes("japan")) return FLAGS["JPN"];
-  if (s.includes("isro") || s.includes("india") || s.includes("indian")) return FLAGS["IND"];
-  if (s.includes("cnsa") || s.includes("china") || s.includes("chinese") || s.includes("cast"))
-    return FLAGS["PRC"];
-  if (s.includes("roscosmos") || s.includes("russia") || s.includes("soviet")) return FLAGS["CIS"];
-  if (s.includes("canadian") || s.includes("canada") || s.includes("csa/mda") || s.includes("csa /"))
-    return "\u{1F1E8}\u{1F1E6}";
-  if (s.includes("cnes") || s.includes("france") || s.includes("french")) return "\u{1F1EB}\u{1F1F7}";
-  if (s.includes("dlr") || s.includes("german")) return "\u{1F1E9}\u{1F1EA}";
-  if (s.includes("kari") || s.includes("korea")) return "\u{1F1F0}\u{1F1F7}";
-  if (s.includes("inpe") || s.includes("brazil")) return "\u{1F1E7}\u{1F1F7}";
-  if (s.includes("asal") || s.includes("algeria")) return "\u{1F1E9}\u{1F1FF}";
-  if (s.includes("swedish")) return "\u{1F1F8}\u{1F1EA}";
-  if (s.includes("eumetsat")) return FLAGS["ESA"];
-  if (s.includes("asi") || s.includes("italy") || s.includes("italian")) return "\u{1F1EE}\u{1F1F9}";
+  for (const [re, code] of AGENCY_KEYWORDS) {
+    if (re.test(a)) return FLAGS[code] || "\u{1F6F0}";
+  }
   return "\u{1F6F0}";
 }
 
