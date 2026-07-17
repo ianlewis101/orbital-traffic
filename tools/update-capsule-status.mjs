@@ -39,11 +39,30 @@ const POLITE_DELAY_MS = 1000; // between CelesTrak requests
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function loadExisting() {
+/**
+ * A genuinely missing file (ENOENT) is a legitimate first run — safe to
+ * return null for. Any other read error, or a JSON.parse failure, means
+ * the file exists but is corrupted/truncated/unreadable: silently
+ * returning null there would make isFirstRun true and wipe the entire
+ * docking-history log and events array. Abort loudly instead, the same
+ * way the CelesTrak fetch path does.
+ */
+export async function loadExisting(path = OUT) {
+  let raw;
   try {
-    return JSON.parse(await readFile(OUT, "utf8"));
-  } catch {
-    return null;
+    raw = await readFile(path, "utf8");
+  } catch (e) {
+    if (e.code === "ENOENT") return null;
+    console.error(`  Could not read ${path} (${e.code || e.message}).`);
+    console.error("  Refusing to proceed as if this were a first run — aborting.");
+    process.exit(1);
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error(`  ${path} exists but is not valid JSON (${e.message}).`);
+    console.error("  Refusing to proceed as if this were a first run — aborting.");
+    process.exit(1);
   }
 }
 
@@ -164,4 +183,9 @@ async function main() {
   console.log(`\n✓ Wrote ${OUT}`);
 }
 
-main();
+// Guarded so importing this module (e.g. from tests, to exercise
+// loadExisting() in isolation) doesn't also kick off live CelesTrak
+// fetches and a capsule-status.json write.
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main();
+}
