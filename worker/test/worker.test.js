@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import worker, { buildTLERecords, TLE_TTL } from "../src/index.js";
+import worker, { buildTLERecords, TLE_TTL, SATCAT_TTL } from "../src/index.js";
 import { GROUPS } from "@orbital-traffic/catalog";
 
 const ISS_TLE = `ISS (ZARYA)
@@ -88,6 +88,45 @@ describe("worker routes", () => {
     fetch.mockResolvedValue(new Response("err", { status: 500 }));
     res = await worker.fetch(new Request("https://x/capsules"), {}, ctx);
     expect(await res.json()).toEqual({ updated: null, capsules: {}, events: [] });
+  });
+
+  it("400s /satcat with no id", async () => {
+    const res = await worker.fetch(new Request("https://x/satcat"), {}, ctx);
+    expect(res.status).toBe(400);
+  });
+
+  it("serves a single SATCAT record on /satcat and degrades to null", async () => {
+    fetch.mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          { NORAD_CAT_ID: "25544", LAUNCH_DATE: "1998-11-20", OBJECT_TYPE: "PAYLOAD", OWNER: "ISS" },
+        ])
+      )
+    );
+    let res = await worker.fetch(new Request("https://x/satcat?id=25544"), {}, ctx);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Cache-Control")).toBe(`public, max-age=${SATCAT_TTL}`);
+    expect(await res.json()).toEqual({
+      NORAD_CAT_ID: "25544",
+      LAUNCH_DATE: "1998-11-20",
+      OBJECT_TYPE: "PAYLOAD",
+      OWNER: "ISS",
+    });
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("CATNR=25544"),
+      expect.any(Object)
+    );
+
+    // Unknown CATNR — CelesTrak returns an empty array
+    fetch.mockResolvedValue(new Response("[]"));
+    res = await worker.fetch(new Request("https://x/satcat?id=99999999"), {}, ctx);
+    expect(await res.json()).toBeNull();
+
+    // Upstream failure degrades gracefully instead of throwing
+    fetch.mockResolvedValue(new Response("err", { status: 500 }));
+    res = await worker.fetch(new Request("https://x/satcat?id=25544"), {}, ctx);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toBeNull();
   });
 });
 
