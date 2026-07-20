@@ -62,11 +62,16 @@ describe("worker routes", () => {
       new Response(JSON.stringify({ people: [{ name: "A", craft: "ISS" }], number: 1 }))
     );
     let res = await worker.fetch(new Request("https://x/crew"), {}, ctx);
-    expect((await res.json()).number).toBe(1);
+    let body = await res.json();
+    expect(body.number).toBe(1);
+    expect(body.fetchedAt).toEqual(expect.any(String));
+    expect(new Date(body.fetchedAt).toISOString()).toBe(body.fetchedAt);
 
     fetch.mockRejectedValue(new Error("down"));
     res = await worker.fetch(new Request("https://x/crew"), {}, ctx);
-    expect(await res.json()).toEqual({ people: [], number: 0, ok: false });
+    body = await res.json();
+    expect(body).toEqual({ people: [], number: 0, ok: false, fetchedAt: expect.any(String) });
+    expect(new Date(body.fetchedAt).toISOString()).toBe(body.fetchedAt);
   });
 
   it("serves /today and degrades to an empty feed", async () => {
