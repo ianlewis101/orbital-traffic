@@ -66,10 +66,16 @@ export async function buildCrew() {
     const r = await fetch(CREW_URL, { cf: { cacheTtl: CREW_TTL, cacheEverything: true } });
     if (r.ok) {
       const d = await r.json();
-      if (Array.isArray(d.people)) return { people: d.people, number: d.number ?? d.people.length, ok: true };
+      if (Array.isArray(d.people))
+        return {
+          people: d.people,
+          number: d.number ?? d.people.length,
+          ok: true,
+          fetchedAt: new Date().toISOString(),
+        };
     }
   } catch {}
-  return { people: [], number: 0, ok: false };
+  return { people: [], number: 0, ok: false, fetchedAt: new Date().toISOString() };
 }
 
 export async function buildToday() {
