@@ -1,6 +1,7 @@
 import { WORKER_BASE } from "../config.js";
 import { state } from "../state.js";
 import { esc } from "../util/html.js";
+import { formatRelativeTime } from "../util/relative-time.js";
 
 const STATION_LABEL = { iss: "ISS", css: "Tiangong" };
 const PHASE_LABEL = { docked: "Docked", "free-flying": "Free-flying", landed: "Landed" };
@@ -80,6 +81,11 @@ export async function renderCapsuleStatus(s, el) {
           stationLbl ? "at " + stationLbl + " · " : ""
         }${timeAgo(status.since)} in this phase</div></div>
       </div>
+      ${
+        state.capsulesTime
+          ? `<div style="font-size:10px;color:var(--ink-faint);padding:4px 13px 8px;letter-spacing:0.05em">as of ${formatRelativeTime(state.capsulesTime)}</div>`
+          : ""
+      }
     </div>
     <div class="crew-today"><div class="crew-today-hd"><div class="crew-today-lbl">Recent activity</div></div><div class="crew-today-body">${
       // eslint-disable-next-line orbital/no-unescaped-innerhtml -- eventsHTML is assembled from esc()-escaped feed values via map()/join() above
