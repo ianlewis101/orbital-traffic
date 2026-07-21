@@ -15,6 +15,8 @@ export const state = {
   lastProp: 0,
   source: "cached",
   srcTime: null,
+  capsulesData: null,
+  capsulesTime: null,
 };
 Object.keys(CATS).forEach((c) => (state.cats[c] = 0));
 
