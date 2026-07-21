@@ -34,8 +34,8 @@ afterEach(() => {
 
 const CSS_HUB = { id: "48274", name: "CSS (TIANHE)", cat: "stations" };
 
-function crewResponse(people) {
-  return new Response(JSON.stringify({ people, number: people.length, ok: true }));
+function crewResponse(people, extra = {}) {
+  return new Response(JSON.stringify({ people, number: people.length, ok: true, ...extra }));
 }
 
 describe("fetchAndRenderCrew — roster plausibility check", () => {
@@ -153,5 +153,56 @@ describe("fetchAndRenderCrew — roster plausibility check", () => {
     await fetchAndRenderCrew(CSS_HUB);
 
     expect(el.innerHTML).not.toContain("Roster may not reflect the current crew");
+  });
+});
+
+describe("fetchAndRenderCrew — possiblyIncomplete caveat (LL2 supplementary check)", () => {
+  it("shows the caveat when the worker flags possiblyIncomplete", async () => {
+    state.selected = CSS_HUB;
+    state.capsulesData = null; // isolate from the plausibility check above
+    fetch.mockResolvedValue(
+      crewResponse([{ name: "One", craft: "Tiangong" }], { possiblyIncomplete: true })
+    );
+
+    await fetchAndRenderCrew(CSS_HUB);
+
+    expect(el.innerHTML).toContain("There may be additional crew not reflected yet");
+  });
+
+  it("does not show the caveat when possiblyIncomplete is false or absent", async () => {
+    state.selected = CSS_HUB;
+    state.capsulesData = null;
+    fetch.mockResolvedValue(crewResponse([{ name: "One", craft: "Tiangong" }]));
+
+    await fetchAndRenderCrew(CSS_HUB);
+
+    expect(el.innerHTML).not.toContain("There may be additional crew not reflected yet");
+  });
+
+  it("never shows the caveat when the crew fetch itself failed", async () => {
+    state.selected = CSS_HUB;
+    state.capsulesData = null;
+    fetch.mockRejectedValue(new Error("down"));
+
+    await fetchAndRenderCrew(CSS_HUB);
+
+    expect(el.innerHTML).not.toContain("There may be additional crew not reflected yet");
+  });
+
+  it("renders both caveats together when they aren't mutually exclusive", async () => {
+    state.selected = CSS_HUB;
+    // Both the plausibility check (PR #109) and possiblyIncomplete (this
+    // PR) can trigger from the same response — they're independent signals.
+    state.capsulesData = {
+      70001: { kind: "crew", phase: "docked", stationKey: "css", name: "SHENZHOU-23 (SZ-23)" }, // 3 seats
+    };
+    fetch.mockResolvedValue(
+      crewResponse([{ name: "Solo", craft: "Tiangong" }], { possiblyIncomplete: true }) // actual 1 < 3-1
+    );
+
+    await fetchAndRenderCrew(CSS_HUB);
+
+    expect(el.innerHTML).toContain("Roster may not reflect the current crew");
+    expect(el.innerHTML).toContain("There may be additional crew not reflected yet");
   });
 });

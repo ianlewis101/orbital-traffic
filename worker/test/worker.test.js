@@ -14,6 +14,26 @@ function textResponse(body) {
   return new Response(body, { status: 200 });
 }
 
+// Real LL2 shape, trimmed to only what buildCrew() reads (see the curl
+// checks noted in the PR description for the actual field names).
+function stationResponse(names) {
+  return new Response(
+    JSON.stringify({
+      active_expeditions: [
+        { crew: names.map((name) => ({ role: { role: "Flight Engineer" }, astronaut: { name } })) },
+      ],
+    })
+  );
+}
+
+function astronautCountResponse(count) {
+  return new Response(JSON.stringify({ count }));
+}
+
+function isoDateString(s) {
+  return typeof s === "string" && new Date(s).toISOString() === s;
+}
+
 const ctx = { waitUntil: () => {} };
 
 describe("worker routes", () => {
@@ -57,21 +77,86 @@ describe("worker routes", () => {
     expect(recs.find((r) => r.name === "CZ-4B R/B").cat).toBe("debris");
   });
 
-  it("serves the crew roster on /crew and degrades to an empty roster", async () => {
-    fetch.mockResolvedValue(
-      new Response(JSON.stringify({ people: [{ name: "A", craft: "ISS" }], number: 1 }))
+  it("merges both stations' real-shaped crew on /crew when the supplementary count matches", async () => {
+    fetch.mockImplementation((url) => {
+      if (url.includes("/spacestation/4/")) return Promise.resolve(stationResponse(["Alice", "Bob"]));
+      if (url.includes("/spacestation/18/")) return Promise.resolve(stationResponse(["Carol"]));
+      if (url.includes("/astronaut/")) return Promise.resolve(astronautCountResponse(3));
+      throw new Error("unexpected URL " + url);
+    });
+    const res = await worker.fetch(new Request("https://x/crew"), {}, ctx);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+    expect(body.number).toBe(3);
+    expect(body.people).toEqual(
+      expect.arrayContaining([
+        { name: "Alice", craft: "ISS" },
+        { name: "Bob", craft: "ISS" },
+        { name: "Carol", craft: "Tiangong" },
+      ])
     );
-    let res = await worker.fetch(new Request("https://x/crew"), {}, ctx);
-    let body = await res.json();
-    expect(body.number).toBe(1);
-    expect(body.fetchedAt).toEqual(expect.any(String));
-    expect(new Date(body.fetchedAt).toISOString()).toBe(body.fetchedAt);
+    expect(body.possiblyIncomplete).toBe(false);
+    expect(isoDateString(body.fetchedAt)).toBe(true);
+  });
 
-    fetch.mockRejectedValue(new Error("down"));
-    res = await worker.fetch(new Request("https://x/crew"), {}, ctx);
-    body = await res.json();
-    expect(body).toEqual({ people: [], number: 0, ok: false, fetchedAt: expect.any(String) });
-    expect(new Date(body.fetchedAt).toISOString()).toBe(body.fetchedAt);
+  it("stays ok:true with the working station's people when only one station's fetch fails", async () => {
+    fetch.mockImplementation((url) => {
+      if (url.includes("/spacestation/4/")) return Promise.resolve(stationResponse(["Alice"]));
+      if (url.includes("/spacestation/18/")) return Promise.reject(new Error("down"));
+      if (url.includes("/astronaut/")) return Promise.resolve(astronautCountResponse(1));
+      throw new Error("unexpected URL " + url);
+    });
+    const res = await worker.fetch(new Request("https://x/crew"), {}, ctx);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+    expect(body.people).toEqual([{ name: "Alice", craft: "ISS" }]);
+    expect(body.number).toBe(1);
+    expect(isoDateString(body.fetchedAt)).toBe(true);
+  });
+
+  it("degrades to an empty ok:false roster when both stations fail", async () => {
+    fetch.mockImplementation((url) => {
+      if (url.includes("/spacestation/")) return Promise.reject(new Error("down"));
+      throw new Error("unexpected URL " + url);
+    });
+    const res = await worker.fetch(new Request("https://x/crew"), {}, ctx);
+    const body = await res.json();
+    expect(body.ok).toBe(false);
+    expect(body.people).toEqual([]);
+    expect(body.number).toBe(0);
+    // Skipped (not just falsy) when ok is false — no /astronaut/ cross-check
+    // is meaningful if we couldn't place anyone in the first place.
+    expect(body.possiblyIncomplete).toBe(false);
+    expect(isoDateString(body.fetchedAt)).toBe(true);
+  });
+
+  it("flags possiblyIncomplete when LL2's in-space count exceeds what was placed", async () => {
+    fetch.mockImplementation((url) => {
+      if (url.includes("/spacestation/4/")) return Promise.resolve(stationResponse(["Alice"]));
+      if (url.includes("/spacestation/18/")) return Promise.resolve(stationResponse([]));
+      // A just-docked crew LL2 hasn't reflected at the station level yet.
+      if (url.includes("/astronaut/")) return Promise.resolve(astronautCountResponse(4));
+      throw new Error("unexpected URL " + url);
+    });
+    const res = await worker.fetch(new Request("https://x/crew"), {}, ctx);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+    expect(body.possiblyIncomplete).toBe(true);
+    expect(isoDateString(body.fetchedAt)).toBe(true);
+  });
+
+  it("treats a failed supplementary fetch as possiblyIncomplete:false, not thrown or undefined", async () => {
+    fetch.mockImplementation((url) => {
+      if (url.includes("/spacestation/4/")) return Promise.resolve(stationResponse(["Alice"]));
+      if (url.includes("/spacestation/18/")) return Promise.resolve(stationResponse([]));
+      if (url.includes("/astronaut/")) return Promise.reject(new Error("down"));
+      throw new Error("unexpected URL " + url);
+    });
+    const res = await worker.fetch(new Request("https://x/crew"), {}, ctx);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+    expect(body.possiblyIncomplete).toBe(false);
+    expect(isoDateString(body.fetchedAt)).toBe(true);
   });
 
   it("serves /today and degrades to an empty feed", async () => {
