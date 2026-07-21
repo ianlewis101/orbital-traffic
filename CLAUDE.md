@@ -472,19 +472,24 @@ a tested, modular monorepo v2.0.0"):
   classify.js during the 2026-07-16 capsules-category split (see
   Critical Rule #6) — the next time either side changes, update
   both in the same commit.
-- CREW_URL (worker/src/index.js) must stay http://, not https://.
-  A 2026-07-13 fix (commit e0780e9, F1) switched it to https://
-  believing Open Notify supported it; verified 2026-07-20 that
-  Open Notify's HTTPS endpoint does not respond (connection
-  refused/reset) while HTTP returns 200 with valid data. This
-  silently broke the live /crew endpoint for about a week — every
-  visitor got ok:false and an empty roster, with no visible error
-  beyond the existing "couldn't load crew" fallback card. Do not
-  switch this back to https:// without first testing directly
-  that Open Notify's HTTPS endpoint actually responds. F1's actual
-  XSS fix (esc()-escaping p.name-derived values in
-  apps/web/src/ui/crew.js) is independent of the URL scheme and
-  must stay in place regardless.
+- Open Notify (api.open-notify.org) is no longer used anywhere in this
+  project. It was fully replaced 2026-07-21 by Launch Library 2 (LL2)
+  after Open Notify was found to be serving a crew roster roughly 18
+  months stale, with no reliable way to detect it from headcount alone
+  (see the "Open Notify roster ~18 months stale" row in
+  docs/audit-status.md). worker/src/index.js's buildCrew() now fetches
+  both stations' active-expedition crew from LL2's /spacestation/
+  endpoint. LL2_BASE must stay "https://ll.thespacedevs.com/2.2.0"
+  (production) — never lldev.thespacedevs.com, which LL2's own docs
+  mark as a development-only tier, not for real traffic. The two
+  station IDs were verified directly against real crew rosters
+  (cross-referenced against NASA, Wikipedia, and Xinhua) — do not
+  re-guess these if this code is touched again: ISS_STATION_ID = 4,
+  TIANGONG_STATION_ID = 18 (the Tiangong space station — not 7 or 8,
+  which are the de-orbited Tiangong 1/2). F1's original XSS fix
+  (esc()-escaping p.name-derived values in apps/web/src/ui/crew.js)
+  predates and is independent of this data-source swap and must stay
+  in place regardless.
 
 ── DEPLOY COMMANDS (reference) ───────────────────────────────
 

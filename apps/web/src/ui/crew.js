@@ -39,6 +39,7 @@ export async function fetchAndRenderCrew(s) {
   let crew = [];
   let crewFetchFailed = false;
   let fetchedAt = null;
+  let possiblyIncomplete = false;
   try {
     const r = await fetch(WORKER_BASE + "/crew", { cache: "no-store" });
     if (!r.ok) throw new Error("bad status");
@@ -46,20 +47,27 @@ export async function fetchAndRenderCrew(s) {
     if (d.ok === false || !Array.isArray(d.people)) throw new Error("bad shape");
     crew = d.people.filter((p) => (p.craft || p.location || "").includes(craft));
     fetchedAt = d.fetchedAt || null;
+    // LL2's per-station active-expedition data can lag by a few days on a
+    // brand-new arrival during a handover overlap — this doesn't say which
+    // station is short (that would need cross-referencing mission data, out
+    // of scope), so it's shown regardless of which station card is open.
+    possiblyIncomplete = d.possiblyIncomplete === true;
   } catch {
     crewFetchFailed = true;
   }
   if (state.selected !== s) return; // selection changed while this was in flight
 
   // Plausibility stopgap (see CREW_SEATS_BY_FAMILY's doc comment in
-  // classify.js): compares Open Notify's headcount against how many seats
-  // are actually docked at this station right now, per capsule-status.json
-  // (state.capsulesData). This can only catch gross mismatches — it has no
-  // notion of *who* is aboard, only how many, so a roster with a plausible
-  // headcount but stale/wrong names (the actual 2026-07-20 incident) slips
-  // through undetected. The real fix is replacing the crew data source
-  // itself; this only narrows the blast radius of the failure mode it can
-  // actually see.
+  // classify.js), added 2026-07-20 when Open Notify was found serving a
+  // roster ~18 months stale: compares the crew fetch's headcount against
+  // how many seats are actually docked at this station right now, per
+  // capsule-status.json (state.capsulesData). This can only catch gross
+  // mismatches — it has no notion of *who* is aboard, only how many, so a
+  // roster with a plausible headcount but stale/wrong names (the actual
+  // 2026-07-20 incident) slips through undetected. Open Notify was fully
+  // replaced by Launch Library 2 on 2026-07-21 (see the Worker's
+  // buildCrew()), so this is no longer the primary safeguard against a bad
+  // roster — kept as a harmless, source-agnostic generic backstop.
   let crewSuspect = false;
   if (!crewFetchFailed && state.capsulesData) {
     const stationKey = isISS ? "iss" : "css";
@@ -147,6 +155,11 @@ export async function fetchAndRenderCrew(s) {
       ${
         crewSuspect
           ? `<div style="font-size:10px;color:var(--ink-faint);padding:4px 0;letter-spacing:0.05em">Roster may not reflect the current crew</div>`
+          : ""
+      }
+      ${
+        !crewFetchFailed && possiblyIncomplete
+          ? `<div style="font-size:10px;color:var(--ink-faint);padding:4px 0;letter-spacing:0.05em">There may be additional crew not reflected yet</div>`
           : ""
       }
     </div>

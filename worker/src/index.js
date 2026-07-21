@@ -2,8 +2,8 @@
  * Orbital Traffic — Cloudflare Worker
  *
  * Proxies and caches the data the web app's "Fetch Live Data" / crew card
- * features depend on, so the client never has to hit CelesTrak, Open
- * Notify, or GitHub directly (and so those upstreams see one cached
+ * features depend on, so the client never has to hit CelesTrak, Launch
+ * Library 2, or GitHub directly (and so those upstreams see one cached
  * request per TTL window instead of one per visitor).
  *
  * Routes:
@@ -34,11 +34,18 @@ export const CREW_TTL = 60 * 60; // 1 hour
 export const TODAY_TTL = 5 * 60; // 5 minutes
 export const CAPSULES_TTL = 10 * 60; // 10 minutes — source refreshes every 4h, so this just bounds edge staleness
 
-// Open Notify's HTTPS endpoint was confirmed non-functional as of
-// 2026-07-20 (connection refused/reset, verified deliberately against the
-// real host — not assumed). Do not switch this back to https:// without
-// first confirming Open Notify's HTTPS endpoint actually responds again.
-const CREW_URL = "http://api.open-notify.org/astros.json";
+// Launch Library 2 (LL2) — replaced Open Notify entirely 2026-07-21 after
+// Open Notify was found to be serving a crew roster ~18 months stale (see
+// docs/audit-status.md). MUST stay ll.thespacedevs.com (production) — never
+// lldev.thespacedevs.com, which LL2's own docs mark as a development-only
+// tier, not for real traffic. Station IDs were verified directly against
+// real crew rosters this session (cross-referenced against NASA, Wikipedia,
+// and Xinhua) — do not re-guess these if this code is touched again: 4 is
+// the ISS, 18 is the Tiangong space station (not 7/8, the de-orbited
+// Tiangong 1/2).
+const LL2_BASE = "https://ll.thespacedevs.com/2.2.0";
+const ISS_STATION_ID = 4;
+const TIANGONG_STATION_ID = 18;
 const TODAY_URL =
   "https://raw.githubusercontent.com/ianlewis101/orbital-traffic/main/iss-today.json";
 const CAPSULES_URL =
@@ -65,21 +72,76 @@ export async function buildTLERecords() {
   return mergeRecords(results.map((r) => (r.status === "fulfilled" ? r.value : [])));
 }
 
-export async function buildCrew() {
+/**
+ * One station's active-expedition crew from LL2's /spacestation/ endpoint.
+ * ok:false only means this station's own fetch failed — buildCrew() decides
+ * what that means for the overall response.
+ */
+async function fetchStationCrew(stationId, craft) {
   try {
-    const r = await fetch(CREW_URL, { cf: { cacheTtl: CREW_TTL, cacheEverything: true } });
-    if (r.ok) {
-      const d = await r.json();
-      if (Array.isArray(d.people))
-        return {
-          people: d.people,
-          number: d.number ?? d.people.length,
-          ok: true,
-          fetchedAt: new Date().toISOString(),
-        };
-    }
-  } catch {}
-  return { people: [], number: 0, ok: false, fetchedAt: new Date().toISOString() };
+    const r = await fetch(`${LL2_BASE}/spacestation/${stationId}/`, {
+      cf: { cacheTtl: CREW_TTL, cacheEverything: true },
+    });
+    if (!r.ok) return { ok: false, people: [] };
+    const d = await r.json();
+    if (!Array.isArray(d.active_expeditions)) return { ok: false, people: [] };
+    const crew = d.active_expeditions[0]?.crew;
+    const people = Array.isArray(crew)
+      ? crew.map((c) => ({ name: c.astronaut?.name, craft })).filter((p) => p.name)
+      : [];
+    return { ok: true, people };
+  } catch {
+    return { ok: false, people: [] };
+  }
+}
+
+/**
+ * Supplementary cross-check (not a full fix): compares how many people we
+ * actually placed at a station against LL2's own count of everyone
+ * currently in space. LL2's per-station active-expedition data can lag by
+ * a few days on a brand-new arrival during a handover overlap (confirmed
+ * 2026-07-21: it was missing the just-docked Soyuz MS-29 crew), so this
+ * exists purely to surface that honestly rather than silently show an
+ * incomplete roster. Deliberately does NOT try to identify who the extra
+ * person/people are or which station they belong to — that would mean
+ * cross-referencing mission/flight data, out of scope for this fix. A
+ * failed fetch here returns false rather than flagging incompleteness we
+ * can't actually confirm — absence of evidence isn't evidence of a problem.
+ */
+async function checkPossiblyIncomplete(placedCount) {
+  try {
+    const r = await fetch(`${LL2_BASE}/astronaut/?in_space=true&is_human=true&format=json`, {
+      cf: { cacheTtl: CREW_TTL, cacheEverything: true },
+    });
+    if (!r.ok) return false;
+    const d = await r.json();
+    if (typeof d.count !== "number") return false;
+    return d.count > placedCount;
+  } catch {
+    return false;
+  }
+}
+
+export async function buildCrew() {
+  const [iss, tiangong] = await Promise.all([
+    fetchStationCrew(ISS_STATION_ID, "ISS"),
+    fetchStationCrew(TIANGONG_STATION_ID, "Tiangong"),
+  ]);
+  const people = [...iss.people, ...tiangong.people];
+  // Partial success is real success: one station's own fetch failing
+  // doesn't invalidate the other's real, working data. The failing station
+  // just contributes zero people after the client's existing craft-filter
+  // runs — crew.js already renders an honest "Crew names unavailable" in
+  // that exact case with no changes needed there. Only both stations
+  // failing matches the old all-failed contract (empty roster, ok:false).
+  const ok = iss.ok || tiangong.ok;
+  return {
+    people,
+    number: people.length,
+    ok,
+    possiblyIncomplete: ok ? await checkPossiblyIncomplete(people.length) : false,
+    fetchedAt: new Date().toISOString(),
+  };
 }
 
 export async function buildToday() {
