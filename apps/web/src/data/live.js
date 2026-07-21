@@ -53,6 +53,12 @@ async function fetchCapsuleStatus() {
     const r = await fetch(WORKER_BASE + "/capsules", { cache: "no-store" });
     if (!r.ok) return null;
     const data = await r.json();
+    // Stored regardless of what's returned below — crew.js's plausibility
+    // check and the (separate, not-yet-built) freshness indicator both read
+    // these directly off state rather than threading them through
+    // reconcileCapsules()'s own input/return shape.
+    state.capsulesData = data.capsules;
+    state.capsulesTime = data.updated ? new Date(data.updated) : null;
     return data && data.capsules ? data.capsules : null;
   } catch {
     return null; // reconciliation is best-effort; the epoch prune still runs

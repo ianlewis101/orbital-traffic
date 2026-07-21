@@ -1,6 +1,6 @@
 import { WORKER_BASE } from "../config.js";
 import { $, state } from "../state.js";
-import { vehicleFamily } from "@orbital-traffic/catalog";
+import { vehicleFamily, CREW_SEATS_BY_FAMILY } from "@orbital-traffic/catalog";
 import { renderCapsuleStatus } from "./capsule-status.js";
 import { esc } from "../util/html.js";
 
@@ -47,6 +47,45 @@ export async function fetchAndRenderCrew(s) {
     crewFetchFailed = true;
   }
   if (state.selected !== s) return; // selection changed while this was in flight
+
+  // Plausibility stopgap (see CREW_SEATS_BY_FAMILY's doc comment in
+  // classify.js): compares Open Notify's headcount against how many seats
+  // are actually docked at this station right now, per capsule-status.json
+  // (state.capsulesData). This can only catch gross mismatches — it has no
+  // notion of *who* is aboard, only how many, so a roster with a plausible
+  // headcount but stale/wrong names (the actual 2026-07-20 incident) slips
+  // through undetected. The real fix is replacing the crew data source
+  // itself; this only narrows the blast radius of the failure mode it can
+  // actually see.
+  let crewSuspect = false;
+  if (!crewFetchFailed && state.capsulesData) {
+    const stationKey = isISS ? "iss" : "css";
+    let expectedSeats = 0;
+    let unrecognizedFamily = false;
+    for (const c of Object.values(state.capsulesData)) {
+      if (c.kind !== "crew" || c.phase !== "docked" || c.stationKey !== stationKey) continue;
+      const seats = CREW_SEATS_BY_FAMILY[vehicleFamily(c.name)];
+      if (seats == null) unrecognizedFamily = true;
+      else expectedSeats += seats;
+    }
+    const actual = crew.length;
+    // Order matters: "no vehicle docked at all" and "vehicle docked but
+    // nobody aboard" are checked before the general overcount tolerance —
+    // that tolerance (handover overlap, or an unrecognized-family vehicle's
+    // real seats not being counted) only makes sense once at least one
+    // vehicle is actually present.
+    if (expectedSeats === 0 && !unrecognizedFamily) {
+      if (actual > 0) crewSuspect = true;
+    } else if (actual === 0) {
+      crewSuspect = true;
+    } else if (actual > expectedSeats) {
+      // Not a data problem: a handover overlap (new capsule docked before
+      // the departing one undocked) or an unrecognized-family vehicle's
+      // seats simply aren't reflected in expectedSeats.
+    } else if (actual < expectedSeats - 1) {
+      crewSuspect = true;
+    }
+  }
 
   // fetch today's activities from worker (sourced from iss-today.json)
   let todayData = null;
@@ -98,6 +137,11 @@ export async function fetchAndRenderCrew(s) {
         // eslint-disable-next-line orbital/no-unescaped-innerhtml -- avHTML is assembled from esc()-escaped crew data in the map() loop above
         avHTML
       }</div>
+      ${
+        crewSuspect
+          ? `<div style="font-size:10px;color:var(--ink-faint);padding:4px 0;letter-spacing:0.05em">Roster may not reflect the current crew</div>`
+          : ""
+      }
     </div>
     ${
       // eslint-disable-next-line orbital/no-unescaped-innerhtml -- todayItems (used below) is assembled from esc()-escaped activity text in the map() loop above

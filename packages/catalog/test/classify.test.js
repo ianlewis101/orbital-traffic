@@ -11,6 +11,7 @@ import {
   cargoFamily,
   isStationVehicle,
   vehicleFamily,
+  CREW_SEATS_BY_FAMILY,
 } from "../src/index.js";
 
 describe("correctStationCat", () => {
@@ -351,5 +352,19 @@ describe("isStationVehicle / vehicleFamily", () => {
     expect(vehicleFamily("DRAGON CRS-33")).toBe("dragon-cargo");
     expect(vehicleFamily("CYGNUS NG-24")).toBe("cygnus");
     expect(vehicleFamily("STARLINK-30042")).toBeNull();
+  });
+});
+
+describe("CREW_SEATS_BY_FAMILY", () => {
+  it("maps known crewed families to a typical seat count", () => {
+    expect(CREW_SEATS_BY_FAMILY.soyuz).toBe(3);
+    expect(CREW_SEATS_BY_FAMILY.dragon).toBe(4);
+    expect(CREW_SEATS_BY_FAMILY.shenzhou).toBe(3);
+  });
+
+  it("has no entry for unrecognized or cargo families — undefined, not a guessed default", () => {
+    expect(CREW_SEATS_BY_FAMILY.starliner).toBeUndefined();
+    expect(CREW_SEATS_BY_FAMILY["dragon-cargo"]).toBeUndefined();
+    expect(CREW_SEATS_BY_FAMILY.cygnus).toBeUndefined();
   });
 });

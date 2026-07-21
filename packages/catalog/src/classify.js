@@ -170,6 +170,16 @@ export function vehicleFamily(name) {
   return capsuleFamily(name) ?? cargoFamily(name);
 }
 
+/**
+ * Typical crew seat count per crewed-vehicle family — used by crew.js's
+ * roster plausibility check (a stopgap against Open Notify serving a stale
+ * roster; see that call site for the full caveat). Families not listed here
+ * (starliner, and any not-yet-common CREW_VEHICLE_PATTERNS entry) are
+ * unknown seat counts, not zero — callers must treat a missing entry as
+ * "can't verify," never guess a default.
+ */
+export const CREW_SEATS_BY_FAMILY = { soyuz: 3, dragon: 4, shenzhou: 3 };
+
 export function correctStationCat(id, name, cat) {
   if (cat !== "stations") return cat;
   if (STATION_CORE_IDS.has(id)) return "stations";
