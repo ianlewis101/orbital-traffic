@@ -3,6 +3,7 @@ import { $, state } from "../state.js";
 import { vehicleFamily, CREW_SEATS_BY_FAMILY } from "@orbital-traffic/catalog";
 import { renderCapsuleStatus } from "./capsule-status.js";
 import { esc } from "../util/html.js";
+import { formatRelativeTime } from "../util/relative-time.js";
 
 function initials(name) {
   const p = name.trim().split(/\s+/);
@@ -37,12 +38,14 @@ export async function fetchAndRenderCrew(s) {
   // fetch crew from worker
   let crew = [];
   let crewFetchFailed = false;
+  let fetchedAt = null;
   try {
     const r = await fetch(WORKER_BASE + "/crew", { cache: "no-store" });
     if (!r.ok) throw new Error("bad status");
     const d = await r.json();
     if (d.ok === false || !Array.isArray(d.people)) throw new Error("bad shape");
     crew = d.people.filter((p) => (p.craft || p.location || "").includes(craft));
+    fetchedAt = d.fetchedAt || null;
   } catch {
     crewFetchFailed = true;
   }
@@ -131,7 +134,11 @@ export async function fetchAndRenderCrew(s) {
         <div class="crew-count-wrap"><div class="crew-count">${
           // eslint-disable-next-line orbital/no-unescaped-innerhtml -- count is crew.length (a number) or the literal "?" fallback
           count
-        }</div><div class="crew-count-lbl">ABOARD</div></div>
+        }</div><div class="crew-count-lbl">ABOARD</div>${
+          !crewFetchFailed && fetchedAt
+            ? `<div class="crew-count-lbl">as of ${formatRelativeTime(new Date(fetchedAt))}</div>`
+            : ""
+        }</div>
       </div>
       <div class="crew-avs">${
         // eslint-disable-next-line orbital/no-unescaped-innerhtml -- avHTML is assembled from esc()-escaped crew data in the map() loop above

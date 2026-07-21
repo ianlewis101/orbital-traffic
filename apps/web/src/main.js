@@ -31,6 +31,7 @@ import { updateCount } from "./ui/status.js";
 import { updateClock } from "./ui/clock.js";
 import { registerServiceWorker } from "./pwa.js";
 import { refreshPassAlertsIfEnabled } from "./native/passAlerts.js";
+import { formatRelativeTime } from "./util/relative-time.js";
 import * as THREE from "three";
 
 const splash = $("#splash"),
@@ -47,7 +48,19 @@ function fatal(msg) {
 const _sunW = new THREE.Vector3(),
   _invQ = new THREE.Quaternion();
 let infoTick = 0,
-  neoFrame = 0;
+  neoFrame = 0,
+  freshFrame = 0;
+
+// Plain-language "is this actually live" reassurance for casual visitors —
+// see relative-time.js. Kept out of the propagation-throttled block below
+// since it has nothing to do with orbital positions, just its own cadence.
+function updateFreshnessLine() {
+  const el = $("#freshness-line");
+  if (!el) return;
+  el.textContent = state.srcTime
+    ? `Live positions · updated ${formatRelativeTime(state.srcTime)}`
+    : "Live positions · syncing…";
+}
 
 function loop(now) {
   requestAnimationFrame(loop);
@@ -70,6 +83,9 @@ function loop(now) {
   const gmst = satellite.gstime(date);
   earthGroup.rotation.y = -gmst;
   if (++neoFrame % 60 === 0) updateNeoPositions(date.getTime());
+  // Relative-time text only needs to visibly change once a minute at most —
+  // every 30 frames (~0.5s at 60fps) is far more than enough headroom.
+  if (++freshFrame % 30 === 0) updateFreshnessLine();
   const sd = sunDirECI(date);
   _sunW.set(sd.x, sd.z, sd.y);
   earthUniforms.sunDir.value.copy(_sunW).applyQuaternion(_invQ.copy(earthGroup.quaternion).invert());
@@ -118,6 +134,7 @@ async function boot() {
   rebuildLegend();
   updateCount();
   renderToday();
+  updateFreshnessLine();
   requestAnimationFrame(loop);
   setTimeout(() => {
     splash.classList.add("gone");

@@ -50,6 +50,7 @@ const SAFE_FUNCTIONS = new Set([
   "agencyFlag", // agency string -> flag emoji from a fixed table (ui/info.js)
   "timeAgo", // -> "today" / "1 day" / "N days" (ui/capsule-status.js)
   "shortDate", // -> "Mon D" via toLocaleDateString (ui/capsule-status.js)
+  "formatRelativeTime", // -> "just now" / "Xm ago" / "Xh ago" / "Xd ago" / null (util/relative-time.js)
   "regionName", // ground point -> fixed region name (geo/regions.js)
   "fmt", // number -> localized number string (ui/info.js)
 ]);
