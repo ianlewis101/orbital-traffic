@@ -1,0 +1,48 @@
+name: Deploy Worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "worker/**"
+      - "packages/catalog/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Merges touching worker/** or packages/catalog/** can land in quick
+# succession; let an in-flight deploy finish rather than cancel it, but
+# never run two deploys at once. Same spirit as the F13 push-collision
+# fix on the scheduled data workflows — prevented here via concurrency
+# instead of retry, since there's no git push for a Cloudflare deploy to
+# rebase against.
+concurrency:
+  group: deploy-worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test Worker
+        run: npm test -w worker
+
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
