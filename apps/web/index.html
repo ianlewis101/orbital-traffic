@@ -95,10 +95,11 @@
   <div id="search-wrap">
     <div id="search" class="plate">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-      <input id="search-in" type="text" placeholder="SEARCH CATALOG" autocomplete="off" spellcheck="false">
-      <span class="slash">↵</span>
+      <input id="search-in" type="text" placeholder="SEARCH CATALOG" autocomplete="off" spellcheck="false"
+        aria-label="Search catalog" role="combobox" aria-expanded="false" aria-controls="results" aria-autocomplete="list">
+      <span class="slash" aria-hidden="true">↵</span>
     </div>
-    <div id="results" class="plate"></div>
+    <div id="results" class="plate" role="listbox" aria-label="Search results"></div>
   </div>
 
   <div id="leftstack">
@@ -129,8 +130,8 @@
     <div id="info-drag"></div>
     <div class="ph">
       <span class="ph-t">Tracked Object</span>
-      <button id="fav-btn" title="Save to favourites">☆</button>
-      <span class="x" id="info-x">✕</span>
+      <button type="button" id="fav-btn" aria-label="Save to favourites" title="Save to favourites">☆</button>
+      <button type="button" class="x" id="info-x" aria-label="Close object details">✕</button>
     </div>
     <figure id="info-figure"></figure>
     <div class="top">

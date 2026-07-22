@@ -11,10 +11,11 @@ export function renderToday() {
   DATA.hotlist.forEach((h) => {
     const sat = state.byId.get(h.id);
     const hex = catColorHex(sat ? sat.cat : "other");
-    const el = document.createElement("div");
+    const el = document.createElement("button");
+    el.type = "button";
     el.className = "today-row";
     el.innerHTML = `<span class="sw" style="background:${hex};color:${hex}"></span>
-      <div class="info"><div class="nm">${esc(h.name)}</div><div class="reason">${esc(h.reason)}</div></div>`;
+      <span class="info"><span class="nm">${esc(h.name)}</span><span class="reason">${esc(h.reason)}</span></span>`;
     el.onclick = () => {
       const s = state.byId.get(h.id);
       if (s) select(s);

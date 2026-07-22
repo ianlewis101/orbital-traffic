@@ -540,7 +540,7 @@ export function refreshInfo() {
       <div class="stat"><div class="k">High / low point</div><div class="v">${fmt(ob.apo * MI, 0)}<small>/</small>${fmt(ob.per * MI, 0)} <small>mi</small></div></div>
     </div>
     <div class="stat" style="grid-column:1/-1;padding:0">
-      <button id="tele-toggle" style="background:none;border:none;cursor:pointer;font-family:var(--mono);font-size:9px;letter-spacing:0.14em;color:${teleOpen ? "var(--ink-dim)" : "var(--signal)"};padding:6px 0;text-align:left;width:100%;touch-action:manipulation">${teleOpen ? "▲ less" : "▼ more"}</button>
+      <button id="tele-toggle" style="background:none;border:none;cursor:pointer;font-family:var(--mono);font-size:10px;letter-spacing:0.14em;color:${teleOpen ? "var(--ink-dim)" : "var(--signal)"};padding:6px 0;text-align:left;width:100%;touch-action:manipulation">${teleOpen ? "▲ less" : "▼ more"}</button>
     </div>`;
   // Single click listener only (no separate touchstart/touchend) — touch-action:
   // manipulation above removes the tap delay without needing duplicate handlers.
