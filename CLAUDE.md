@@ -386,6 +386,44 @@ a tested, modular monorepo v2.0.0"):
   cargo vehicles were split out of "stations" into their own
   category that day — see Critical Rule #6.)
 
+── CONVENTIONS ────────────────────────────────────────────────
+
+OBJECT COUNT — ONE DERIVATION, SEVERAL HAND-WRITTEN COPIES:
+the marketing figure for "how many objects does this track"
+(e.g. "18,000+") has exactly one source of truth and several
+surfaces that must be kept in sync with it by hand, because
+they can't be templated:
+
+  - Derived automatically (nothing to maintain): the splash
+    screen (`apps/web/index.html`'s `#splash-msg`, text set at
+    boot by `apps/web/src/main.js` from the `__OBJECT_COUNT__`
+    global) and the in-app legend total (`#legend-tot`, live
+    count, not a rounded marketing figure). `__OBJECT_COUNT__`
+    is computed in `apps/web/vite.config.js` from the real
+    length of `apps/web/public/data/satellites.json` at build
+    time, rounded down to the nearest thousand with a "+". This
+    only stays fresh because `deploy-pages.yml` has no `paths`
+    filter, so the daily TLE-refresh commit triggers a full
+    rebuild — see the comment in vite.config.js. If finding F19
+    ("every data commit triggers a full Pages deploy") ever adds
+    a paths filter, it must keep
+    `apps/web/public/data/**` in scope or this figure goes stale.
+
+  - Hand-written — update ALL of these together whenever the
+    rounded figure changes (found via full-repo grep for
+    "11,000", "15,000", "18,000", "objects in orbit", "tracked
+    objects" — re-grep before assuming this list is complete):
+    - `README.md` (line 3, "N+ tracked objects")
+    - `apps/web/public/manifest.json` (`description` field)
+    - `docs/archive/store-metadata.md` (App Store description +
+      feature bullet — two separate mentions, kept even though
+      it's under docs/archive/ because it's the real source text
+      for App Store Connect submissions)
+
+  Do not add a new hand-written mention of the count anywhere
+  new without adding it to the checklist above in the same
+  change.
+
 ── KNOWN BUGS THAT MUST NOT BE REINTRODUCED ─────────────────
 
 - Globe flipY: THREE texture flipY must be false — currently

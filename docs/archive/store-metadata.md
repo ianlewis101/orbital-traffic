@@ -6,13 +6,13 @@
 
 Track every satellite, space station, and asteroid near Earth on an interactive 3D globe.
 
-Orbital Traffic displays 15,000+ tracked objects — from the International Space Station to Starlink constellations to hazardous near-Earth asteroids — with orbital element sets refreshed every 20 minutes from CelesTrak and Space-Track.org. Positions are computed on your device using industry-standard SGP4 orbital propagation.
+Orbital Traffic displays 18,000+ tracked objects — from the International Space Station to Starlink constellations to hazardous near-Earth asteroids — with orbital element sets refreshed every 20 minutes from CelesTrak and Space-Track.org. Positions are computed on your device using industry-standard SGP4 orbital propagation.
 
 **Features:**
 
 - 3D interactive Earth globe — rotate, zoom, and explore every orbit
 
-- 15,000+ objects across 8 classes: Stations, Navigation, Geostationary, Starlink, Science, Rocket Bodies, Debris, and Hazardous NEOs
+- 18,000+ objects across 8 classes: Stations, Navigation, Geostationary, Starlink, Science, Rocket Bodies, Debris, and Hazardous NEOs
 
 - Object detail panels with altitude, speed, orbit regime, launch data, and operator
 

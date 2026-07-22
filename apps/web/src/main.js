@@ -38,6 +38,9 @@ import * as THREE from "three";
 const splash = $("#splash"),
   splashMsg = $("#splash-msg");
 
+// __OBJECT_COUNT__ is injected at build time from the real catalog (see vite.config.js)
+splashMsg.textContent = `Loading ${__OBJECT_COUNT__} objects in orbit for you to explore`;
+
 function fatal(msg) {
   splashMsg.textContent = msg;
   splashMsg.style.color = "var(--bad)";
