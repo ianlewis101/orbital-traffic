@@ -411,18 +411,47 @@ function setFlagLine(s) {
   }
 }
 
-/** Lazily enrich a selected object with CelesTrak SATCAT metadata. */
-function enrichSatcat(s) {
+/**
+ * Lazily enrich a selected object with SATCAT metadata from the Worker's
+ * /satcat route (returns a single record, or `null` when no SATCAT record
+ * exists for the object — see fetchSatcat() in worker/src/index.js).
+ *
+ * Three outcomes are deliberately distinguished so a transient failure never
+ * permanently blanks an object's launch date / owner / flag / object type for
+ * the rest of the session:
+ *   - success (2xx + record): apply the fields, latch satcatDone.
+ *   - confirmed absence (2xx + `null` body): latch satcatDone with no fields —
+ *     the record will never exist, so retrying it forever is its own bug.
+ *   - transport failure (non-ok status, or a network/parse error): clear the
+ *     in-flight latch so the NEXT select() of this object retries.
+ *
+ * _satcatTry is a per-attempt in-flight latch (blocks a duplicate request while
+ * one is outstanding); only an authoritative answer latches satcatDone. This
+ * runs once per select() (info.js's select()), not per refresh tick, so
+ * clearing the latch on failure retries at most once per selection — there is
+ * no request-spam risk.
+ */
+export function enrichSatcat(s) {
   if (s._neo || !s.rec) return; // skip NEOs and objects without TLE
   if (s.satcatDone || s._satcatTry) return;
   s._satcatTry = true;
-  fetch(`${WORKER_BASE}/satcat?id=${encodeURIComponent(s.id)}`, {
+  // Returns the settled chain (callers ignore it; tests await it).
+  return fetch(`${WORKER_BASE}/satcat?id=${encodeURIComponent(s.id)}`, {
     cache: "force-cache",
   })
-    .then((res) => (res.ok ? res.json() : null))
+    .then((res) => {
+      // A non-ok status is a transport failure (cold or unreachable Worker,
+      // upstream error) — throw so the shared .catch() below owns the retry
+      // reset. Only a 2xx response is authoritative enough to latch satcatDone.
+      if (!res.ok) throw new Error(`satcat HTTP ${res.status}`);
+      return res.json();
+    })
     .then((r) => {
-      if (!r) return;
+      // res.ok was true: an authoritative answer. A `null` body means the
+      // Worker confirmed no SATCAT record exists for this object, so latch
+      // satcatDone either way — with fields on a hit, without any on absence.
       s.satcatDone = true;
+      if (!r) return;
       if (r.LAUNCH_DATE) s.launchDate = r.LAUNCH_DATE;
       if (r.OBJECT_TYPE) s.objType = r.OBJECT_TYPE;
       if (r.OWNER) {
@@ -438,7 +467,13 @@ function enrichSatcat(s) {
         refreshInfo();
       }
     })
-    .catch(() => {});
+    .catch(() => {
+      // Transport failure (network/parse error, or the non-ok throw above):
+      // clear the in-flight latch so the next select() retries. Never latch
+      // satcatDone here — a single transient blip must not permanently blank
+      // launch date, owner, flag, and object type for the rest of the session.
+      s._satcatTry = false;
+    });
 }
 
 let teleOpen = true; // persists the "more"/"less" telemetry state across refreshInfo() re-renders
