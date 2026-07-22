@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import worker, { buildTLERecords, TLE_TTL, SATCAT_TTL } from "../src/index.js";
+import worker, {
+  buildTLERecords,
+  TLE_TTL,
+  SATCAT_TTL,
+  CREW_TTL,
+  CREW_FAIL_TTL,
+} from "../src/index.js";
 import { GROUPS } from "@orbital-traffic/catalog";
 
 const ISS_TLE = `ISS (ZARYA)
@@ -28,6 +34,25 @@ function stationResponse(names) {
 
 function astronautCountResponse(count) {
   return new Response(JSON.stringify({ count }));
+}
+
+// LL2 is Django REST Framework under the hood; its throttle responses are
+// 429s with a JSON {"detail": "..."} body (their documented shape — not
+// observed live this session, since deliberately tripping the limit would
+// throttle this environment's IP for an hour).
+function throttledResponse() {
+  return new Response(
+    JSON.stringify({ detail: "Request was throttled. Expected available in 3600 seconds." }),
+    { status: 429 }
+  );
+}
+
+// Calls made to LL2 (vs. CelesTrak/GitHub) — for asserting on the headers
+// every LL2 fetch sends.
+function ll2Calls() {
+  return fetch.mock.calls.filter(
+    ([url]) => url.includes("/spacestation/") || url.includes("/astronaut/")
+  );
 }
 
 function isoDateString(s) {
@@ -79,7 +104,8 @@ describe("worker routes", () => {
 
   it("merges both stations' real-shaped crew on /crew when the supplementary count matches", async () => {
     fetch.mockImplementation((url) => {
-      if (url.includes("/spacestation/4/")) return Promise.resolve(stationResponse(["Alice", "Bob"]));
+      if (url.includes("/spacestation/4/"))
+        return Promise.resolve(stationResponse(["Alice", "Bob"]));
       if (url.includes("/spacestation/18/")) return Promise.resolve(stationResponse(["Carol"]));
       if (url.includes("/astronaut/")) return Promise.resolve(astronautCountResponse(3));
       throw new Error("unexpected URL " + url);
@@ -97,6 +123,10 @@ describe("worker routes", () => {
     );
     expect(body.possiblyIncomplete).toBe(false);
     expect(isoDateString(body.fetchedAt)).toBe(true);
+    // Diagnostics are a failure-only field — a healthy response never
+    // carries them.
+    expect(body.sourceStatus).toBeUndefined();
+    expect(res.headers.get("Cache-Control")).toBe(`public, max-age=${CREW_TTL}`);
   });
 
   it("stays ok:true with the working station's people when only one station's fetch fails", async () => {
@@ -128,6 +158,94 @@ describe("worker routes", () => {
     // is meaningful if we couldn't place anyone in the first place.
     expect(body.possiblyIncomplete).toBe(false);
     expect(isoDateString(body.fetchedAt)).toBe(true);
+    // A thrown fetch has no HTTP status to report — "fetch_failed" stands in.
+    expect(body.sourceStatus).toEqual({
+      iss: { status: "fetch_failed" },
+      tiangong: { status: "fetch_failed" },
+    });
+  });
+
+  it("surfaces per-station status and sanitized throttle detail when LL2 refuses both stations", async () => {
+    fetch.mockImplementation((url) => {
+      if (url.includes("/spacestation/")) return Promise.resolve(throttledResponse());
+      throw new Error("unexpected URL " + url);
+    });
+    const res = await worker.fetch(new Request("https://x/crew"), {}, ctx);
+    const body = await res.json();
+    expect(body.ok).toBe(false);
+    expect(body.people).toEqual([]);
+    expect(body.sourceStatus.iss.status).toBe(429);
+    expect(body.sourceStatus.iss.detail).toContain("throttled");
+    expect(body.sourceStatus.tiangong.status).toBe(429);
+    // The detail is a short excerpt, never a full-body echo.
+    expect(body.sourceStatus.iss.detail.length).toBeLessThanOrEqual(160);
+  });
+
+  it("sends identifying LL2 headers and no Authorization when LL2_API_KEY is unset", async () => {
+    fetch.mockImplementation((url) => {
+      if (url.includes("/spacestation/4/")) return Promise.resolve(stationResponse(["Alice"]));
+      if (url.includes("/spacestation/18/")) return Promise.resolve(stationResponse([]));
+      if (url.includes("/astronaut/")) return Promise.resolve(astronautCountResponse(1));
+      throw new Error("unexpected URL " + url);
+    });
+    await worker.fetch(new Request("https://x/crew"), {}, ctx);
+    const calls = ll2Calls();
+    expect(calls).toHaveLength(3);
+    for (const [, opts] of calls) {
+      expect(opts.headers["User-Agent"]).toContain("OrbitalTraffic");
+      expect(opts.headers.Accept).toBe("application/json");
+      expect(opts.headers.Authorization).toBeUndefined();
+    }
+  });
+
+  it("sends Authorization: Token on every LL2 fetch when the LL2_API_KEY binding is present", async () => {
+    fetch.mockImplementation((url) => {
+      if (url.includes("/spacestation/4/")) return Promise.resolve(stationResponse(["Alice"]));
+      if (url.includes("/spacestation/18/")) return Promise.resolve(stationResponse([]));
+      if (url.includes("/astronaut/")) return Promise.resolve(astronautCountResponse(1));
+      throw new Error("unexpected URL " + url);
+    });
+    await worker.fetch(new Request("https://x/crew"), { LL2_API_KEY: "sekret" }, ctx);
+    const calls = ll2Calls();
+    expect(calls).toHaveLength(3);
+    for (const [, opts] of calls) {
+      expect(opts.headers.Authorization).toBe("Token sekret");
+    }
+  });
+
+  it("negative-caches a failed /crew build for CREW_FAIL_TTL instead of skipping the cache", async () => {
+    const put = vi.fn();
+    vi.stubGlobal("caches", { default: { match: vi.fn().mockResolvedValue(undefined), put } });
+    fetch.mockImplementation((url) => {
+      if (url.includes("/spacestation/")) return Promise.resolve(throttledResponse());
+      throw new Error("unexpected URL " + url);
+    });
+    const res = await worker.fetch(new Request("https://x/crew"), {}, ctx);
+    expect((await res.json()).ok).toBe(false);
+    expect(res.headers.get("Cache-Control")).toBe(`public, max-age=${CREW_FAIL_TTL}`);
+    // Pre-PR #96 the failure was cached a full hour; after it, not at all —
+    // which let every visitor re-hammer a rate-limited upstream. Now it IS
+    // cached, but only briefly (cache.put honors the response's max-age).
+    expect(put).toHaveBeenCalledTimes(1);
+    expect(put.mock.calls[0][1].headers.get("Cache-Control")).toBe(
+      `public, max-age=${CREW_FAIL_TTL}`
+    );
+  });
+
+  it("caches a successful /crew build at the full CREW_TTL", async () => {
+    const put = vi.fn();
+    vi.stubGlobal("caches", { default: { match: vi.fn().mockResolvedValue(undefined), put } });
+    fetch.mockImplementation((url) => {
+      if (url.includes("/spacestation/4/")) return Promise.resolve(stationResponse(["Alice"]));
+      if (url.includes("/spacestation/18/")) return Promise.resolve(stationResponse([]));
+      if (url.includes("/astronaut/")) return Promise.resolve(astronautCountResponse(1));
+      throw new Error("unexpected URL " + url);
+    });
+    const res = await worker.fetch(new Request("https://x/crew"), {}, ctx);
+    expect((await res.json()).ok).toBe(true);
+    expect(res.headers.get("Cache-Control")).toBe(`public, max-age=${CREW_TTL}`);
+    expect(put).toHaveBeenCalledTimes(1);
+    expect(put.mock.calls[0][1].headers.get("Cache-Control")).toBe(`public, max-age=${CREW_TTL}`);
   });
 
   it("flags possiblyIncomplete when LL2's in-space count exceeds what was placed", async () => {
@@ -160,7 +278,9 @@ describe("worker routes", () => {
   });
 
   it("serves /today and degrades to an empty feed", async () => {
-    fetch.mockResolvedValue(new Response(JSON.stringify({ updated: "2026-07-01", activities: ["x"] })));
+    fetch.mockResolvedValue(
+      new Response(JSON.stringify({ updated: "2026-07-01", activities: ["x"] }))
+    );
     let res = await worker.fetch(new Request("https://x/today"), {}, ctx);
     expect((await res.json()).activities).toEqual(["x"]);
 
@@ -170,7 +290,11 @@ describe("worker routes", () => {
   });
 
   it("serves /capsules and degrades to an empty snapshot", async () => {
-    const body = { updated: "2026-07-03T00:00:00Z", capsules: { "60001": { phase: "docked" } }, events: [] };
+    const body = {
+      updated: "2026-07-03T00:00:00Z",
+      capsules: { 60001: { phase: "docked" } },
+      events: [],
+    };
     fetch.mockResolvedValue(new Response(JSON.stringify(body)));
     let res = await worker.fetch(new Request("https://x/capsules"), {}, ctx);
     expect((await res.json()).capsules["60001"].phase).toBe("docked");
@@ -189,7 +313,12 @@ describe("worker routes", () => {
     fetch.mockResolvedValue(
       new Response(
         JSON.stringify([
-          { NORAD_CAT_ID: "25544", LAUNCH_DATE: "1998-11-20", OBJECT_TYPE: "PAYLOAD", OWNER: "ISS" },
+          {
+            NORAD_CAT_ID: "25544",
+            LAUNCH_DATE: "1998-11-20",
+            OBJECT_TYPE: "PAYLOAD",
+            OWNER: "ISS",
+          },
         ])
       )
     );
@@ -202,10 +331,7 @@ describe("worker routes", () => {
       OBJECT_TYPE: "PAYLOAD",
       OWNER: "ISS",
     });
-    expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining("CATNR=25544"),
-      expect.any(Object)
-    );
+    expect(fetch).toHaveBeenCalledWith(expect.stringContaining("CATNR=25544"), expect.any(Object));
 
     // Unknown CATNR — CelesTrak returns an empty array
     fetch.mockResolvedValue(new Response("[]"));
@@ -262,7 +388,11 @@ describe("/passes route", () => {
 
   it("returns predicted ISS passes for valid coordinates", async () => {
     fetch.mockResolvedValue(textResponse(ISS_TLE));
-    const res = await worker.fetch(new Request("https://x/passes?lat=40.7128&lng=-74.006"), {}, ctx);
+    const res = await worker.fetch(
+      new Request("https://x/passes?lat=40.7128&lng=-74.006"),
+      {},
+      ctx
+    );
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(Array.isArray(body.passes)).toBe(true);

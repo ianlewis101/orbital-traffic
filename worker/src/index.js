@@ -11,13 +11,15 @@
  *   GET /crew      — ISS/Tiangong crew roster
  *   GET /today     — ISS "Today aboard" activity feed
  *   GET /capsules  — crewed-capsule/cargo-vehicle phase (docked/free-flying/landed) + event log
+ *   GET /passes    — predicted ISS visibility windows for a lat/lng
  *   GET /satcat    — per-object SATCAT metadata (launch date, owner, launch site)
  *
  * TLE parsing lives in @orbital-traffic/catalog (shared with the web
- * app). This Worker only tags the coarse group a record came from (see
- * groups.js) — it does NOT run categorize()'s full classification.
- * Fine-grained categories (communications, classified, etc.) are
- * produced client-side by apps/web/src/data/ingest.js on every ingest.
+ * app). parseTle() runs the full categorize() pipeline on every record,
+ * so /tle emits fully classified records ("communications",
+ * "classified", "debris", etc.); apps/web/src/data/ingest.js re-runs
+ * categorize() client-side on every ingest anyway, so clients never
+ * depend on a stale Worker deploy for a classification fix.
  */
 import {
   parseTle,
@@ -46,6 +48,47 @@ export const CAPSULES_TTL = 10 * 60; // 10 minutes — source refreshes every 4h
 const LL2_BASE = "https://ll.thespacedevs.com/2.2.0";
 const ISS_STATION_ID = 4;
 const TIANGONG_STATION_ID = 18;
+
+// LL2 throttles anonymous traffic per IP (15 requests/hour per their docs),
+// and Workers egress IPs are shared across Cloudflare customers — so LL2
+// requests must always identify this app (same pattern as FETCH_HEADERS in
+// packages/catalog/src/groups.js, but Accept: application/json since LL2 is
+// a JSON API, not CelesTrak's text/plain). When an LL2_API_KEY secret is
+// bound on the Worker (optional — `npx wrangler secret put LL2_API_KEY`
+// from worker/), it rides along as `Authorization: Token <key>`, the scheme
+// The Space Devs' own docs specify (not Bearer, not Api-Key).
+const LL2_FETCH_HEADERS = {
+  "User-Agent": "OrbitalTraffic/2.0 (+https://orbitaltraffic.app)",
+  Accept: "application/json",
+};
+
+function ll2Headers(env) {
+  return env?.LL2_API_KEY
+    ? { ...LL2_FETCH_HEADERS, Authorization: `Token ${env.LL2_API_KEY}` }
+    : LL2_FETCH_HEADERS;
+}
+
+/**
+ * Why LL2 refused, in a shape safe to surface publicly: the HTTP status
+ * plus — when the body is JSON with a `detail` string, which LL2's DRF
+ * throttle responses include ("Request was throttled. Expected available
+ * in N seconds.") — a short whitespace-collapsed excerpt of it. Never the
+ * full upstream body, never anything user-identifying.
+ */
+async function ll2FailureSource(r) {
+  const source = { status: r.status };
+  try {
+    const body = await r.json();
+    if (typeof body?.detail === "string") {
+      const detail = body.detail.trim().split(/\s+/).join(" ").slice(0, 160);
+      if (detail) source.detail = detail;
+    }
+  } catch {
+    // Non-JSON failure body (e.g. an HTML block page) — the status alone
+    // still tells the story; never echo the body itself.
+  }
+  return source;
+}
 const TODAY_URL =
   "https://raw.githubusercontent.com/ianlewis101/orbital-traffic/main/iss-today.json";
 const CAPSULES_URL =
@@ -75,23 +118,32 @@ export async function buildTLERecords() {
 /**
  * One station's active-expedition crew from LL2's /spacestation/ endpoint.
  * ok:false only means this station's own fetch failed — buildCrew() decides
- * what that means for the overall response.
+ * what that means for the overall response. On failure, `source` records
+ * why (ll2FailureSource() shape; status "fetch_failed" when the fetch
+ * itself threw and there is no HTTP status to report).
  */
-async function fetchStationCrew(stationId, craft) {
+async function fetchStationCrew(stationId, craft, env) {
   try {
     const r = await fetch(`${LL2_BASE}/spacestation/${stationId}/`, {
+      headers: ll2Headers(env),
       cf: { cacheTtl: CREW_TTL, cacheEverything: true },
     });
-    if (!r.ok) return { ok: false, people: [] };
+    if (!r.ok) return { ok: false, people: [], source: await ll2FailureSource(r) };
     const d = await r.json();
-    if (!Array.isArray(d.active_expeditions)) return { ok: false, people: [] };
+    if (!Array.isArray(d.active_expeditions)) {
+      return {
+        ok: false,
+        people: [],
+        source: { status: r.status, detail: "unexpected_response_shape" },
+      };
+    }
     const crew = d.active_expeditions[0]?.crew;
     const people = Array.isArray(crew)
       ? crew.map((c) => ({ name: c.astronaut?.name, craft })).filter((p) => p.name)
       : [];
     return { ok: true, people };
   } catch {
-    return { ok: false, people: [] };
+    return { ok: false, people: [], source: { status: "fetch_failed" } };
   }
 }
 
@@ -105,27 +157,38 @@ async function fetchStationCrew(stationId, craft) {
  * incomplete roster. Deliberately does NOT try to identify who the extra
  * person/people are or which station they belong to — that would mean
  * cross-referencing mission/flight data, out of scope for this fix. A
- * failed fetch here returns false rather than flagging incompleteness we
- * can't actually confirm — absence of evidence isn't evidence of a problem.
+ * failed fetch here returns incomplete:false rather than flagging
+ * incompleteness we can't actually confirm — absence of evidence isn't
+ * evidence of a problem. `source` captures why LL2 refused, same shape as
+ * fetchStationCrew()'s, so every LL2 fetch fails diagnosably; it doesn't
+ * currently reach the response body, though — this check only runs when
+ * ok is true, and sourceStatus is deliberately only attached when ok is
+ * false.
  */
-async function checkPossiblyIncomplete(placedCount) {
+async function checkPossiblyIncomplete(placedCount, env) {
   try {
     const r = await fetch(`${LL2_BASE}/astronaut/?in_space=true&is_human=true&format=json`, {
+      headers: ll2Headers(env),
       cf: { cacheTtl: CREW_TTL, cacheEverything: true },
     });
-    if (!r.ok) return false;
+    if (!r.ok) return { incomplete: false, source: await ll2FailureSource(r) };
     const d = await r.json();
-    if (typeof d.count !== "number") return false;
-    return d.count > placedCount;
+    if (typeof d.count !== "number") {
+      return {
+        incomplete: false,
+        source: { status: r.status, detail: "unexpected_response_shape" },
+      };
+    }
+    return { incomplete: d.count > placedCount };
   } catch {
-    return false;
+    return { incomplete: false, source: { status: "fetch_failed" } };
   }
 }
 
-export async function buildCrew() {
+export async function buildCrew(env) {
   const [iss, tiangong] = await Promise.all([
-    fetchStationCrew(ISS_STATION_ID, "ISS"),
-    fetchStationCrew(TIANGONG_STATION_ID, "Tiangong"),
+    fetchStationCrew(ISS_STATION_ID, "ISS", env),
+    fetchStationCrew(TIANGONG_STATION_ID, "Tiangong", env),
   ]);
   const people = [...iss.people, ...tiangong.people];
   // Partial success is real success: one station's own fetch failing
@@ -135,13 +198,19 @@ export async function buildCrew() {
   // that exact case with no changes needed there. Only both stations
   // failing matches the old all-failed contract (empty roster, ok:false).
   const ok = iss.ok || tiangong.ok;
-  return {
+  const result = {
     people,
     number: people.length,
     ok,
-    possiblyIncomplete: ok ? await checkPossiblyIncomplete(people.length) : false,
+    possiblyIncomplete: ok ? (await checkPossiblyIncomplete(people.length, env)).incomplete : false,
     fetchedAt: new Date().toISOString(),
   };
+  // Diagnostic only, present only when ok is false (both stations failed):
+  // one curl of /crew in production shows exactly why LL2 refused each
+  // station (e.g. 429 + throttle detail vs. 403), instead of an opaque
+  // empty roster. crew.js ignores unknown fields, so this is additive.
+  if (!ok) result.sourceStatus = { iss: iss.source, tiangong: tiangong.source };
+  return result;
 }
 
 export async function buildToday() {
@@ -263,16 +332,28 @@ function jsonResponse(data, ttl) {
   });
 }
 
+// How long a failed /crew build stays negative-cached. Not caching failures
+// at all (the PR #96 behavior) turned out to be its own failure mode once
+// the upstream was rate-limiting by IP: every visitor's request went
+// straight through to LL2, keeping the shared Workers egress IP throttled
+// forever. 90s keeps failures honest and short-lived while still collapsing
+// a stampede of visitors into ~one upstream attempt per window.
+export const CREW_FAIL_TTL = 90;
+
 /**
  * Edge-cache wrapper. `caches.default` only exists in the workerd
- * runtime; under tests it is absent and every request builds fresh.
+ * runtime; under tests it is absent unless stubbed, and every request
+ * builds fresh.
  *
- * `shouldCache` guards against locking in a failed upstream fetch for the
- * full `ttl` window — most routes always cache (default), but /crew skips
- * caching when buildCrew() couldn't reach Open Notify, so the next request
- * retries instead of repeating a stale failure for a full hour.
+ * `ttlFor` lets a route pick the cache lifetime per response — most routes
+ * always cache at their full `ttl` (default), but /crew caches a failed
+ * build for only CREW_FAIL_TTL so a rate-limited upstream gets a real
+ * retry within ~90s instead of either a full stale hour (pre-PR #96) or a
+ * request-per-visitor hammering loop (no caching at all). The TTL rides on
+ * the response's Cache-Control header, which cache.put honors — so the
+ * same value also keeps browsers from sitting on a failure.
  */
-async function cached(ctx, path, ttl, build, shouldCache = () => true) {
+async function cached(ctx, path, ttl, build, ttlFor = () => ttl) {
   const cache = typeof caches !== "undefined" ? caches.default : null;
   const cacheKey = new Request(`https://orbital-traffic.internal${path}`, { method: "GET" });
   if (cache) {
@@ -280,14 +361,21 @@ async function cached(ctx, path, ttl, build, shouldCache = () => true) {
     if (hit) return hit;
   }
   const data = await build();
-  const res = jsonResponse(data, ttl);
-  if (cache && shouldCache(data)) ctx.waitUntil(cache.put(cacheKey, res.clone()));
+  const res = jsonResponse(data, ttlFor(data));
+  if (cache) ctx.waitUntil(cache.put(cacheKey, res.clone()));
   return res;
 }
 
 const ROUTES = {
   "/tle": (ctx) => cached(ctx, "/tle", TLE_TTL, buildTLERecords),
-  "/crew": (ctx) => cached(ctx, "/crew", CREW_TTL, buildCrew, (d) => d.ok !== false),
+  "/crew": (ctx, request, env) =>
+    cached(
+      ctx,
+      "/crew",
+      CREW_TTL,
+      () => buildCrew(env),
+      (d) => (d.ok === false ? CREW_FAIL_TTL : CREW_TTL)
+    ),
   "/today": (ctx) => cached(ctx, "/today", TODAY_TTL, buildToday),
   "/capsules": (ctx) => cached(ctx, "/capsules", CAPSULES_TTL, buildCapsules),
   "/passes": (ctx, request) => handlePasses(ctx, request),
@@ -313,6 +401,8 @@ export default {
     const { pathname } = new URL(request.url);
     const route = ROUTES[pathname];
     if (!route) return new Response("Not found", { status: 404 });
-    return route(ctx, request);
+    // env rides along so /crew can see the optional LL2_API_KEY binding;
+    // routes that don't need it just ignore the extra argument.
+    return route(ctx, request, env);
   },
 };
