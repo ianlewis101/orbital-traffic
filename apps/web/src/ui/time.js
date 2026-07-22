@@ -2,6 +2,7 @@ import { state, $ } from "../state.js";
 import { updatePositions } from "../scene/clouds.js";
 import { buildTrail } from "../scene/trail.js";
 import { refreshInfo } from "./info.js";
+import { isTimeShifted } from "../util/freshness.js";
 
 const RATES = [
   ["REAL", 1],
@@ -11,6 +12,39 @@ const RATES = [
   ["∥", 0],
 ];
 
+/**
+ * The clock-mode badge describes the *simulation clock*, not the orbital
+ * data — "LIVE" here means the globe is showing now at real speed, nothing
+ * about the elements' freshness (that's the footer's job). Derived from rate
+ * AND jump-shift together, so a jump at rate 1 no longer reads "LIVE" while
+ * the globe sits hours away. Recomputed on every rate change, on every jump,
+ * and periodically from the loop so paused/fast-forward drift updates it too.
+ */
+export function updateClockMode() {
+  const cm = $("#clock-mode");
+  if (!cm) return;
+  let text, color;
+  let pulse = false;
+  if (state.rate === 0) {
+    text = "PAUSED";
+    color = "var(--ink-dim)";
+  } else if (state.rate > 1) {
+    text = "+" + state.rate + "×";
+    color = "var(--signal)";
+  } else if (isTimeShifted({ rate: state.rate, simNow: state.simNow })) {
+    // rate === 1 but a jump moved the clock off wall-clock time.
+    text = "SHIFTED";
+    color = "var(--signal)";
+  } else {
+    text = "LIVE";
+    color = "var(--good)";
+    pulse = true;
+  }
+  cm.textContent = text;
+  cm.style.color = color;
+  cm.classList.toggle("live", pulse);
+}
+
 export function setRate(v, btn) {
   state.rate = v;
   document.querySelectorAll(".tbtn").forEach((b) => b.classList.remove("on"));
@@ -18,10 +52,7 @@ export function setRate(v, btn) {
   const lbl = $("#rate-lbl");
   lbl.textContent = v === 0 ? "PAUSED" : v === 1 ? "REAL-TIME" : v + "× SPEED";
   lbl.style.color = v === 1 ? "var(--amber)" : v === 0 ? "var(--ink-dim)" : "var(--signal)";
-  const cm = $("#clock-mode");
-  cm.textContent = v === 0 ? "PAUSED" : v === 1 ? "LIVE" : "+" + v + "×";
-  cm.style.color = v === 1 ? "var(--good)" : v === 0 ? "var(--ink-dim)" : "var(--signal)";
-  cm.classList.toggle("live", v === 1);
+  updateClockMode();
 }
 
 export function initTimeMachine() {
@@ -52,7 +83,13 @@ export function initTimeMachine() {
       if (ms === 0) {
         state.simNow = Date.now();
         setRate(1, document.querySelectorAll(".tbtn")[0]);
-      } else state.simNow += ms;
+      } else {
+        state.simNow += ms;
+        // A jump doesn't touch rate, so setRate() won't run — refresh the
+        // badge here so it reflects the shift immediately, not up to half a
+        // second later on the next loop tick.
+        updateClockMode();
+      }
       updatePositions(new Date(state.simNow));
       if (state.selected) {
         buildTrail(state.selected, new Date(state.simNow));

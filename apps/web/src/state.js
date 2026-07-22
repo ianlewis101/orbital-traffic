@@ -15,6 +15,14 @@ export const state = {
   lastProp: 0,
   source: "cached",
   srcTime: null,
+  // True once a live sync attempt has completed with no data applied (Worker
+  // and direct-CelesTrak fallback both failed). Lets the freshness line say
+  // "cached elements · retrying" instead of sticking on "syncing…" forever.
+  syncFailed: false,
+  // Age reference for the bundled boot catalog: the newest TLE epoch among
+  // the objects loaded at boot, so the freshness line can show the catalog's
+  // real age before (and if) the first live sync lands.
+  bootCatalogTime: null,
   capsulesData: null,
   capsulesTime: null,
 };
