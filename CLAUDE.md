@@ -51,6 +51,17 @@ those against this document instead.
    fails the build (worker/src/index.js imports from the
    @orbital-traffic/catalog workspace package).
 
+   (Update, 2026-07-21: .github/workflows/deploy-worker.yml now
+   exists and auto-deploys the Worker on every push to main that
+   touches worker/** or packages/catalog/**, running the Worker's
+   test suite as a gate first. This rule's "nothing auto-deploys
+   the Worker" claim is now the pre-workflow state, not the
+   current one — see DEPLOY COMMANDS below for how the automatic
+   path works. It does NOT retroactively deploy anything merged
+   before it existed. Manual `npx wrangler deploy` is still valid
+   for local/pre-merge testing, and is still the only path for
+   anything that predates this workflow.)
+
 2. CLASSIFICATION IS SHARED — ONE PIPELINE AT EVERY ENTRY
    POINT: All satellite classification logic (category
    assignment, name-pattern matching, station allowlist,
@@ -295,7 +306,12 @@ a tested, modular monorepo v2.0.0"):
 
 - worker/ — Cloudflare Worker (worker/src/index.js), proxies
   and edge-caches FIVE endpoints: /tle, /crew, /today,
-  /capsules, /passes. Deploy is manual (see Critical Rule #1).
+  /capsules, /passes. Deploy auto-runs on push to main touching
+  worker/** or packages/catalog/**, via
+  .github/workflows/deploy-worker.yml (see Critical Rule #1 and
+  DEPLOY COMMANDS below); manual `npx wrangler deploy` is now
+  just the local/pre-merge-testing fallback, not the required
+  path.
   Cache TTLs: /tle 20 min, /crew 1 hour, /today 5 min,
   /capsules 10 min. /passes has no fixed TTL — it's cached
   per unique (satellite, rounded lat/lng) combination.
@@ -493,8 +509,24 @@ a tested, modular monorepo v2.0.0"):
 
 ── DEPLOY COMMANDS (reference) ───────────────────────────────
 
-Worker deploy (run after ANY worker/src/index.js PR merges —
-this step is never automatic):
+Worker deploy is now automatic as of 2026-07-21: any push to
+main touching worker/** or packages/catalog/** triggers
+.github/workflows/deploy-worker.yml, which runs the Worker's
+test suite (`npm test -w worker`) as a pre-deploy gate and then
+deploys via cloudflare/wrangler-action. It also exposes a
+workflow_dispatch trigger (Actions tab → Deploy Worker → Run
+workflow) for re-running a deploy on demand — useful for
+retrying a failed run, or for manually catching up a
+Worker-relevant PR that merged before this workflow existed.
+IMPORTANT: this workflow does NOT retroactively deploy anything
+that was already merged before it existed — anything merged
+before 2026-07-21 still needs one real deploy, manual or via
+workflow_dispatch, the same as always.
+
+The manual sequence below still works and is still the right
+tool for testing a change locally before it's merged, or for
+deploying anything that predates this workflow — it's just no
+longer the required step after every merge:
   git pull origin main
   npm install
   cd worker
