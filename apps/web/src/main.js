@@ -1,9 +1,10 @@
 import "./styles/app.css";
 import * as satellite from "satellite.js";
 import { state, $ } from "./state.js";
+import { satrecEpochDate } from "@orbital-traffic/catalog";
 import { loadData } from "./data/store.js";
 import { ingest } from "./data/ingest.js";
-import { fetchLive } from "./data/live.js";
+import { fetchLive, initLiveRefresh } from "./data/live.js";
 import { sunDirECI } from "./astro/sun.js";
 import {
   scene,
@@ -23,15 +24,15 @@ import { updateSelMarker } from "./scene/marker.js";
 import { refreshInfo, initInfoCard } from "./ui/info.js";
 import { rebuildLegend, initLegendToggle } from "./ui/legend.js";
 import { renderToday, initTodayToggle } from "./ui/today.js";
-import { initTimeMachine } from "./ui/time.js";
 import { initGlobeStyle } from "./ui/globeStyle.js";
 import { initSearch } from "./ui/search.js";
 import { initPassAlerts } from "./ui/alerts.js";
+import { initTimeMachine, updateClockMode } from "./ui/time.js";
 import { updateCount } from "./ui/status.js";
 import { updateClock } from "./ui/clock.js";
 import { registerServiceWorker } from "./pwa.js";
 import { refreshPassAlertsIfEnabled } from "./native/passAlerts.js";
-import { formatRelativeTime } from "./util/relative-time.js";
+import { freshnessText, isTimeShifted } from "./util/freshness.js";
 import * as THREE from "three";
 
 const splash = $("#splash"),
@@ -52,14 +53,23 @@ let infoTick = 0,
   freshFrame = 0;
 
 // Plain-language "is this actually live" reassurance for casual visitors —
-// see relative-time.js. Kept out of the propagation-throttled block below
-// since it has nothing to do with orbital positions, just its own cadence.
+// all wording decided by freshness.js; here we just gather live state and
+// paint it. Kept out of the propagation-throttled block below since it has
+// nothing to do with orbital positions, just its own cadence. Also refreshes
+// the clock-mode badge so paused/fast-forward drift keeps it honest even
+// between explicit rate/jump interactions.
 function updateFreshnessLine() {
   const el = $("#freshness-line");
   if (!el) return;
-  el.textContent = state.srcTime
-    ? `Live positions · updated ${formatRelativeTime(state.srcTime)}`
-    : "Live positions · syncing…";
+  const now = Date.now();
+  el.textContent = freshnessText({
+    simShifted: isTimeShifted({ rate: state.rate, simNow: state.simNow, now }),
+    simOffsetMs: state.simNow - now,
+    srcTime: state.srcTime,
+    syncFailed: state.syncFailed,
+    bootTime: state.bootCatalogTime,
+  });
+  updateClockMode();
 }
 
 function loop(now) {
@@ -100,6 +110,18 @@ function loop(now) {
 // =====================================================================
 // BOOT
 // =====================================================================
+
+// Newest TLE epoch across the loaded catalog — the freshest orbital element
+// the user is looking at, and thus the honest age of the bundled boot data.
+function newestCatalogEpoch(sats) {
+  let newest = null;
+  for (const s of sats) {
+    const d = satrecEpochDate(s.rec);
+    if (d && (!newest || d > newest)) newest = d;
+  }
+  return newest;
+}
+
 async function boot() {
   if (!initRenderer($("#scene"))) {
     fatal("WebGL unavailable — try a different browser");
@@ -130,6 +152,14 @@ async function boot() {
   initPicking();
 
   await ingest(data.sats);
+  // Age reference for the bundled catalog, read from the data itself: the
+  // newest TLE epoch among loaded objects. We deliberately don't use the
+  // Last-Modified header of /data/satellites.json — on GitHub Pages that
+  // resets to the deploy time on every push to main (the whole dist is
+  // re-uploaded), so it would read "just now" even when the elements inside
+  // are a day old. The newest epoch is immune to that and is what the user
+  // is actually looking at.
+  state.bootCatalogTime = newestCatalogEpoch(state.sats);
   buildClouds();
   rebuildLegend();
   updateCount();
@@ -140,10 +170,13 @@ async function boot() {
     splash.classList.add("gone");
     setTimeout(() => splash.remove(), 900);
   }, 650);
-  // auto-attempt a live sync shortly after boot
+  // auto-attempt a live sync shortly after boot, then keep it fresh on a
+  // periodic + on-visibility policy so a tab left open all evening doesn't
+  // sit on hours-old elements.
   setTimeout(() => {
     fetchLive();
   }, 2000);
+  initLiveRefresh();
   // fade hint
   setTimeout(() => {
     const h = $("#hint");

@@ -7,12 +7,66 @@ import { rebuildLegend } from "../ui/legend.js";
 import { renderToday } from "../ui/today.js";
 import { updateCount, flash, toast } from "../ui/status.js";
 import { select } from "../ui/info.js";
+import { shouldSyncOnVisible } from "../util/freshness.js";
+
+// Periodic-refresh policy. Kept coarse on purpose: CelesTrak regenerates
+// its group data only every ~2 hours, and fetchLive()'s fallback path hits
+// CelesTrak directly from the browser, so a tighter interval risks their
+// per-IP politeness limits for no freshness gain. Jitter spreads many tabs
+// so they don't all sync on the same edge.
+const REFRESH_INTERVAL_MS = 15 * 60 * 1000;
+const REFRESH_JITTER_MS = 2 * 60 * 1000;
+// On regaining visibility, sync right away if the last good sync is older
+// than this (or never happened) — a tab left open all evening catches up the
+// moment the user looks back at it, without waiting out the interval.
+const VISIBILITY_STALE_MS = 20 * 60 * 1000;
+
+// A single in-flight sync, shared by every caller. ingest() yields to the
+// browser between batches, so two overlapping syncs would interleave their
+// catalog writes mid-ingest; the periodic timer, the visibility handler, and
+// the boot kick can all fire close together, so they must coalesce rather
+// than race. While a sync runs, fetchLive() hands back the same promise.
+let inFlight = null;
 
 /**
  * Refresh the catalog from the Worker proxy; fall back to fetching
  * CelesTrak groups directly (may be rate-limited) if the Worker is down.
+ * Returns the promise for the current sync — concurrent calls share it.
  */
-export async function fetchLive() {
+export function fetchLive() {
+  if (inFlight) return inFlight;
+  inFlight = runLiveSync().finally(() => {
+    inFlight = null;
+  });
+  return inFlight;
+}
+
+/**
+ * Start the ongoing refresh loop: a jittered ~15-minute interval that only
+ * actually syncs while the tab is visible (a backgrounded tab shouldn't keep
+ * hitting the network), plus an immediate catch-up sync when the tab becomes
+ * visible again if the data on screen has gone stale. The in-flight guard in
+ * fetchLive() makes overlapping triggers here harmless.
+ */
+export function initLiveRefresh() {
+  const scheduleNext = () => {
+    const delay = REFRESH_INTERVAL_MS + Math.random() * REFRESH_JITTER_MS;
+    setTimeout(() => {
+      if (document.visibilityState === "visible") fetchLive();
+      scheduleNext();
+    }, delay);
+  };
+  scheduleNext();
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    if (shouldSyncOnVisible({ srcTime: state.srcTime, staleMs: VISIBILITY_STALE_MS })) {
+      fetchLive();
+    }
+  });
+}
+
+async function runLiveSync() {
   const totEl = $("#legend-tot");
   totEl.classList.add("loading");
   totEl.textContent = "…";
@@ -41,6 +95,10 @@ export async function fetchLive() {
     if (recs.length) {
       await applyLive(recs, await capsulesPromise);
     } else {
+      // Both paths failed. Leave an honest state behind so the freshness
+      // line reads "cached elements · retrying" rather than a permanent
+      // "syncing…" — the periodic policy will retry on its own.
+      state.syncFailed = true;
       toast("Live fetch unavailable — showing cached elements");
       updateCount();
     }
@@ -94,8 +152,11 @@ async function applyLive(recs, capsules) {
   buildClouds();
   state.source = "live";
   state.srcTime = new Date();
+  state.syncFailed = false;
   rebuildLegend();
   updateCount();
   renderToday();
-  flash($("#count-n"));
+  // Flash the visible total, not the old hidden #count-n mirror, so a live
+  // count change is actually seen.
+  flash($("#legend-tot"));
 }

@@ -2,7 +2,6 @@ import { state, $ } from "../state.js";
 
 export function updateCount() {
   const n = state.sats.length;
-  $("#count-n").textContent = n.toLocaleString();
   $("#legend-tot").textContent = n.toLocaleString();
 }
 
