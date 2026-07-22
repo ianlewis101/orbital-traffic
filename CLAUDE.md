@@ -506,6 +506,34 @@ a tested, modular monorepo v2.0.0"):
   (esc()-escaping p.name-derived values in apps/web/src/ui/crew.js)
   predates and is independent of this data-source swap and must stay
   in place regardless.
+- LL2 requests from the Worker must always send LL2_FETCH_HEADERS
+  (User-Agent identifying the app + Accept: application/json — NOT
+  the catalog's FETCH_HEADERS, whose Accept: text/plain is
+  CelesTrak-oriented). Added 2026-07-22 after the live /crew endpoint
+  failed on every call from the Workers runtime while the same LL2
+  URLs worked fine from any other IP: LL2 rate-limits anonymous
+  traffic per IP (15 requests/hour per The Space Devs' docs) and
+  Workers egress IPs are shared across Cloudflare customers. Three
+  guards from that fix must stay together: (1) /crew's `sourceStatus`
+  diagnostic field (per-station upstream status + short sanitized
+  `detail`, present ONLY when ok:false, never echoing a full
+  upstream body) is what makes this class of failure diagnosable
+  from a single production curl — don't strip it as cruft; (2)
+  failed /crew builds negative-cache for CREW_FAIL_TTL (90s) —
+  reverting to don't-cache-failures (PR #96's behavior) recreates
+  the every-visitor-hammers-a-throttled-IP loop, and caching
+  failures at the full CREW_TTL recreates the stale-hour problem PR
+  #96 fixed; (3) the optional LL2_API_KEY Worker secret, when set,
+  rides on every LL2 fetch as `Authorization: Token <key>` — the
+  scheme The Space Devs' docs actually specify; never Bearer or
+  Api-Key. To set it: `cd worker && npx wrangler secret put
+  LL2_API_KEY` (one-time — wrangler secret put itself deploys a new
+  Worker version immediately, and per Cloudflare's docs secrets are
+  never deleted by later code deployments, wrangler or CI; only
+  `wrangler secret delete` or the dashboard removes them, so
+  deploy-worker.yml needs no change and no GitHub secret). When the
+  binding is absent the Worker behaves exactly as before — the key
+  is optional, not required.
 
 ── DEPLOY COMMANDS (reference) ───────────────────────────────
 
