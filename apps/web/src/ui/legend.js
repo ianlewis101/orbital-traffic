@@ -38,18 +38,23 @@ export function rebuildLegend() {
   for (const c in CATS) {
     if (state.cats[c] === 0) continue; // hide all empty categories
     const hex = catColorHex(c);
-    const el = document.createElement("div");
+    const el = document.createElement("button");
+    el.type = "button";
     el.className = "cat" + (state.hidden.has(c) ? " off" : "");
+    // aria-pressed reflects visibility: pressed = category shown, not hidden.
+    el.setAttribute("aria-pressed", state.hidden.has(c) ? "false" : "true");
     el.innerHTML = `<span class="sw" style="background:${hex};color:${hex}"></span>
       <span class="nm">${
         // eslint-disable-next-line orbital/no-unescaped-innerhtml -- CATS[c].label is a fixed category label from config.js, not user/feed data
         CATS[c].label
       }</span><span class="ct">${state.cats[c].toLocaleString()}</span>`;
     el.onclick = () => {
-      if (state.hidden.has(c)) state.hidden.delete(c);
-      else state.hidden.add(c);
-      if (clouds[c] && clouds[c].points) clouds[c].points.visible = !state.hidden.has(c);
-      el.classList.toggle("off");
+      const nowHidden = !state.hidden.has(c);
+      if (nowHidden) state.hidden.add(c);
+      else state.hidden.delete(c);
+      if (clouds[c] && clouds[c].points) clouds[c].points.visible = !nowHidden;
+      el.classList.toggle("off", nowHidden);
+      el.setAttribute("aria-pressed", nowHidden ? "false" : "true");
     };
     box.appendChild(el);
   }

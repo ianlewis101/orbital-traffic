@@ -21,4 +21,5 @@ export function updateFavBtn(s) {
   b.textContent = saved ? "★" : "☆";
   b.classList.toggle("saved", saved);
   b.title = saved ? "Remove from favourites" : "Save to favourites";
+  b.setAttribute("aria-label", b.title);
 }

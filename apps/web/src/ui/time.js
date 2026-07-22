@@ -5,11 +5,11 @@ import { refreshInfo } from "./info.js";
 import { isTimeShifted } from "../util/freshness.js";
 
 const RATES = [
-  ["REAL", 1],
-  ["10×", 10],
-  ["60×", 60],
-  ["300×", 300],
-  ["∥", 0],
+  ["REAL", 1, "Real-time speed"],
+  ["10×", 10, "10× speed"],
+  ["60×", 60, "60× speed"],
+  ["300×", 300, "300× speed"],
+  ["∥", 0, "Pause"],
 ];
 
 /**
@@ -47,8 +47,14 @@ export function updateClockMode() {
 
 export function setRate(v, btn) {
   state.rate = v;
-  document.querySelectorAll(".tbtn").forEach((b) => b.classList.remove("on"));
-  if (btn) btn.classList.add("on");
+  document.querySelectorAll(".tbtn").forEach((b) => {
+    b.classList.remove("on");
+    b.setAttribute("aria-pressed", "false");
+  });
+  if (btn) {
+    btn.classList.add("on");
+    btn.setAttribute("aria-pressed", "true");
+  }
   const lbl = $("#rate-lbl");
   lbl.textContent = v === 0 ? "PAUSED" : v === 1 ? "REAL-TIME" : v + "× SPEED";
   lbl.style.color = v === 1 ? "var(--amber)" : v === 0 ? "var(--ink-dim)" : "var(--signal)";
@@ -57,9 +63,12 @@ export function setRate(v, btn) {
 
 export function initTimeMachine() {
   const box = $("#rate-btns");
-  RATES.forEach(([lbl, v]) => {
-    const b = document.createElement("div");
+  RATES.forEach(([lbl, v, aria]) => {
+    const b = document.createElement("button");
+    b.type = "button";
     b.className = "tbtn" + (v === 1 ? " on" : "");
+    b.setAttribute("aria-pressed", v === 1 ? "true" : "false");
+    b.setAttribute("aria-label", aria);
     b.textContent = lbl;
     b.onclick = () => setRate(v, b);
     box.appendChild(b);
