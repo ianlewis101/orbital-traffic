@@ -1,0 +1,25 @@
+<svg viewBox="0 0 1920 1040" width="1920" height="1040" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- CSS: radial-gradient(120% 120% at 28% 18%, rgba(94,234,212,0.22), transparent 55%) -->
+    <radialGradient id="teal-glow" cx="0.28" cy="0.18" r="1.2">
+      <stop offset="0%" stop-color="rgb(94,234,212)" stop-opacity="0.22"/>
+      <stop offset="55%" stop-color="rgb(94,234,212)" stop-opacity="0"/>
+    </radialGradient>
+    <!-- CSS: radial-gradient(120% 120% at 82% 86%, rgba(167,139,250,0.28), transparent 55%) -->
+    <radialGradient id="purple-glow" cx="0.82" cy="0.86" r="1.2">
+      <stop offset="0%" stop-color="rgb(167,139,250)" stop-opacity="0.28"/>
+      <stop offset="55%" stop-color="rgb(167,139,250)" stop-opacity="0"/>
+    </radialGradient>
+    <!-- CSS: radial-gradient(120% 120% at 50% 30%, #15203c 0%, #0a0e1c 78%) -->
+    <radialGradient id="navy-base" cx="0.5" cy="0.3" r="1.2">
+      <stop offset="0%" stop-color="#15203c"/>
+      <stop offset="78%" stop-color="#0a0e1c"/>
+    </radialGradient>
+  </defs>
+  <!-- CSS layer 3 (last-listed): painted first, sits at the bottom -->
+  <rect width="1920" height="1040" fill="url(#navy-base)"/>
+  <!-- CSS layer 2 (middle) -->
+  <rect width="1920" height="1040" fill="url(#purple-glow)"/>
+  <!-- CSS layer 1 (first-listed): painted last, sits on top -->
+  <rect width="1920" height="1040" fill="url(#teal-glow)"/>
+</svg>
