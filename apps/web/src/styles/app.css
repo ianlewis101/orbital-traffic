@@ -243,6 +243,23 @@
   #meta{bottom:14px;left:50%;transform:translateX(-50%);text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;animation:rise .8s both .34s;pointer-events:none}
   #attr{font-size:8.5px;letter-spacing:0.08em;color:var(--ink-faint);opacity:0.35}
   #attr a{pointer-events:auto}
+  /* Desktop: #info's max-height (calc(100vh - 132px), see the "object card"
+     rule below) leaves only ~4px of vertical clearance under the card
+     before #meta's own box begins — and #meta paints after #info in DOM
+     order, so any real-world overlap (long card content, sub-pixel
+     rounding, a shorter viewport) renders the attribution text literally
+     on top of the card's "Center on Globe" footer button. #meta is
+     centered across the full viewport width and doesn't know #info exists,
+     so the fix is horizontal, not vertical: while the full card is open,
+     pull #meta's box out of #info's column entirely (24 right-inset +
+     300 width + 24 gap) so the two can never share pixels regardless of
+     card content height. Mirrors the mobile #meta override further down,
+     which does the same to clear the leftstack card. min-width:769px keeps
+     this out of the mobile bottom-sheet layout, which repositions #meta
+     unconditionally on its own. */
+  @media (min-width:769px){
+    #info.show ~ #meta{left:auto;right:348px;transform:none;width:auto}
+  }
   /* Freshness line now lives in the clock card (replacing the old "Simulation
      Time" caption), so it inherits #clock .cap's small uppercase look. flex +
      min-width:0 lets a long "updated N minutes ago" wrap to a second line
