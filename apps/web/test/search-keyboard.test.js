@@ -25,15 +25,17 @@ const SATS = [
 ];
 
 function setupDom() {
+  // The combobox / listbox / option roles are applied dynamically by
+  // initSearch() on desktop only, so the markup here is just the bare input +
+  // results container (matching index.html).
   document.body.innerHTML = `
     <div id="search-wrap">
       <div id="search">
         <svg></svg>
-        <input id="search-in" type="text" role="combobox" aria-expanded="false"
-               aria-controls="results" aria-autocomplete="list">
+        <input id="search-in" type="text" aria-label="Search catalog">
         <span class="slash"></span>
       </div>
-      <div id="results" role="listbox"></div>
+      <div id="results"></div>
     </div>`;
 }
 
@@ -45,7 +47,7 @@ function key(el, k) {
   el.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true }));
 }
 
-let sIn, sRes;
+let sIn, sRes, sWrap;
 beforeEach(() => {
   // jsdom ships no matchMedia — stub desktop so the keyboard path isn't gated
   // behind isMobileSearch().
@@ -55,6 +57,7 @@ beforeEach(() => {
   setupDom();
   sIn = document.getElementById("search-in");
   sRes = document.getElementById("results");
+  sWrap = document.getElementById("search-wrap");
   initSearch();
 });
 
@@ -65,7 +68,9 @@ describe("search keyboard navigation", () => {
     expect(opts.length).toBe(2);
     expect(sRes.classList.contains("show")).toBe(true);
     expect(sIn.getAttribute("aria-expanded")).toBe("true");
-    // listbox/option semantics wired for screen readers
+    // combobox/listbox/option semantics wired for screen readers (desktop)
+    expect(sIn.getAttribute("role")).toBe("combobox");
+    expect(sRes.getAttribute("role")).toBe("listbox");
     opts.forEach((o) => expect(o.getAttribute("role")).toBe("option"));
     // first option active + referenced via aria-activedescendant
     expect(opts[0].classList.contains("active")).toBe(true);
@@ -110,5 +115,47 @@ describe("search keyboard navigation", () => {
     expect(sIn.getAttribute("aria-expanded")).toBe("false");
     expect(sIn.hasAttribute("aria-activedescendant")).toBe(false);
     expect(select).not.toHaveBeenCalled();
+  });
+});
+
+describe("mobile keeps its original behaviour (F21/combobox is desktop-only)", () => {
+  beforeEach(() => {
+    // Flip to mobile. initSearch() already ran (desktop) in the outer
+    // beforeEach, but every handler reads isMobileSearch() at event time, so
+    // the mobile branches are what run here.
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+  });
+
+  it("renders plain results — no combobox/listbox/option roles or highlight", () => {
+    type(sIn, "alpha");
+    const opts = sRes.querySelectorAll(".res");
+    expect(opts.length).toBe(2);
+    expect(sRes.classList.contains("show")).toBe(true);
+    opts.forEach((o) => {
+      expect(o.hasAttribute("role")).toBe(false);
+      expect(o.classList.contains("active")).toBe(false);
+      expect(o.hasAttribute("id")).toBe(false);
+    });
+    expect(sIn.hasAttribute("role")).toBe(false);
+    expect(sRes.hasAttribute("role")).toBe(false);
+    expect(sIn.hasAttribute("aria-activedescendant")).toBe(false);
+  });
+
+  it("Enter collapses the bar instead of selecting a result", () => {
+    type(sIn, "alpha");
+    sWrap.classList.add("expanded");
+    key(sIn, "Enter");
+    expect(select).not.toHaveBeenCalled();
+    expect(sWrap.classList.contains("expanded")).toBe(false);
+    expect(sRes.classList.contains("show")).toBe(false);
+  });
+
+  it("Escape collapses the bar and keeps the query (unlike desktop)", () => {
+    type(sIn, "alpha");
+    sWrap.classList.add("expanded");
+    key(sIn, "Escape");
+    expect(select).not.toHaveBeenCalled();
+    expect(sWrap.classList.contains("expanded")).toBe(false);
+    expect(sIn.value).toBe("alpha");
   });
 });
