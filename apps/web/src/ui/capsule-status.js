@@ -76,16 +76,15 @@ export async function renderCapsuleStatus(s, el) {
     <div class="crew-block">
       <div class="crew-exp-hd">
         <div><div class="crew-exp-name">${esc(PHASE_LABEL[status.phase] || status.phase)}</div>
-        <div class="crew-exp-sub">${
+        <div class="crew-exp-sub"><span>${
           // eslint-disable-next-line orbital/no-unescaped-innerhtml -- stationLbl is esc()'d at its assignment above (const stationLbl = ... ? esc(...) : null); the surrounding text is a static literal
           stationLbl ? "at " + stationLbl + " · " : ""
-        }${timeAgo(status.since)} in this phase</div></div>
+        }${timeAgo(status.since)} in this phase</span>${
+          state.capsulesTime
+            ? `<span class="crew-exp-fresh">${formatRelativeTime(state.capsulesTime)}</span>`
+            : ""
+        }</div></div>
       </div>
-      ${
-        state.capsulesTime
-          ? `<div style="font-size:10px;color:var(--ink-faint);padding:4px 13px 8px;letter-spacing:0.05em">as of ${formatRelativeTime(state.capsulesTime)}</div>`
-          : ""
-      }
     </div>
     <div class="crew-today"><div class="crew-today-hd"><div class="crew-today-lbl">Recent activity</div></div><div class="crew-today-body">${
       // eslint-disable-next-line orbital/no-unescaped-innerhtml -- eventsHTML is assembled from esc()-escaped feed values via map()/join() above

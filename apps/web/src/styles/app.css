@@ -294,7 +294,8 @@
   .crew-block{border:1px solid rgba(255,210,61,0.22);border-radius:10px;overflow:hidden}
   .crew-exp-hd{background:rgba(255,210,61,0.07);padding:9px 13px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,210,61,0.12)}
   .crew-exp-name{font-size:9.5px;letter-spacing:0.18em;color:var(--amber);text-transform:uppercase;margin-bottom:2px}
-  .crew-exp-sub{font-size:10px;color:var(--ink-dim);letter-spacing:0.03em}
+  .crew-exp-sub{font-size:10px;color:var(--ink-dim);letter-spacing:0.03em;display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .crew-exp-fresh{color:var(--ink-faint);flex-shrink:0}
   .crew-count-wrap{text-align:center}
   .crew-count{font-size:24px;font-weight:700;color:var(--amber);line-height:1}
   .crew-count-lbl{font-size:8px;color:var(--ink-faint);letter-spacing:0.12em}
