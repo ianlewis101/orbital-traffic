@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import * as THREE from "three";
 import { makeCloudGeometry } from "../src/scene/clouds.js";
+import { resolvePick, earthOcclusionDist } from "../src/scene/pick-core.js";
+import { EARTH_R } from "../src/config.js";
 
 /**
  * Regression test for the post-live-sync dead-picking bug.
@@ -86,5 +88,78 @@ describe("makeCloudGeometry picking", () => {
     expect(geom.boundingSphere.radius).toBeGreaterThanOrEqual(4000);
     // still true for empty categories (placeholder vertex)
     expect(makeCloudGeometry(0).attributes.position.count).toBe(1);
+  });
+});
+
+/**
+ * Regression test for the "click selects an object on the far side of the
+ * globe" bug. THREE.Points raycasting is depth-unaware: a satellite hidden
+ * behind Earth is still reported as a hit, and because the old picker chose
+ * purely by distance-to-ray, a far-side object sitting dead-on the pick ray
+ * would beat the near-side object the user was actually aiming at.
+ * resolvePick() rejects any hit whose along-ray projection lands past the
+ * globe's near surface.
+ */
+describe("resolvePick occlusion", () => {
+  // straight down the -z axis, matching the camera above (at (0,0,27))
+  const axisRay = () => {
+    const r = new THREE.Raycaster();
+    r.params.Points.threshold = 0.6;
+    r.setFromCamera(new THREE.Vector2(0, 0), camera);
+    return r;
+  };
+
+  // one-vertex cloud at a world position, paired with its satellite record
+  const cloudAt = (pos, sat) => {
+    const geom = makeCloudGeometry(1);
+    const a = geom.attributes.position.array;
+    a[0] = pos.x;
+    a[1] = pos.y;
+    a[2] = pos.z;
+    geom.attributes.position.needsUpdate = true;
+    return { points: makePoints(geom), list: [sat] };
+  };
+
+  const NEAR = new THREE.Vector3(0.4, 0, EARTH_R + 0.5); // in front of the near face, off-ray
+  const FAR = new THREE.Vector3(0, 0, -(EARTH_R + 0.5)); // behind the far face, dead-on the ray
+
+  it("never selects an object behind the globe over a visible one in front", () => {
+    const near = { name: "NEAR" },
+      far = { name: "FAR" };
+    const picked = resolvePick(axisRay(), [cloudAt(FAR, far), cloudAt(NEAR, near)], null, EARTH_R);
+    expect(picked).toBe(near);
+  });
+
+  it("returns nothing when the only candidate is hidden behind the globe", () => {
+    const far = { name: "FAR" };
+    const picked = resolvePick(axisRay(), [cloudAt(FAR, far)], null, EARTH_R);
+    expect(picked).toBeNull();
+  });
+
+  it("still picks the object closest to the ray among visible ones", () => {
+    const onRay = { name: "ON_RAY" },
+      offRay = { name: "OFF_RAY" };
+    const picked = resolvePick(
+      axisRay(),
+      [
+        cloudAt(new THREE.Vector3(0.45, 0, EARTH_R + 0.6), offRay),
+        cloudAt(new THREE.Vector3(0.05, 0, EARTH_R + 0.7), onRay),
+      ],
+      null,
+      EARTH_R
+    );
+    expect(picked).toBe(onRay);
+  });
+
+  it("earthOcclusionDist is finite when the ray meets the globe, Infinity when it misses", () => {
+    const hit = earthOcclusionDist(axisRay(), EARTH_R);
+    expect(Number.isFinite(hit)).toBe(true);
+    expect(hit).toBeGreaterThan(0);
+
+    // aim well past the limb into open sky
+    const miss = new THREE.Raycaster();
+    miss.params.Points.threshold = 0.6;
+    miss.set(new THREE.Vector3(0, 0, 27), new THREE.Vector3(0, 1, 0));
+    expect(earthOcclusionDist(miss, EARTH_R)).toBe(Infinity);
   });
 });
