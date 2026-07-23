@@ -22,7 +22,9 @@ export default [
   },
   {
     files: ["apps/web/**/*.js"],
-    languageOptions: { globals: { ...globals.browser } },
+    languageOptions: {
+      globals: { ...globals.browser, __OBJECT_COUNT__: "readonly" },
+    },
   },
   {
     // Local safety-net rule: forbid unescaped interpolation into .innerHTML.
