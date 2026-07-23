@@ -78,7 +78,7 @@
   #brand .wm-sub{font-size:8.5px;letter-spacing:0.4em;text-transform:uppercase;color:var(--ink-faint);margin-top:8px;padding-left:2px}
 
   /* ---------- clock ---------- */
-  #clock{top:18px;right:24px;min-width:236px;animation-delay:.1s}
+  #clock{top:18px;right:24px;min-width:236px;max-width:300px;animation-delay:.1s}
   #clock .body{padding:9px 13px 11px}
   .utc-compact{display:none}
   .utc-full{display:inline}
@@ -243,10 +243,16 @@
   #meta{bottom:14px;left:50%;transform:translateX(-50%);text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;animation:rise .8s both .34s;pointer-events:none}
   #attr{font-size:8.5px;letter-spacing:0.08em;color:var(--ink-faint);opacity:0.35}
   #attr a{pointer-events:auto}
-  /* Nudged up from 8.5px/0.35 (effectively invisible) to legible without a
-     redesign — the design direction here is still an open question. pointer-
-     events:auto lets the title tooltip surface on hover. */
-  #freshness-line{font-size:10px;letter-spacing:0.08em;color:var(--ink-faint);opacity:0.6;pointer-events:auto}
+  /* Freshness line now lives in the clock card (replacing the old "Simulation
+     Time" caption), so it inherits #clock .cap's small uppercase look. flex +
+     min-width:0 lets a long "updated N minutes ago" wrap to a second line
+     instead of widening the card; the 2-line clamp bounds the card's height so
+     even the longest state ("cached elements … retrying automatically") can't
+     grow tall enough to collide with the Globe Style card below it (see the
+     #clock max-width, which forces the wrap rather than a wider card).
+     pointer-events:auto surfaces the title tooltip on hover. */
+  #freshness-line{flex:1;min-width:0;line-height:1.4;pointer-events:auto;
+    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 
   /* ---------- hint ---------- */
   #hint{position:fixed;bottom:78px;left:50%;transform:translateX(-50%);z-index:10;font-family:var(--mono);font-size:10px;
@@ -327,7 +333,7 @@
   #clock .rows{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
   .crow{display:flex;justify-content:space-between;align-items:center;gap:14px}
   #count-n{font-size:13px;color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
-  #clock-mode{color:var(--good)}
+  #clock-mode{color:var(--good);white-space:nowrap;flex-shrink:0;align-self:flex-start}
   #clock-mode.live{animation:pulse 1s ease-in-out infinite}
 
   /* layout fix: these panels must be viewport-fixed */
@@ -370,7 +376,7 @@
        the card wide and leaving dead space under it. Dropping the redundant "· UTC"
        suffix (the time row already labels itself "UTC") lets the header, and so the
        whole card, shrink to roughly match the compact content. */
-    #clock{top:10px;right:10px;width:fit-content;min-width:0;animation:none}
+    #clock{top:10px;right:10px;width:fit-content;min-width:0;max-width:200px;animation:none}
     #globe-style{top:111px;right:10px;width:150px}
     #globe-style .ph{padding:4px 8px}
     #globe-style .body{padding:5px 6px 6px}

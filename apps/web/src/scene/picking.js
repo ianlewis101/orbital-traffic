@@ -5,6 +5,7 @@ import { renderer, camera, cam } from "./core.js";
 import { clouds } from "./clouds.js";
 import { neoPoints, neoSats } from "./neos.js";
 import { select } from "../ui/info.js";
+import { resolvePick } from "./pick-core.js";
 
 const ray = new THREE.Raycaster();
 ray.params.Points.threshold = 0.6;
@@ -16,31 +17,12 @@ function pick(cx, cy) {
   mouse.x = ((cx - rc.left) / rc.width) * 2 - 1;
   mouse.y = -((cy - rc.top) / rc.height) * 2 + 1;
   ray.setFromCamera(mouse, camera);
-  let best = null,
-    bd = 1e9;
-  for (const c in clouds) {
-    const cl = clouds[c];
-    // empty categories still carry one placeholder vertex at the origin —
-    // never let it register as a hit (it has no satellite behind it)
-    if (!cl.points || !cl.points.visible || !cl.list.length) continue;
-    const hits = ray.intersectObject(cl.points);
-    if (hits.length) {
-      const h = hits[0];
-      if (h.distanceToRay < bd) {
-        bd = h.distanceToRay;
-        best = cl.list[h.index];
-      }
-    }
-  }
-  // also check NEO points
-  if (neoPoints && neoSats && neoSats.length) {
-    const nh = ray.intersectObject(neoPoints);
-    if (nh.length && nh[0].distanceToRay < bd) {
-      bd = nh[0].distanceToRay;
-      best = neoSats[nh[0].index] || null;
-    }
-  }
-  return best;
+  // Empty categories still carry one placeholder vertex at the origin, but the
+  // origin is always behind the globe, so occlusion filtering already discards
+  // it — no satellite ever lives there to select. resolvePick() also rejects
+  // any hit hidden behind Earth so a click over the globe can't jump to an
+  // object on the far side.
+  return resolvePick(ray, Object.values(clouds), { points: neoPoints, sats: neoSats }, EARTH_R);
 }
 
 export function initPicking() {
