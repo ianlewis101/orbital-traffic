@@ -379,7 +379,22 @@
   #info .nm{font-weight:700;letter-spacing:-0.02em}
 
   #info .flagline{display:none;align-items:center;gap:7px;margin-top:7px;font-size:10px;letter-spacing:0.03em;color:var(--ink-dim)}
-  #info .flagline .fl{font-size:13px;letter-spacing:1px;line-height:1}
+  /* Country flags render fine on mobile but not desktop: the body font
+     stack (var(--mono), 'Oxanium ui-sans-serif, system-ui, sans-serif')
+     has no dedicated emoji font in it — Oxanium's Google-Fonts @font-face
+     unicode-range explicitly excludes U+1F1E6-1F1FF (the flag codepoint
+     block), so it's skipped, but 'ui-sans-serif'/'system-ui' can still
+     "win" the fallback before the browser ever reaches a real color-emoji
+     font. On iOS/Android that generic UI font has zero glyph coverage for
+     regional-indicator pairs, so the browser falls through to the OS's
+     color-emoji font automatically and a real flag renders. On many
+     desktop stacks (Windows' Segoe UI in particular) the UI font DOES
+     claim partial glyph coverage there — two plain letter-box glyphs, not
+     a combined flag — so the browser stops falling back right there and
+     never reaches the emoji font at all. Naming real emoji fonts
+     explicitly, ahead of any generic UI font, fixes it on every platform. */
+  #info .flagline .fl{font-size:13px;letter-spacing:1px;line-height:1;
+    font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif}
   .ohrow{display:flex;align-items:center;gap:9px;padding:5px 0;font-size:10px;border-top:1px solid var(--line);cursor:pointer}
   .ohrow .d{width:7px;height:7px;border-radius:50%;flex:none;box-shadow:0 0 7px currentColor}
   .ohrow .nm{flex:1;color:var(--ink);letter-spacing:0.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
