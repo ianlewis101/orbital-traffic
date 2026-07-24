@@ -123,10 +123,8 @@ async function boot() {
     splash.classList.add("gone");
     setTimeout(() => splash.remove(), 900);
   }, 650);
-  // auto-attempt a live sync shortly after boot
-  setTimeout(() => {
-    fetchLive();
-  }, 2000);
+  // auto-attempt a live sync immediately after boot
+  fetchLive();
   // fade hint
   setTimeout(() => {
     const h = $("#hint");
