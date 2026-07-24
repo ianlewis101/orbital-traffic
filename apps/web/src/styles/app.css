@@ -218,7 +218,7 @@
   .stat .v small{font-size:9.5px;color:var(--ink-dim);font-weight:400;letter-spacing:0.04em}
   #info .bar{height:1px;background:var(--line)}
   #info .foot{padding:9px 15px 12px}
-  #info-track{width:100%;font-family:var(--mono);font-size:10px;letter-spacing:0.18em;padding:9px 0;text-transform:uppercase;
+  #info-track{width:100%;text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:0.18em;padding:9px 0;text-transform:uppercase;
     color:var(--signal);background:rgba(174,227,255,0.06);border:1px solid rgba(174,227,255,0.28);cursor:pointer;transition:all .12s}
   #info-track:hover{background:rgba(174,227,255,0.13)}
   #info-attr{font-family:var(--mono);font-size:10px;letter-spacing:0.03em;color:var(--ink-faint);opacity:0.5;padding:0 15px 12px;text-align:center}
