@@ -129,6 +129,37 @@ describe("worker routes", () => {
     expect(res.headers.get("Cache-Control")).toBe(`public, max-age=${CREW_TTL}`);
   });
 
+  it("dedupes a crew member LL2 lists twice within the same expedition", async () => {
+    fetch.mockImplementation((url) => {
+      if (url.includes("/spacestation/4/")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              active_expeditions: [
+                {
+                  crew: [
+                    { role: { role: "Commander" }, astronaut: { id: 732, name: "Andrei Fedyaev" } },
+                    {
+                      role: { role: "Flight Engineer" },
+                      astronaut: { id: 732, name: "Andrei Fedyaev" },
+                    },
+                  ],
+                },
+              ],
+            })
+          )
+        );
+      }
+      if (url.includes("/spacestation/18/")) return Promise.resolve(stationResponse([]));
+      if (url.includes("/astronaut/")) return Promise.resolve(astronautCountResponse(1));
+      throw new Error("unexpected URL " + url);
+    });
+    const res = await worker.fetch(new Request("https://x/crew"), {}, ctx);
+    const body = await res.json();
+    expect(body.people).toEqual([{ name: "Andrei Fedyaev", craft: "ISS" }]);
+    expect(body.number).toBe(1);
+  });
+
   it("stays ok:true with the working station's people when only one station's fetch fails", async () => {
     fetch.mockImplementation((url) => {
       if (url.includes("/spacestation/4/")) return Promise.resolve(stationResponse(["Alice"]));
