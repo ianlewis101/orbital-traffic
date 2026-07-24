@@ -13,7 +13,8 @@
   }
   *{margin:0;padding:0;box-sizing:border-box}
   html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
-    font-family:var(--mono);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+    font-family:var(--mono);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+    -webkit-text-size-adjust:100%;text-size-adjust:100%}
   #scene{position:fixed;inset:0;z-index:0;touch-action:none;cursor:grab}
 
   /* ---------- a11y: semantic-button reset + focus ring ----------
