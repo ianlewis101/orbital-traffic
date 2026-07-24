@@ -138,8 +138,21 @@ async function fetchStationCrew(stationId, craft, env) {
       };
     }
     const crew = d.active_expeditions[0]?.crew;
+    // LL2's own crew array can list the same astronaut twice within one
+    // expedition (confirmed live 2026-07-24 on ISS expedition 74 — id 732
+    // appeared twice, identical role) — dedupe by astronaut id (falling
+    // back to name if id is absent) so that upstream duplicate doesn't
+    // reach users as a repeated name in the roster.
+    const seen = new Set();
     const people = Array.isArray(crew)
-      ? crew.map((c) => ({ name: c.astronaut?.name, craft })).filter((p) => p.name)
+      ? crew
+          .filter((c) => {
+            const key = c.astronaut?.id ?? c.astronaut?.name;
+            if (!key || seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          })
+          .map((c) => ({ name: c.astronaut?.name, craft }))
       : [];
     return { ok: true, people };
   } catch {
