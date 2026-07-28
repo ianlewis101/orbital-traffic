@@ -5,6 +5,7 @@ import worker, {
   SATCAT_TTL,
   CREW_TTL,
   CREW_FAIL_TTL,
+  ASTRONAUT_TTL,
 } from "../src/index.js";
 import { GROUPS } from "@orbital-traffic/catalog";
 
@@ -21,12 +22,23 @@ function textResponse(body) {
 }
 
 // Real LL2 shape, trimmed to only what buildCrew() reads (see the curl
-// checks noted in the PR description for the actual field names).
-function stationResponse(names) {
+// checks noted in the PR description for the actual field names). Members
+// may be given as a bare name, or as {id, name, role} where a test cares
+// about the astronaut id or role that /crew now passes through.
+function stationResponse(members) {
   return new Response(
     JSON.stringify({
       active_expeditions: [
-        { crew: names.map((name) => ({ role: { role: "Flight Engineer" }, astronaut: { name } })) },
+        {
+          crew: members.map((m) => {
+            const {
+              id = null,
+              name,
+              role = "Flight Engineer",
+            } = typeof m === "string" ? { name: m } : m;
+            return { role: { role }, astronaut: id == null ? { name } : { id, name } };
+          }),
+        },
       ],
     })
   );
@@ -116,9 +128,9 @@ describe("worker routes", () => {
     expect(body.number).toBe(3);
     expect(body.people).toEqual(
       expect.arrayContaining([
-        { name: "Alice", craft: "ISS" },
-        { name: "Bob", craft: "ISS" },
-        { name: "Carol", craft: "Tiangong" },
+        expect.objectContaining({ name: "Alice", craft: "ISS" }),
+        expect.objectContaining({ name: "Bob", craft: "ISS" }),
+        expect.objectContaining({ name: "Carol", craft: "Tiangong" }),
       ])
     );
     expect(body.possiblyIncomplete).toBe(false);
@@ -132,17 +144,37 @@ describe("worker routes", () => {
   it("dedupes a crew member LL2 lists twice within the same expedition", async () => {
     fetch.mockImplementation((url) => {
       if (url.includes("/spacestation/4/")) {
+        // The real 2026-07-24 ISS payload: id 732 listed twice.
+        return Promise.resolve(
+          stationResponse([
+            { id: 732, name: "Andrei Fedyaev", role: "Commander" },
+            { id: 732, name: "Andrei Fedyaev" },
+          ])
+        );
+      }
+      if (url.includes("/spacestation/18/")) return Promise.resolve(stationResponse([]));
+      if (url.includes("/astronaut/")) return Promise.resolve(astronautCountResponse(1));
+      throw new Error("unexpected URL " + url);
+    });
+    const res = await worker.fetch(new Request("https://x/crew"), {}, ctx);
+    const body = await res.json();
+    expect(body.people).toEqual([
+      { name: "Andrei Fedyaev", craft: "ISS", id: 732, role: "Commander" },
+    ]);
+    expect(body.number).toBe(1);
+  });
+
+  it("drops a crew entry with no name even when it carries an id", async () => {
+    fetch.mockImplementation((url) => {
+      if (url.includes("/spacestation/4/")) {
         return Promise.resolve(
           new Response(
             JSON.stringify({
               active_expeditions: [
                 {
                   crew: [
-                    { role: { role: "Commander" }, astronaut: { id: 732, name: "Andrei Fedyaev" } },
-                    {
-                      role: { role: "Flight Engineer" },
-                      astronaut: { id: 732, name: "Andrei Fedyaev" },
-                    },
+                    { role: { role: "Commander" }, astronaut: { id: 1, name: "Alice" } },
+                    { role: { role: "Flight Engineer" }, astronaut: { id: 2 } },
                   ],
                 },
               ],
@@ -156,8 +188,25 @@ describe("worker routes", () => {
     });
     const res = await worker.fetch(new Request("https://x/crew"), {}, ctx);
     const body = await res.json();
-    expect(body.people).toEqual([{ name: "Andrei Fedyaev", craft: "ISS" }]);
-    expect(body.number).toBe(1);
+    expect(body.people).toEqual([{ name: "Alice", craft: "ISS", id: 1, role: "Commander" }]);
+  });
+
+  it("passes each crew member's astronaut id and role through on /crew", async () => {
+    fetch.mockImplementation((url) => {
+      if (url.includes("/spacestation/4/"))
+        return Promise.resolve(
+          stationResponse([{ id: 647, name: "Sergey Kud-Sverchkov", role: "Commander" }])
+        );
+      if (url.includes("/spacestation/18/")) return Promise.resolve(stationResponse([]));
+      if (url.includes("/astronaut/")) return Promise.resolve(astronautCountResponse(1));
+      throw new Error("unexpected URL " + url);
+    });
+    const res = await worker.fetch(new Request("https://x/crew"), {}, ctx);
+    const body = await res.json();
+    // The id is what the crew card uses to request a profile from /astronaut.
+    expect(body.people).toEqual([
+      { name: "Sergey Kud-Sverchkov", craft: "ISS", id: 647, role: "Commander" },
+    ]);
   });
 
   it("stays ok:true with the working station's people when only one station's fetch fails", async () => {
@@ -170,7 +219,9 @@ describe("worker routes", () => {
     const res = await worker.fetch(new Request("https://x/crew"), {}, ctx);
     const body = await res.json();
     expect(body.ok).toBe(true);
-    expect(body.people).toEqual([{ name: "Alice", craft: "ISS" }]);
+    expect(body.people).toEqual([
+      { name: "Alice", craft: "ISS", id: null, role: "Flight Engineer" },
+    ]);
     expect(body.number).toBe(1);
     expect(isoDateString(body.fetchedAt)).toBe(true);
   });
@@ -306,6 +357,90 @@ describe("worker routes", () => {
     expect(body.ok).toBe(true);
     expect(body.possiblyIncomplete).toBe(false);
     expect(isoDateString(body.fetchedAt)).toBe(true);
+  });
+
+  it("serves a trimmed astronaut profile on /astronaut", async () => {
+    // Shape and values taken from the real LL2 record for id 573 (Jessica
+    // Meir), including the fields deliberately dropped from the response.
+    fetch.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: 573,
+          name: "Jessica Meir",
+          nationality: "American",
+          agency: { id: 44, name: "National Aeronautics and Space Administration" },
+          bio: "Jessica Ulrika Meir is...",
+          profile_image: "https://example.test/full.jpg",
+          profile_image_thumbnail: "https://example.test/thumb.jpg",
+          wiki: "https://en.wikipedia.org/wiki/Jessica_Meir",
+          twitter: "https://twitter.com/Astro_Jessica",
+          instagram: null,
+          flights_count: 2,
+          spacewalks_count: 4,
+          time_in_space: "P369DT6H45M59S",
+          eva_time: "P1DT5H4M",
+          flights: [{ huge: "unused" }],
+          landings: [{ huge: "unused" }],
+        })
+      )
+    );
+    const res = await worker.fetch(new Request("https://x/astronaut?id=573"), {}, ctx);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Cache-Control")).toBe(`public, max-age=${ASTRONAUT_TTL}`);
+    const body = await res.json();
+    expect(body).toEqual({
+      id: 573,
+      name: "Jessica Meir",
+      nationality: "American",
+      agency: "National Aeronautics and Space Administration",
+      bio: "Jessica Ulrika Meir is...",
+      // Thumbnail preferred over the full-size image.
+      image: "https://example.test/thumb.jpg",
+      wiki: "https://en.wikipedia.org/wiki/Jessica_Meir",
+      twitter: "https://twitter.com/Astro_Jessica",
+      instagram: null,
+      flights: 2,
+      spacewalks: 4,
+      timeInSpace: "P369DT6H45M59S",
+      evaTime: "P1DT5H4M",
+    });
+    // The bulky nested arrays never reach the client.
+    expect(body.flights).not.toBeInstanceOf(Array);
+    expect(body.landings).toBeUndefined();
+  });
+
+  it("rejects a missing or non-numeric astronaut id without calling LL2", async () => {
+    fetch.mockImplementation(() => {
+      throw new Error("should not fetch");
+    });
+    expect((await worker.fetch(new Request("https://x/astronaut"), {}, ctx)).status).toBe(400);
+    // Anything non-numeric could steer the upstream URL path or mint
+    // unbounded cache keys.
+    expect(
+      (await worker.fetch(new Request("https://x/astronaut?id=../launch"), {}, ctx)).status
+    ).toBe(400);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("degrades /astronaut to null when LL2 refuses or the shape is wrong", async () => {
+    fetch.mockResolvedValue(new Response("nope", { status: 429 }));
+    let res = await worker.fetch(new Request("https://x/astronaut?id=573"), {}, ctx);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toBeNull();
+
+    fetch.mockResolvedValue(new Response(JSON.stringify({ detail: "no name here" })));
+    res = await worker.fetch(new Request("https://x/astronaut?id=573"), {}, ctx);
+    expect(await res.json()).toBeNull();
+  });
+
+  it("sends LL2 headers on /astronaut, including the key when LL2_API_KEY is set", async () => {
+    fetch.mockResolvedValue(new Response(JSON.stringify({ id: 1, name: "Alice" })));
+    await worker.fetch(new Request("https://x/astronaut?id=1"), { LL2_API_KEY: "secret" }, ctx);
+    const [, opts] = ll2Calls()[0];
+    expect(opts.headers["User-Agent"]).toContain("OrbitalTraffic");
+    expect(opts.headers.Accept).toBe("application/json");
+    // Token, never Bearer/Api-Key — the scheme The Space Devs' docs specify.
+    expect(opts.headers.Authorization).toBe("Token secret");
   });
 
   it("serves /today and degrades to an empty feed", async () => {
