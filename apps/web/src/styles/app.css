@@ -26,7 +26,7 @@
   button{-webkit-appearance:none;appearance:none;background:none;border:0;
     font:inherit;color:inherit;text-align:inherit;letter-spacing:inherit}
   /* One keyboard-focus style for every interactive element — buttons, the
-     search input, the alerts checkbox, and links (privacy, attribution).
+     search input, and links (privacy, attribution).
      :focus-visible only fires for keyboard/AT focus, so pointer clicks never
      draw the ring. */
   :focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
@@ -91,35 +91,6 @@
   #count{font-size:10px;letter-spacing:0.1em;color:var(--ink-dim);text-transform:uppercase}
   #count b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
 
-  /* ISS Pass Alerts — low-profile chip, top-right, right under the
-     Globe Style card, which itself sits right under the clock. Position
-     measured against the Globe Style card's real rendered bottom edge —
-     not guessed. Mobile override lives in the @media block below, same
-     pattern as #clock. No explicit z-index (same as #clock/#globe-style)
-     so the mobile #info bottom-sheet — later in DOM order and taller than
-     any of these top-right cards' clearance from it — always paints above
-     when its top edge runs this high; giving this a z-index would put it
-     ahead of #info regardless of DOM order and cover the card's header
-     (confirmed bug: it blocked the fav-btn/close controls). */
-  #alerts{position:fixed;top:204px;right:24px;max-width:200px;
-    padding:8px 12px;
-    background:rgba(17,22,42,0.55);backdrop-filter:blur(18px) saturate(1.2);-webkit-backdrop-filter:blur(18px) saturate(1.2);
-    border:1px solid rgba(255,255,255,0.12);border-radius:14px;
-    box-shadow:0 8px 24px rgba(0,0,0,0.4);
-    animation:rise .8s cubic-bezier(.2,.7,.2,1) both;animation-delay:.14s}
-  .alerts-row{display:flex;align-items:center;gap:8px;font-size:10.5px;line-height:1.3;color:var(--ink-dim);cursor:pointer}
-  /* Custom-drawn checkbox instead of relying on accent-color, which
-     renders inconsistently inside WKWebView (the engine the native iOS
-     app actually uses) even when it looks fine in a normal browser. */
-  .alerts-row input{appearance:none;-webkit-appearance:none;margin:0;
-    width:14px;height:14px;flex:0 0 auto;position:relative;
-    border:1.5px solid var(--line-bright);border-radius:3px;
-    background:transparent;cursor:pointer}
-  .alerts-row input:checked{background:var(--amber);border-color:var(--amber)}
-  .alerts-row input:checked::after{content:"";position:absolute;left:3.5px;top:0.5px;
-    width:4px;height:7px;border:solid #07080f;border-width:0 2px 2px 0;transform:rotate(45deg)}
-  .alerts-row input:disabled{cursor:not-allowed;opacity:.5}
-
   /* ---------- search command bar ---------- */
   #search-wrap{top:72px;left:50%;transform:translateX(-50%);width:360px;max-width:42vw;animation:rise .8s both .16s}
   #search{display:flex;align-items:center;gap:10px;padding:10px 14px}
@@ -180,11 +151,11 @@
   /* ---------- globe style toggle ----------
      Low-profile chip, top-right, right under the clock (position measured
      against the clock's real rendered bottom edge — not guessed). Mobile
-     override lives in the @media block below, same pattern as #alerts.
-     No explicit z-index (same as #clock) — see the #alerts comment above
-     for why: giving this a z-index above #info's z-index:auto would let
-     it cover the mobile info sheet's header whenever the sheet's top edge
-     runs this high (confirmed bug: covered the fav-btn/close controls). */
+     override lives in the @media block below, same pattern as #clock.
+     No explicit z-index (same as #clock): giving this a z-index above
+     #info's z-index:auto would let it cover the mobile info sheet's header
+     whenever the sheet's top edge runs this high (confirmed bug: covered
+     the fav-btn/close controls). */
   #globe-style{position:fixed;top:133px;right:24px;width:200px}
   #globe-style .ph{padding:5px 10px}
   #globe-style .body{padding:6px 7px 7px}
@@ -412,8 +383,6 @@
     #globe-style{top:111px;right:10px;width:150px}
     #globe-style .ph{padding:4px 8px}
     #globe-style .body{padding:5px 6px 6px}
-    #alerts{top:186px;right:10px;max-width:150px}
-    #alerts .alerts-row{font-size:9.5px}
     #clock .body{padding:7px 11px 8px}
     #clock .utc{font-size:20px;letter-spacing:0.01em;text-align:center;margin-top:4px}
     #clock .utc small{font-size:10px}
@@ -496,8 +465,8 @@
 
     /* Hint — below the clock + Globe Style stack (Globe Style now sits
        right under the clock on mobile too; its real rendered bottom edge
-       is 173px). top:186px matches the same 13px clearance #alerts uses
-       to clear its own card above. */
+       is 173px). top:186px gives it the same 13px clearance below that
+       edge. */
     #hint{bottom:auto;top:186px;font-size:9px}
 
     /* Meta attribution — inset clear of the leftstack card, centered in remaining space */

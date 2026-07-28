@@ -26,12 +26,10 @@ import { rebuildLegend, initLegendToggle } from "./ui/legend.js";
 import { renderToday, initTodayToggle } from "./ui/today.js";
 import { initGlobeStyle } from "./ui/globeStyle.js";
 import { initSearch } from "./ui/search.js";
-import { initPassAlerts } from "./ui/alerts.js";
 import { initTimeMachine, updateClockMode } from "./ui/time.js";
 import { updateCount } from "./ui/status.js";
 import { updateClock } from "./ui/clock.js";
 import { registerServiceWorker } from "./pwa.js";
-import { refreshPassAlertsIfEnabled } from "./native/passAlerts.js";
 import { freshnessText, isTimeShifted } from "./util/freshness.js";
 import * as THREE from "three";
 
@@ -151,7 +149,6 @@ async function boot() {
   initTodayToggle();
   initLegendToggle();
   initSearch();
-  initPassAlerts();
   initPicking();
 
   await ingest(data.sats);
@@ -189,4 +186,3 @@ async function boot() {
 
 boot();
 registerServiceWorker();
-refreshPassAlertsIfEnabled();

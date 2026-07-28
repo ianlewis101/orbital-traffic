@@ -123,7 +123,7 @@ re-check the deploy output and the source fix before assuming success.
 
 ## 5. Cache note — don't mistake this for a failed deploy
 
-`/tle`, `/crew`, `/today`, `/capsules`, and `/passes` are all served
+`/tle`, `/crew`, `/today`, `/capsules`, and `/satcat` are all served
 through `cached()` in `worker/src/index.js`, backed by the Workers Cache
 API (`caches.default`) keyed by path — independent of which code version
 is live. `/tle` specifically has a 20-minute TTL (`TLE_TTL`). Deploying
