@@ -320,6 +320,35 @@
   .crew-av-c{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.18);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;margin:0 auto 3px;color:var(--ink)}
   .crew-av-c.cmd{border:2px solid var(--amber);color:var(--amber);background:rgba(255,210,61,0.1)}
   .crew-av-n{font-size:7px;color:var(--ink-faint);line-height:1.25;word-break:break-word}
+  /* Avatars are <button> when the person has an LL2 id to look up (see
+     crew.js) — reset the UA button chrome so they look identical to the
+     plain-div case, and give the open one a visible selected state. */
+  button.crew-av{background:none;border:none;padding:0;font:inherit;cursor:pointer;
+    -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+  button.crew-av:focus-visible{outline:1px solid var(--signal);outline-offset:2px;border-radius:7px}
+  .crew-av[aria-expanded="true"] .crew-av-c{border-color:var(--signal);
+    box-shadow:0 0 0 2px rgba(174,227,255,0.22)}
+  /* Astronaut profile — one shared panel below the avatar grid, so opening a
+     bio never reflows the wrapped avatar rows above it. */
+  .crew-bio{margin:2px 13px 10px;border:1px solid var(--line);border-radius:8px;
+    background:rgba(255,255,255,0.03);overflow:hidden}
+  .crew-bio[hidden]{display:none}
+  .crew-bio-top{display:flex;gap:10px;padding:10px 11px}
+  .crew-bio-img{width:56px;height:56px;border-radius:8px;object-fit:cover;flex:none;
+    background:rgba(255,255,255,0.06)}
+  .crew-bio-meta{flex:1;min-width:0}
+  .crew-bio-name{font-size:11px;font-weight:700;color:var(--ink);letter-spacing:0.02em}
+  .crew-bio-sub{font-size:9px;color:var(--ink-faint);letter-spacing:0.05em;margin-top:2px;line-height:1.4}
+  .crew-bio-stats{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px}
+  .crew-bio-stat{font-size:8.5px;color:var(--ink-faint);letter-spacing:0.06em;text-transform:uppercase}
+  .crew-bio-stat b{display:block;font-size:12px;font-weight:700;color:var(--amber);
+    letter-spacing:0;font-variant-numeric:tabular-nums}
+  .crew-bio-txt{padding:0 11px 10px;font-size:10.5px;line-height:1.6;color:var(--ink-dim)}
+  .crew-bio-links{display:flex;gap:12px;padding:0 11px 10px}
+  .crew-bio-links a{font-size:8.5px;letter-spacing:0.12em;text-transform:uppercase;
+    color:var(--signal);text-decoration:none}
+  .crew-bio-links a:hover{text-decoration:underline}
+  .crew-bio-msg{padding:11px;font-size:10px;color:var(--ink-faint);letter-spacing:0.05em}
   .crew-prog{padding:6px 13px 10px}
   .crew-prog-bg{background:rgba(255,255,255,0.08);border-radius:3px;height:2.5px}
   .crew-prog-fill{background:var(--amber);height:100%;border-radius:3px}
@@ -490,6 +519,14 @@
     /* Larger tap targets for chips */
     #info .chips{gap:8px;padding:12px 15px 4px}
     #info .chip{padding:6px 12px;font-size:10px}
+    /* Crew avatars are tappable (they open a profile), so size them for a
+       finger rather than a cursor — the desktop 34px circle is under the
+       44px minimum once it's a real touch target. */
+    .crew-avs{gap:9px}
+    .crew-av{width:46px}
+    .crew-av-c{width:42px;height:42px;font-size:11px}
+    .crew-av-n{font-size:7.5px}
+    .crew-bio-img{width:64px;height:64px}
     /* Foot buttons bigger */
     #info .foot{padding:10px 15px 16px;display:flex;gap:8px}
     #info-track{padding:12px 0}
