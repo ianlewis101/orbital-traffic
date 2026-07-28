@@ -11,7 +11,6 @@
  *   GET /crew      — ISS/Tiangong crew roster
  *   GET /today     — ISS "Today aboard" activity feed
  *   GET /capsules  — crewed-capsule/cargo-vehicle phase (docked/free-flying/landed) + event log
- *   GET /passes    — predicted ISS visibility windows for a lat/lng
  *   GET /satcat    — per-object SATCAT metadata (launch date, owner, launch site)
  *   GET /astronaut — one crew member's public profile (bio, photo, flight stats)
  *
@@ -28,8 +27,6 @@ import {
   GROUPS,
   CELESTRAK_BASE,
   FETCH_HEADERS,
-  noradId,
-  predictPasses,
 } from "@orbital-traffic/catalog";
 
 export const TLE_TTL = 20 * 60; // 20 minutes
@@ -332,70 +329,11 @@ export async function fetchSatcat(catnr) {
   }
 }
 
-const ISS_NORAD_ID = "25544";
-const ISS_TLE_URL = "https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=TLE";
-export const PASSES_TTL = 20 * 60; // matches TLE_TTL — a new TLE meaningfully shifts pass timing
-
-async function fetchIssTle() {
-  try {
-    const res = await fetch(ISS_TLE_URL, {
-      headers: FETCH_HEADERS,
-      cf: { cacheTtl: PASSES_TTL, cacheEverything: true },
-    });
-    if (!res.ok) return null;
-    const recs = parseTle(await res.text(), "stations");
-    return recs.find((r) => noradId(r.l1) === ISS_NORAD_ID) ?? recs[0] ?? null;
-  } catch {
-    return null;
-  }
-}
-
-export async function buildPasses(lat, lng) {
-  const iss = await fetchIssTle();
-  if (!iss) return { passes: [], error: "iss_tle_unavailable" };
-  const passes = predictPasses(iss.l1, iss.l2, lat, lng, { maxPasses: 5 });
-  return {
-    passes: passes.map((p) => ({
-      riseAt: new Date(p.riseMs).toISOString(),
-      culminatesAt: new Date(p.cullMs).toISOString(),
-      setAt: new Date(p.setMs).toISOString(),
-      maxElevationDeg: Math.round(p.maxElevationDeg * 10) / 10,
-    })),
-  };
-}
-
 function badRequest(message) {
   return new Response(JSON.stringify({ error: message }), {
     status: 400,
     headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
   });
-}
-
-async function handlePasses(ctx, request) {
-  const url = new URL(request.url);
-  const latParam = url.searchParams.get("lat");
-  const lngParam = url.searchParams.get("lng");
-  if (latParam === null || lngParam === null) {
-    return badRequest("lat and lng query params are required");
-  }
-  const lat = Number(latParam);
-  const lng = Number(lngParam);
-  if (
-    !Number.isFinite(lat) ||
-    !Number.isFinite(lng) ||
-    lat < -90 ||
-    lat > 90 ||
-    lng < -180 ||
-    lng > 180
-  ) {
-    return badRequest("lat and lng must be valid coordinates");
-  }
-  // Round to reduce cache cardinality — pass timing doesn't meaningfully
-  // change within ~11km (0.1 degree), well inside what matters for a
-  // "next pass in ~N minutes" alert.
-  const rLat = Math.round(lat * 10) / 10;
-  const rLng = Math.round(lng * 10) / 10;
-  return cached(ctx, `/passes?lat=${rLat}&lng=${rLng}`, PASSES_TTL, () => buildPasses(rLat, rLng));
 }
 
 function jsonResponse(data, ttl) {
@@ -454,7 +392,6 @@ const ROUTES = {
     ),
   "/today": (ctx) => cached(ctx, "/today", TODAY_TTL, buildToday),
   "/capsules": (ctx) => cached(ctx, "/capsules", CAPSULES_TTL, buildCapsules),
-  "/passes": (ctx, request) => handlePasses(ctx, request),
   "/satcat": (ctx, request) => {
     const url = new URL(request.url);
     const catnr = url.searchParams.get("id");

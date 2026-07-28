@@ -32,7 +32,7 @@ scratchpad; never `playwright install`):
 - `browser.newContext({ serviceWorkers: "block" })` so sw.js caching
   can't interfere with route interception.
 - Intercept `**://orbital-traffic.ianlewis101.workers.dev/**` (routes:
-  /tle /capsules /crew /today /passes) and `**://celestrak.org/**`.
+  /tle /capsules /crew /today) and `**://celestrak.org/**`.
   A /tle fixture is just apps/web/public/data/satellites.json filtered —
   same record shape.
 - Boot auto-syncs at +2s (`fetchLive` in main.js). Wait for the /tle

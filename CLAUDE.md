@@ -245,17 +245,14 @@ Monorepo (npm workspaces):
   truth for categorize().
 
 - worker/ — Cloudflare Worker (worker/src/index.js), proxies
-  and edge-caches FIVE endpoints: /tle, /crew, /today,
-  /capsules, /passes (predicts ISS visibility windows for the
-  iOS pass-alerts feature — the future of that feature itself
-  is an open product question, see Open Questions in
-  docs/audit-status.md; don't assume this endpoint is
-  permanent). Deploy auto-runs on push to main touching
-  worker/** or packages/catalog/** — see Critical Rule #1 and
-  DEPLOY COMMANDS. Cache TTLs: /tle 20 min, /crew 1 hour,
-  /today 5 min, /capsules 10 min. /passes has no fixed TTL —
-  it's cached per unique (satellite, rounded lat/lng)
-  combination.
+  and edge-caches SIX endpoints: /tle, /crew, /today,
+  /capsules, /satcat (per-object SATCAT metadata — launch date,
+  owner, launch site), /astronaut (a trimmed projection of one
+  crew member's LL2 profile — photo, bio, flight/EVA stats).
+  Deploy auto-runs on push to main touching worker/** or
+  packages/catalog/** — see Critical Rule #1 and DEPLOY
+  COMMANDS. Cache TTLs: /tle 20 min, /crew 1 hour, /today
+  5 min, /capsules 10 min, /satcat 7 days, /astronaut 24 hours.
 
 - GitHub Actions also handles daily TLE refresh
   (refresh-tle-data.yml), ISS Today data updates
