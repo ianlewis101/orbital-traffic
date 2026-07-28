@@ -12,6 +12,124 @@ function initials(name) {
     : name.slice(0, 2).toUpperCase();
 }
 
+// Profiles keyed by LL2 astronaut id. A crew roster is small and its members
+// barely change, so re-opening the same person (or re-selecting the station)
+// shouldn't refetch — the Worker caches for a day, but this also spares the
+// round trip entirely. `null` is a cached "unavailable", distinct from a
+// missing key (never fetched).
+const profileCache = new Map();
+
+/**
+ * ISO 8601 duration → short human string ("P369DT6H45M59S" → "369d 6h").
+ * LL2 reports time_in_space/eva_time this way. Anything unparseable returns
+ * null so the caller can omit the stat rather than print a raw duration.
+ */
+export function formatDuration(iso) {
+  if (typeof iso !== "string") return null;
+  const m = /^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:[\d.]+S)?)?$/.exec(iso);
+  if (!m) return null;
+  const [, y, mo, d, h, min] = m.map((v) => (v == null ? v : Number(v)));
+  // Years/months are folded into an approximate day count only when LL2
+  // actually sends them (it normally reports plain days, e.g. P369D).
+  const days = (y || 0) * 365 + (mo || 0) * 30 + (d || 0);
+  const parts = [];
+  if (days) parts.push(`${days}d`);
+  if (h) parts.push(`${h}h`);
+  // Minutes are noise once a value spans days (time in space), but they're
+  // most of the number for a sub-day one (a single EVA).
+  if (!days && min) parts.push(`${min}m`);
+  return parts.length ? parts.join(" ") : null;
+}
+
+// Only ever render an https image URL. LL2's images are all https today;
+// this just makes it impossible for an unexpected upstream value to become
+// some other kind of URL in an <img src>.
+function safeImage(url) {
+  return typeof url === "string" && url.startsWith("https://") ? url : null;
+}
+
+function profileMessage(text) {
+  return `<div class="crew-bio-msg">${esc(text)}</div>`;
+}
+
+function renderProfile(p) {
+  if (!p) return profileMessage("Profile unavailable for this crew member");
+  const img = safeImage(p.image);
+  const sub = [p.nationality, p.agency].filter(Boolean).join(" · ");
+  const stat = (value, label) =>
+    `<div class="crew-bio-stat"><b>${esc(String(value))}</b> ${esc(label)}</div>`;
+  const stats = [
+    p.flights != null ? stat(p.flights, p.flights === 1 ? "flight" : "flights") : "",
+    p.spacewalks != null ? stat(p.spacewalks, p.spacewalks === 1 ? "EVA" : "EVAs") : "",
+  ];
+  const inSpace = formatDuration(p.timeInSpace);
+  if (inSpace) stats.push(stat(inSpace, "in space"));
+  const links = [
+    p.wiki ? `<a href="${esc(p.wiki)}" target="_blank" rel="noopener noreferrer">Wikipedia</a>` : "",
+    p.twitter ? `<a href="${esc(p.twitter)}" target="_blank" rel="noopener noreferrer">X</a>` : "",
+    p.instagram
+      ? `<a href="${esc(p.instagram)}" target="_blank" rel="noopener noreferrer">Instagram</a>`
+      : "",
+  ].filter(Boolean);
+  return `
+    <div class="crew-bio-top">
+      ${img ? `<img class="crew-bio-img" src="${esc(img)}" alt="" loading="lazy">` : ""}
+      <div class="crew-bio-meta">
+        <div class="crew-bio-name">${esc(p.name || "")}</div>
+        ${sub ? `<div class="crew-bio-sub">${esc(sub)}</div>` : ""}
+        <div class="crew-bio-stats">${stats.filter(Boolean).join("")}</div>
+      </div>
+    </div>
+    ${p.bio ? `<div class="crew-bio-txt">${esc(p.bio)}</div>` : ""}
+    ${links.length ? `<div class="crew-bio-links">${links.join("")}</div>` : ""}`;
+}
+
+/**
+ * Wires the roster's avatar buttons to the shared detail panel beneath them.
+ * One panel (rather than a panel per avatar) keeps the wrapped flex grid from
+ * reflowing when a bio opens, and means only one person can be open at a time.
+ */
+function wireCrewAvatars(root) {
+  const panel = root.querySelector(".crew-bio");
+  const avatars = [...root.querySelectorAll(".crew-av")];
+  if (!panel || !avatars.length) return;
+  let openId = null;
+
+  const collapse = () => {
+    openId = null;
+    panel.hidden = true;
+    panel.innerHTML = "";
+    for (const a of avatars) a.setAttribute("aria-expanded", "false");
+  };
+
+  for (const btn of avatars) {
+    btn.onclick = async () => {
+      const id = btn.dataset.aid;
+      if (!id || openId === id) return collapse();
+      openId = id;
+      for (const a of avatars) a.setAttribute("aria-expanded", String(a === btn));
+      panel.hidden = false;
+      if (profileCache.has(id)) {
+        panel.innerHTML = renderProfile(profileCache.get(id));
+        return;
+      }
+      panel.innerHTML = profileMessage("Loading profile…");
+      let data = null;
+      try {
+        const r = await fetch(`${WORKER_BASE}/astronaut?id=${encodeURIComponent(id)}`);
+        if (r.ok) data = await r.json();
+      } catch {
+        // Leaves data null — rendered as "Profile unavailable" below.
+      }
+      // A slow fetch may land after the user collapsed this person or opened
+      // someone else; only the still-open request may paint.
+      if (openId !== id) return;
+      profileCache.set(id, data);
+      panel.innerHTML = renderProfile(data);
+    };
+  }
+}
+
 // "Today aboard" is sourced from iss-today.json via the worker's /today
 // endpoint — it's ISS-specific, so only ISS modules should show it. Other
 // stations (e.g. Tiangong) still show live crew, just not this feed.
@@ -122,11 +240,24 @@ export async function fetchAndRenderCrew(s) {
   // avatars — use crew from API or show count only
   let avHTML = "";
   if (crew.length > 0) {
+    // The commander highlight prefers real role data (LL2 sends it via the
+    // Worker's /crew). The old "first listed person" heuristic stays as the
+    // fallback for a response that carries no roles at all — e.g. one served
+    // from an edge cache filled before roles were added.
+    const hasRoles = crew.some((p) => p.role);
     avHTML = crew
       .map((p, i) => {
         const init = initials(p.name || "??");
-        const isCmd = i === 0 || (p.role || "").toLowerCase().includes("commander");
-        return `<div class="crew-av"><div class="crew-av-c${isCmd ? " cmd" : ""}">${esc(init)}</div><div class="crew-av-n">${esc((p.name || "").split(" ").pop())}</div></div>`;
+        const isCmd = hasRoles
+          ? (p.role || "").toLowerCase().includes("commander")
+          : i === 0;
+        // Only a person we can actually look up gets button affordances;
+        // without an id there's nothing to expand, so it stays a plain div.
+        const label = esc((p.name || "").split(" ").pop());
+        const face = `<div class="crew-av-c${isCmd ? " cmd" : ""}">${esc(init)}</div><div class="crew-av-n">${label}</div>`;
+        return p.id != null
+          ? `<button type="button" class="crew-av" data-aid="${esc(String(p.id))}" aria-expanded="false" title="${esc(p.name || "")}">${face}</button>`
+          : `<div class="crew-av">${face}</div>`;
       })
       .join("");
   } else if (crewFetchFailed) {
@@ -152,6 +283,7 @@ export async function fetchAndRenderCrew(s) {
         // eslint-disable-next-line orbital/no-unescaped-innerhtml -- avHTML is assembled from esc()-escaped crew data in the map() loop above
         avHTML
       }</div>
+      <div class="crew-bio" hidden></div>
       ${
         crewSuspect
           ? `<div style="font-size:10px;color:var(--ink-faint);padding:4px 0;letter-spacing:0.05em">Roster may not reflect the current crew</div>`
@@ -178,4 +310,5 @@ export async function fetchAndRenderCrew(s) {
     </div>`
         : ""
     }`;
+  wireCrewAvatars(el);
 }

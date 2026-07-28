@@ -12,6 +12,7 @@
  *   GET /today     — ISS "Today aboard" activity feed
  *   GET /capsules  — crewed-capsule/cargo-vehicle phase (docked/free-flying/landed) + event log
  *   GET /satcat    — per-object SATCAT metadata (launch date, owner, launch site)
+ *   GET /astronaut — one crew member's public profile (bio, photo, flight stats)
  *
  * TLE parsing lives in @orbital-traffic/catalog (shared with the web
  * app). parseTle() runs the full categorize() pipeline on every record,
@@ -135,8 +136,33 @@ async function fetchStationCrew(stationId, craft, env) {
       };
     }
     const crew = d.active_expeditions[0]?.crew;
+    // LL2's own crew array can list the same astronaut twice within one
+    // expedition (confirmed live 2026-07-24 on ISS expedition 74 — id 732
+    // appeared twice, identical role) — dedupe by astronaut id (falling
+    // back to name if id is absent) so that upstream duplicate doesn't
+    // reach users as a repeated name in the roster.
+    //
+    // `id` rides along so the crew card can request that person's profile
+    // from /astronaut; `role` was already read by crew.js's commander
+    // highlight (`p.role`) but never actually sent until now.
+    const seen = new Set();
     const people = Array.isArray(crew)
-      ? crew.map((c) => ({ name: c.astronaut?.name, craft })).filter((p) => p.name)
+      ? crew
+          .filter((c) => {
+            // A nameless entry has nothing to render, so it's dropped
+            // before deduping (matching the pre-dedupe behavior).
+            if (!c.astronaut?.name) return false;
+            const key = c.astronaut.id ?? c.astronaut.name;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          })
+          .map((c) => ({
+            name: c.astronaut?.name,
+            craft,
+            id: c.astronaut?.id ?? null,
+            role: c.role?.role ?? null,
+          }))
       : [];
     return { ok: true, people };
   } catch {
@@ -208,6 +234,56 @@ export async function buildCrew(env) {
   // empty roster. crew.js ignores unknown fields, so this is additive.
   if (!ok) result.sourceStatus = { iss: iss.source, tiangong: tiangong.source };
   return result;
+}
+
+// Bios and photos are effectively static, but flight/spacewalk counts and
+// time_in_space do move mid-mission (a spacewalk bumps them the same day),
+// so this sits well short of SATCAT_TTL's 7 days while still collapsing
+// essentially all repeat traffic into one upstream call per day per person.
+export const ASTRONAUT_TTL = 24 * 60 * 60; // 24 hours
+
+/**
+ * One crew member's public profile from LL2, trimmed to the fields the crew
+ * card renders. Degrades to null on any failure, same shape as
+ * fetchSatcat() — the client treats null as "profile unavailable" rather
+ * than an error state.
+ *
+ * Deliberately NOT a passthrough of LL2's full record: that object carries
+ * nested flight/landing/spacewalk arrays worth tens of KB per person, all
+ * unused here, and re-serving arbitrary upstream fields is how unreviewed
+ * data ends up in the DOM later.
+ */
+export async function fetchAstronaut(id, env) {
+  try {
+    const r = await fetch(`${LL2_BASE}/astronaut/${id}/`, {
+      headers: ll2Headers(env),
+      cf: { cacheTtl: ASTRONAUT_TTL, cacheEverything: true },
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (!d || typeof d.name !== "string") return null;
+    const num = (v) => (typeof v === "number" ? v : null);
+    return {
+      id: d.id ?? null,
+      name: d.name,
+      nationality: d.nationality || null,
+      agency: d.agency?.name || null,
+      bio: d.bio || null,
+      // Thumbnail first: the card renders at 56px, so the full-size image
+      // is pure transfer cost on a view that may open several times.
+      image: d.profile_image_thumbnail || d.profile_image || null,
+      wiki: d.wiki || null,
+      twitter: d.twitter || null,
+      instagram: d.instagram || null,
+      flights: num(d.flights_count),
+      spacewalks: num(d.spacewalks_count),
+      // ISO 8601 durations (e.g. "P369DT6H45M59S") — formatted client-side.
+      timeInSpace: d.time_in_space || null,
+      evaTime: d.eva_time || null,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function buildToday() {
@@ -321,6 +397,16 @@ const ROUTES = {
     const catnr = url.searchParams.get("id");
     if (!catnr) return badRequest("id query param is required");
     return cached(ctx, `/satcat?id=${catnr}`, SATCAT_TTL, () => fetchSatcat(catnr));
+  },
+  "/astronaut": (ctx, request, env) => {
+    const url = new URL(request.url);
+    const id = url.searchParams.get("id");
+    if (!id) return badRequest("id query param is required");
+    // Numeric-only: LL2 astronaut ids are integers, and this is what keeps
+    // an arbitrary caller from steering the upstream URL path or minting
+    // unbounded distinct cache keys.
+    if (!/^\d+$/.test(id)) return badRequest("id must be numeric");
+    return cached(ctx, `/astronaut?id=${id}`, ASTRONAUT_TTL, () => fetchAstronaut(id, env));
   },
 };
 

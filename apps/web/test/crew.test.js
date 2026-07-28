@@ -16,8 +16,12 @@ import { state } from "../src/state.js";
  * of ISS_TODAY_IDS, 48274 is not.
  */
 
+// Stands in for #info-crew. These tests assert on the rendered markup only,
+// so the query methods (used by the avatar wiring after render) return
+// nothing — the accordion's own behaviour is covered in crew-bio.test.js
+// against a real jsdom DOM.
 function stubEl() {
-  return { style: {}, innerHTML: "" };
+  return { style: {}, innerHTML: "", querySelector: () => null, querySelectorAll: () => [] };
 }
 
 let el;
