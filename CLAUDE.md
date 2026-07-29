@@ -1,3 +1,4 @@
+This is a soon to be app so consider mobile first before desktop.
 ── AUDIT & FIX TRACKING ──────────────────────────────────────
 
 A full codebase audit (design, architecture, security, and 37
