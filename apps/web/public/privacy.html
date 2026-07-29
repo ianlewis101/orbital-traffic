@@ -22,6 +22,17 @@
 <p>Orbital Traffic is a satellite and near-Earth-object tracker. This page explains what
 data the app uses, what it doesn't, and where anything that does get sent leaves your device.</p>
 
+<h2>Location</h2>
+<p>The app asks for your device location only when you tap <strong>What's Overhead</strong>,
+and only at that moment. Your coordinates are used entirely on your own device, to work out
+which tracked objects are above your local horizon — the calculation runs in the app itself,
+not on a server. Your location is <strong>never transmitted to us or to anyone else</strong>,
+and is not saved: it is discarded as soon as the list is produced, and nothing about where you
+are is kept between uses.</p>
+<p>If you decline the permission, the app remembers only that you declined — not any location —
+so it doesn't prompt you repeatedly. You can clear that in Settings &rarr; Privacy &amp;
+Permissions.</p>
+
 <h2>Fonts</h2>
 <p>The app loads two fonts directly from Google Fonts. As with any third-party font
 host, Google receives the IP address of each visitor's device as part of delivering
@@ -33,7 +44,7 @@ those files. We do not control or receive this data ourselves.</p>
   <li>No analytics or usage tracking</li>
   <li>No advertising, and no ad SDKs of any kind</li>
   <li>No data is sold or shared with third parties for marketing purposes</li>
-  <li>No location access of any kind</li>
+  <li>No location data ever leaves your device</li>
 </ul>
 
 <h2>Third-party services this app talks to</h2>
@@ -42,8 +53,10 @@ receive any information that identifies you:</p>
 <ul>
   <li><a href="https://celestrak.org" target="_blank" rel="noopener">CelesTrak</a> —
     public-domain satellite orbital element data</li>
-  <li>Open Notify — current ISS/Tiangong crew roster</li>
-  <li>NASA — public ISS activity information</li>
+  <li><a href="https://thespacedevs.com" target="_blank" rel="noopener">Launch Library 2
+    (The Space Devs)</a> — current ISS/Tiangong crew rosters and astronaut profiles</li>
+  <li><a href="https://ssd.jpl.nasa.gov" target="_blank" rel="noopener">NASA/JPL</a> —
+    near-Earth-object orbital data and public ISS activity information</li>
 </ul>
 <p>The app's backend runs on Cloudflare, which, like any web infrastructure provider,
 processes standard connection metadata (such as IP address) as a normal part of serving

@@ -204,6 +204,40 @@ cross-check those against this document instead.
      space-bounded behavior is deliberately left
      broken-but-harmless. Confirmed via direct testing against
      the real catalog.
+   - apps/web/src/util/units.js is the only place distances and
+     speeds get formatted for display (fmtAltitude/fmtSpeed/
+     fmtDistance/toDistance/distanceUnit). It reads the user's
+     km/miles preference, so a new hardcoded conversion
+     anywhere else silently ignores that setting. Its exports
+     are allow-listed in the no-unescaped-innerhtml rule. NOTE
+     the deliberate exclusion: ui/describe.js's prose ("340
+     miles up") is curated copy, not formatted measurement, and
+     stays imperial.
+   - apps/web/src/astro/overhead.js owns ALL observer geometry —
+     subpoint() (ECI→lat/lon/alt, also used by the info card's
+     telemetry) and lookAngles() (elevation/azimuth/range from a
+     ground position). Don't inline eciToGeodetic/eciToEcf/
+     ecfToLookAngles anywhere else. Both functions reject
+     non-finite results on purpose: a malformed satrec
+     propagates to a position object full of NaN rather than to
+     nothing, and NaN fails every comparison, so an unguarded
+     value slips straight past a `<= minElevation` filter.
+   - apps/web/src/settings.js is the single home for persisted
+     user preferences (one validated "ot-settings" localStorage
+     key). The two older ad-hoc keys, "ot_favs" and
+     "ot-globe-style", are deliberately left where they are.
+
+8. SETTINGS SEEDS THE LEGEND ONCE, ONE WAY: Settings →
+   Display → categories decides what is visible at BOOT.
+   seedDisplayCategories() must run before buildClouds() —
+   scene/clouds.js reads state.hidden at build time to set each
+   cloud's visibility, so seeding after it leaves the globe and
+   the legend disagreeing until the next rebuild. After boot the
+   in-scene legend is a live, session-only view filter with its
+   own state: it must NEVER write back to settings, and Settings
+   must never read the legend's runtime state. Toggling a
+   category on the globe deliberately does not change what
+   Settings shows.
 
 ── BRANCH AND PR DISCIPLINE ──────────────────────────────────
 
@@ -228,8 +262,12 @@ Monorepo (npm workspaces):
   - src/scene/ — Three.js scene, picking, clouds (point-cloud
     rendering per category), earth, NEOs
   - src/data/ — ingest.js (classification entry point),
-    live.js (Worker fetch), store.js
-  - src/ui/ — info card, legend, search, time machine, etc.
+    live.js (Worker fetch), store.js, location.js (geolocation)
+  - src/astro/ — propagation.js (safeProp), orbital.js, sun.js,
+    neo.js, overhead.js (observer/look-angle geometry)
+  - src/ui/ — info card, legend, search, time machine,
+    overhead.js, settings.js, etc.
+  - src/settings.js — user preferences (localStorage)
   - public/ — manifest.json, sw.js, icons, data/*.json
   - Deployed via .github/workflows/deploy-pages.yml, which runs
     `npm run build` and publishes apps/web/dist to GitHub Pages
@@ -333,6 +371,26 @@ they can't be templated:
 
 ── KNOWN BUGS THAT MUST NOT BE REINTRODUCED ─────────────────
 
+- What's Overhead's threshold and ranking were corrected after
+  the feature first shipped — don't revert either half. The
+  original spec used a raw 0° elevation cut with a single
+  elevation-only sort; measured against the real ~18,700-object
+  catalog that returns roughly 1,100 objects from a typical
+  location (86-277 measured across seven varied locations at
+  the corrected threshold, for comparison), dominated by
+  whichever Starlink/geostationary satellites happen to be up —
+  technically correct, not useful. The shipped behavior is
+  apps/web/src/astro/overhead.js's MIN_OVERHEAD_ELEVATION_DEG
+  (40°, not 0°) plus rankOverhead()'s two-key sort: Tier 1
+  categories (OVERHEAD_TIER1_CATS — stations, capsules, science,
+  geostationary, communications, classified) always sort ahead
+  of Tier 2 (everything else), elevation-descending within each
+  tier. Tier 2 is a rank, not a filter — those objects are never
+  excluded from the sweep, only ranked lower, and stay reachable
+  through the UI's "Show all". If Tier 1 alone exceeds the
+  default 25-row view at some location/moment, the default view
+  can show zero Tier 2 objects — expected, not a bug, don't add
+  logic to force both tiers into a capped view.
 - Globe flipY: THREE texture flipY must be false — currently
   set correctly in apps/web/src/scene/earth.js (day/night
   texture setup)
