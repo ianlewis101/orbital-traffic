@@ -2,8 +2,10 @@
  * "What's Overhead" — the FAB and its results panel.
  *
  * One-shot: each tap takes a fresh location fix, sweeps the whole in-memory
- * catalog once (astro/overhead.js), and renders what's above the horizon
- * right now. Nothing is cached between taps and no coordinates are stored.
+ * catalog once (astro/overhead.js), and renders the curated result — objects
+ * above MIN_OVERHEAD_ELEVATION_DEG, ranked category-first then elevation, not
+ * a raw "anything above the mathematical horizon" list. Nothing is cached
+ * between taps and no coordinates are stored.
  *
  * Deliberately reads state.sats rather than state.sats.concat(neoSats) the
  * way search.js does — NEOs are excluded from this feature entirely, and
@@ -14,21 +16,19 @@ import { CATS, catColorHex } from "../config.js";
 import { state, $ } from "../state.js";
 import { select } from "./info.js";
 import { fmtDistance } from "../util/units.js";
-import { computeOverhead, compassPoint } from "../astro/overhead.js";
+import { computeOverhead, compassPoint, MIN_OVERHEAD_ELEVATION_DEG } from "../astro/overhead.js";
 import { requestLocation, locationDenied, LOCATION_ERRORS } from "../data/location.js";
 import { openSettings } from "./settings.js";
 import { closeOtherSheets } from "./sheets.js";
 
 /**
- * Rows rendered at once. A >0° horizon sweep genuinely returns ~1,100
- * objects from a typical ground point (measured against the real catalog:
- * ~460 Starlink and ~240 geostationary alone), and the geostationary ones sit
- * at a fixed elevation permanently. Rendering all of them buries the ISS
- * under identikit constellation traffic, so the list shows the highest first
- * and extends on demand — the honest total always stays visible in the
- * header.
+ * Rows shown by default. `results` already carries the FULL set of objects
+ * above MIN_OVERHEAD_ELEVATION_DEG, two-tier ranked by astro/overhead.js
+ * (curated categories first, then elevation) — nothing is discarded here,
+ * only display-truncated. "Show all" reveals the rest of that same
+ * precomputed list, in the same order; it never re-sweeps or re-sorts.
  */
-const PAGE = 50;
+const PAGE = 25;
 
 let sweepAbort = null;
 let results = []; // full sorted sweep
@@ -149,7 +149,7 @@ function renderList() {
     setStatus(
       results.length
         ? "Nothing matches the current filters."
-        : "Nothing is above your horizon right now."
+        : `Nothing is above ${MIN_OVERHEAD_ELEVATION_DEG}° elevation right now.`
     );
     return;
   }
@@ -191,9 +191,11 @@ function renderList() {
     more.type = "button";
     more.className = "oh-more";
     const remaining = rows.length - shown;
-    more.textContent = `Show ${Math.min(PAGE, remaining).toLocaleString()} more (${remaining.toLocaleString()} left)`;
+    more.textContent = `Show all (${remaining.toLocaleString()} more)`;
     more.onclick = () => {
-      shown += PAGE;
+      // Reveal the rest of the already-ranked list in one step — no
+      // re-sweep, no re-sort, just a display-length change.
+      shown = rows.length;
       renderList();
     };
     foot.appendChild(more);
@@ -234,6 +236,7 @@ async function run() {
   setStatus(`Scanning ${total.toLocaleString()} objects…`);
   try {
     const out = await computeOverhead(state.sats, here, new Date(), {
+      minElevationDeg: MIN_OVERHEAD_ELEVATION_DEG,
       signal: ctrl.signal,
       onProgress: (done) => {
         if (!ctrl.signal.aborted) {

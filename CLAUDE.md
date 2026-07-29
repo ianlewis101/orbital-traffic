@@ -371,6 +371,26 @@ they can't be templated:
 
 ── KNOWN BUGS THAT MUST NOT BE REINTRODUCED ─────────────────
 
+- What's Overhead's threshold and ranking were corrected after
+  the feature first shipped — don't revert either half. The
+  original spec used a raw 0° elevation cut with a single
+  elevation-only sort; measured against the real ~18,700-object
+  catalog that returns roughly 1,100 objects from a typical
+  location (86-277 measured across seven varied locations at
+  the corrected threshold, for comparison), dominated by
+  whichever Starlink/geostationary satellites happen to be up —
+  technically correct, not useful. The shipped behavior is
+  apps/web/src/astro/overhead.js's MIN_OVERHEAD_ELEVATION_DEG
+  (40°, not 0°) plus rankOverhead()'s two-key sort: Tier 1
+  categories (OVERHEAD_TIER1_CATS — stations, capsules, science,
+  geostationary, communications, classified) always sort ahead
+  of Tier 2 (everything else), elevation-descending within each
+  tier. Tier 2 is a rank, not a filter — those objects are never
+  excluded from the sweep, only ranked lower, and stay reachable
+  through the UI's "Show all". If Tier 1 alone exceeds the
+  default 25-row view at some location/moment, the default view
+  can show zero Tier 2 objects — expected, not a bug, don't add
+  logic to force both tiers into a capped view.
 - Globe flipY: THREE texture flipY must be false — currently
   set correctly in apps/web/src/scene/earth.js (day/night
   texture setup)

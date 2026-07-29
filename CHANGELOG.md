@@ -4,13 +4,15 @@
 
 ### Added
 
-- **What's Overhead** — a floating button on the globe that lists every tracked object
-  currently above your local horizon, most directly overhead first, with elevation and
-  compass bearing per row. Tapping a row opens the existing object card. Purely
-  geometric (objects above 0° elevation, visible to the eye or not); asteroids/NEOs are
-  excluded. Roughly 1,100 objects qualify from a typical ground point, so the list shows
-  the highest 50 with the honest total in the header, a "show more" control, and
-  per-category filter chips.
+- **What's Overhead** — a floating button on the globe that lists tracked objects
+  currently above 40° elevation, with elevation and compass bearing per row. Tapping a
+  row opens the existing object card. Purely geometric (visible to the eye or not);
+  asteroids/NEOs are excluded. Results are curated, not just sorted: stations, capsules,
+  science, geostationary, communications and classified objects always rank ahead of
+  everything else, elevation-descending within each group — a 45° station outranks an
+  85° Starlink. Nothing is discarded: the default view shows the top 25, with an honest
+  total in the header, per-category filter chips, and a "Show all" control that reveals
+  the rest of the same ranked list.
 - **Settings** — the app's first preferences surface, opened from a gear button:
   - _Privacy & Permissions_ — location permission state, plus a "Reset & try again"
     control for a previously refused permission.

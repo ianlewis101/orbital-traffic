@@ -1,11 +1,10 @@
 /**
  * "What's above me right now" — observer geometry for the whole catalog.
  *
- * Purely geometric: an object counts as overhead when its elevation above the
- * observer's local horizon is positive. No visibility, magnitude or daylight
- * filtering — a Starlink in full daylight and a dead rocket body in Earth's
- * shadow both count, because the question being answered is "what's up
- * there", not "what could I see".
+ * Purely geometric: elevation, azimuth and range only. No visibility,
+ * magnitude or daylight filtering — a Starlink in full daylight and a dead
+ * rocket body in Earth's shadow both count, because the question being
+ * answered is "what's up there", not "what could I see".
  *
  * This is a one-shot snapshot, computed on demand and thrown away. It is
  * explicitly NOT wired into the ambient render loop: scene/clouds.js's
@@ -20,6 +19,41 @@ import * as satellite from "satellite.js";
 import { safeProp } from "./propagation.js";
 
 const DEG = Math.PI / 180;
+
+/**
+ * The app's own curation bar for "What's Overhead", not a physical horizon.
+ *
+ * A raw 0° sweep is technically correct — the object really is above the
+ * mathematical horizon — but useless: measured against the real ~18,700
+ * object catalog, 0° returns on the order of 1,100 objects from a typical
+ * location, dominated by whichever Starlink and geostationary satellites
+ * happen to be up. 40° is a deliberately curated "worth looking at" bar,
+ * chosen after measuring the actual distribution (see overhead.test.js and
+ * the PR history for the numbers) rather than assumed.
+ */
+export const MIN_OVERHEAD_ELEVATION_DEG = 40;
+
+/**
+ * Tier 1: the categories a user is actually likely to want to know are
+ * overhead — crewed/station traffic, science platforms, and the handful of
+ * categories that are otherwise easy to lose in constellation noise. Every
+ * other category is Tier 2. This is a ranking split, not a filter: Tier 2
+ * objects are never excluded from the results, only ranked below Tier 1
+ * regardless of elevation (see rankOverhead below) — they're still fully
+ * reachable through "Show all" in the UI.
+ */
+export const OVERHEAD_TIER1_CATS = new Set([
+  "stations",
+  "capsules",
+  "science",
+  "geostationary",
+  "communications",
+  "classified",
+]);
+
+function overheadTier(cat) {
+  return OVERHEAD_TIER1_CATS.has(cat) ? 0 : 1;
+}
 
 /**
  * Records processed per animation frame.
@@ -124,6 +158,12 @@ export function compassPoint(azimuthDeg) {
  * Records with a null satrec are skipped — that's how NEO pseudo-records
  * (scene/neos.js gives them `rec: null`) stay out of the results, which the
  * feature requires: asteroids are not orbital traffic overhead.
+ *
+ * minElevationDeg defaults to a true 0° horizon here — this is a generic,
+ * low-level primitive meant to be testable at any cut. The app's actual
+ * curated threshold is MIN_OVERHEAD_ELEVATION_DEG, applied by
+ * computeOverhead below; don't read this function's default as the app's
+ * behavior.
  */
 export function overheadSweep(records, gd, date, opts = {}) {
   const {
@@ -156,9 +196,21 @@ export function overheadSweep(records, gd, date, opts = {}) {
   return into;
 }
 
-/** Most directly overhead first — answers "what's above me" before "what's far". */
-export function sortByElevation(results) {
-  return results.sort((a, b) => b.elevationDeg - a.elevationDeg);
+/**
+ * Two-key rank: Tier 1 categories always sort before Tier 2, regardless of
+ * elevation — a 45° station outranks an 85° Starlink. Within a tier, most
+ * directly overhead first. Sorts in place and returns the same array.
+ *
+ * If Tier 1 alone has more objects than the UI's default page size at a
+ * given moment/location, the default view can show zero Tier 2 objects.
+ * That's expected, not a bug — don't add logic here to force both tiers to
+ * appear in a capped view; "Show all" is how the rest stays reachable.
+ */
+export function rankOverhead(results) {
+  return results.sort((a, b) => {
+    const tierDiff = overheadTier(a.cat) - overheadTier(b.cat);
+    return tierDiff !== 0 ? tierDiff : b.elevationDeg - a.elevationDeg;
+  });
 }
 
 /**
@@ -170,7 +222,12 @@ export function sortByElevation(results) {
  * over the top of a newer one.
  */
 export async function computeOverhead(records, observer, date, opts = {}) {
-  const { minElevationDeg = 0, batch = SWEEP_BATCH, signal, onProgress } = opts;
+  const {
+    minElevationDeg = MIN_OVERHEAD_ELEVATION_DEG,
+    batch = SWEEP_BATCH,
+    signal,
+    onProgress,
+  } = opts;
 
   const gd = observerGd(observer.lat, observer.lon, observer.altKm ?? 0.05);
   const gmst = satellite.gstime(date);
@@ -185,6 +242,6 @@ export async function computeOverhead(records, observer, date, opts = {}) {
     if (end < records.length) await new Promise(requestAnimationFrame);
   }
 
-  sortByElevation(acc.results);
+  rankOverhead(acc.results);
   return { ...acc, date, observer: { lat: observer.lat, lon: observer.lon } };
 }

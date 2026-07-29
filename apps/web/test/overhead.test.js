@@ -5,9 +5,11 @@ import {
   subpoint,
   lookAngles,
   overheadSweep,
-  sortByElevation,
+  rankOverhead,
   computeOverhead,
   compassPoint,
+  MIN_OVERHEAD_ELEVATION_DEG,
+  OVERHEAD_TIER1_CATS,
 } from "../src/astro/overhead.js";
 
 // Real ISS elements. The epoch matters: SGP4 accuracy degrades away from it,
@@ -209,14 +211,53 @@ describe("overheadSweep", () => {
   });
 });
 
-describe("sortByElevation", () => {
-  it("puts the most directly overhead object first", () => {
+describe("rankOverhead", () => {
+  it("puts the most directly overhead object first within a single tier", () => {
     const rows = [
-      { id: "a", elevationDeg: 12 },
-      { id: "b", elevationDeg: 78 },
-      { id: "c", elevationDeg: 45 },
+      { id: "a", cat: "starlink", elevationDeg: 12 },
+      { id: "b", cat: "starlink", elevationDeg: 78 },
+      { id: "c", cat: "starlink", elevationDeg: 45 },
     ];
-    expect(sortByElevation(rows).map((r) => r.id)).toEqual(["b", "c", "a"]);
+    expect(rankOverhead(rows).map((r) => r.id)).toEqual(["b", "c", "a"]);
+  });
+
+  it("ranks Tier 1 above Tier 2 regardless of elevation", () => {
+    // A 45° station outranks an 85° Starlink — the whole point of the split.
+    const rows = [
+      { id: "high-tier2", cat: "starlink", elevationDeg: 85 },
+      { id: "low-tier1", cat: "stations", elevationDeg: 45 },
+    ];
+    expect(rankOverhead(rows).map((r) => r.id)).toEqual(["low-tier1", "high-tier2"]);
+  });
+
+  it("sorts by elevation within each tier independently", () => {
+    const rows = [
+      { id: "t2-low", cat: "debris", elevationDeg: 50 },
+      { id: "t1-low", cat: "capsules", elevationDeg: 41 },
+      { id: "t2-high", cat: "starlink", elevationDeg: 90 },
+      { id: "t1-high", cat: "stations", elevationDeg: 80 },
+    ];
+    expect(rankOverhead(rows).map((r) => r.id)).toEqual(["t1-high", "t1-low", "t2-high", "t2-low"]);
+  });
+
+  it("treats every documented Tier 1 category the same way", () => {
+    for (const cat of OVERHEAD_TIER1_CATS) {
+      const rows = [
+        { id: "t2", cat: "other", elevationDeg: 89 },
+        { id: "t1", cat, elevationDeg: 41 },
+      ];
+      expect(rankOverhead(rows).map((r) => r.id)).toEqual(["t1", "t2"]);
+    }
+  });
+
+  it("does not exclude Tier 2 objects, only ranks them lower", () => {
+    const rows = [
+      { id: "t2-a", cat: "starlink", elevationDeg: 70 },
+      { id: "t2-b", cat: "other", elevationDeg: 60 },
+    ];
+    // No Tier 1 objects present — both Tier 2 rows must still come through,
+    // in their own elevation order.
+    expect(rankOverhead(rows).map((r) => r.id)).toEqual(["t2-a", "t2-b"]);
   });
 });
 
@@ -235,23 +276,60 @@ describe("computeOverhead", () => {
     }
   };
 
-  it("matches a single synchronous sweep, sorted", async () => {
+  it("matches a single synchronous sweep, ranked by tier then elevation", async () => {
     const sp = subpoint(issRec, ISS_EPOCH);
     const records = [
       sat("41866", "GEO BIRD", "geostationary", geoRec),
       sat("25544", "ISS (ZARYA)", "stations", issRec),
+      // Same physics as the ISS (~90° from directly beneath it), tagged as a
+      // Tier 2 category — proves tier order wins over a tied/higher elevation
+      // end-to-end through the real driver, not just in rankOverhead's own
+      // unit tests.
+      sat("90000", "TIER2 STAND-IN", "starlink", issRec),
       { id: "neo_0", name: "Apophis", cat: "hazardous", rec: null },
     ];
     const out = await withRaf(() =>
+      computeOverhead(records, { lat: sp.lat, lon: sp.lon }, ISS_EPOCH, {
+        batch: 1,
+        minElevationDeg: 0,
+      })
+    );
+    expect(out.scanned).toBe(3);
+    expect(out.observer).toEqual({ lat: sp.lat, lon: sp.lon });
+    const ids = out.results.map((r) => r.id);
+    expect(ids).not.toContain("neo_0");
+    // Both Tier 1 objects (stations, geostationary) sort ahead of the sole
+    // Tier 2 entry, even though its elevation ties the ISS's.
+    expect(ids[ids.length - 1]).toBe("90000");
+    expect(ids.indexOf("25544")).toBeLessThan(ids.indexOf("90000"));
+    expect(ids.indexOf("41866")).toBeLessThan(ids.indexOf("90000"));
+  });
+
+  it("defaults its elevation cut to MIN_OVERHEAD_ELEVATION_DEG", async () => {
+    const sp = subpoint(issRec, ISS_EPOCH);
+    const records = [
+      sat("25544", "ISS (ZARYA)", "stations", issRec),
+      sat("41866", "GEO BIRD", "geostationary", geoRec),
+    ];
+    const withDefault = await withRaf(() =>
       computeOverhead(records, { lat: sp.lat, lon: sp.lon }, ISS_EPOCH, { batch: 1 })
     );
-    expect(out.scanned).toBe(2);
-    expect(out.observer).toEqual({ lat: sp.lat, lon: sp.lon });
-    for (let i = 1; i < out.results.length; i++) {
-      expect(out.results[i - 1].elevationDeg).toBeGreaterThanOrEqual(out.results[i].elevationDeg);
-    }
-    // The ISS is directly overhead here, so it must be first if present.
-    if (out.results.length) expect(out.results[0].id).toBe("25544");
+    const withExplicit = await withRaf(() =>
+      computeOverhead(records, { lat: sp.lat, lon: sp.lon }, ISS_EPOCH, {
+        batch: 1,
+        minElevationDeg: MIN_OVERHEAD_ELEVATION_DEG,
+      })
+    );
+    expect(withDefault.results.map((r) => r.id)).toEqual(withExplicit.results.map((r) => r.id));
+  });
+
+  it("excludes NEOs regardless of the elevation threshold", async () => {
+    const records = [{ id: "neo_0", name: "Apophis", cat: "hazardous", rec: null }];
+    const out = await withRaf(() =>
+      computeOverhead(records, { lat: 0, lon: 0 }, ISS_EPOCH, { batch: 1, minElevationDeg: 0 })
+    );
+    expect(out.scanned).toBe(0);
+    expect(out.results).toHaveLength(0);
   });
 
   it("aborts mid-sweep when signalled", async () => {

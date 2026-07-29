@@ -101,7 +101,8 @@ describe("row rendering", () => {
 });
 
 describe("paging", () => {
-  it("caps the first render and offers the rest", async () => {
+  it("caps the first render at PAGE (25) and offers 'Show all' for the rest", async () => {
+    expect(mod._test.PAGE).toBe(25);
     const many = Array.from({ length: 130 }, (_, i) =>
       row(String(i), "OBJ " + i, "starlink", 90 - i * 0.5)
     );
@@ -110,23 +111,48 @@ describe("paging", () => {
     expect(document.querySelectorAll("#overhead-list .ohrow")).toHaveLength(mod._test.PAGE);
     const more = document.querySelector("#overhead-foot .oh-more");
     expect(more).not.toBeNull();
-    expect(more.textContent).toMatch(/show/i);
+    expect(more.textContent).toMatch(/show all/i);
+    expect(more.textContent).toMatch(/105/); // 130 - 25 remaining
     // The honest total stays visible even though the list is capped.
     expect(document.querySelector("#overhead-count").textContent).toBe("130");
   });
 
-  it("extends by a page when 'show more' is used", async () => {
-    const many = Array.from({ length: 130 }, (_, i) => row(String(i), "OBJ " + i, "starlink", 50));
+  it("reveals every remaining row in one step when 'Show all' is used, in the same order", async () => {
+    const many = Array.from({ length: 130 }, (_, i) =>
+      row(String(i), "OBJ " + i, "starlink", 130 - i)
+    );
     mod._test.setResults(many);
     mod._test.renderList();
     document.querySelector("#overhead-foot .oh-more").click();
-    expect(document.querySelectorAll("#overhead-list .ohrow")).toHaveLength(mod._test.PAGE * 2);
+    const rendered = [...document.querySelectorAll("#overhead-list .ohrow .nm")].map(
+      (el) => el.textContent
+    );
+    expect(rendered).toHaveLength(130);
+    // Nothing left to reveal, so the control disappears — and this must not
+    // have re-sorted anything: still the same descending-elevation order the
+    // (pre-ranked) input arrived in.
+    expect(rendered).toEqual(many.map((r) => r.name));
+    expect(document.querySelector("#overhead-foot .oh-more")).toBeNull();
   });
 
-  it("drops the 'show more' button once everything is shown", async () => {
+  it("drops the 'Show all' button once everything is shown", async () => {
     mod._test.setResults([row("1", "A", "starlink", 10)]);
     mod._test.renderList();
     expect(document.querySelector("#overhead-foot .oh-more")).toBeNull();
+  });
+
+  it("does not recompute or re-filter — 'Show all' is a pure display change", async () => {
+    const many = Array.from({ length: 40 }, (_, i) =>
+      row(String(i), "OBJ " + i, "starlink", 40 - i)
+    );
+    mod._test.setResults(many);
+    mod._test.renderList();
+    const beforeIds = mod._test.visibleResults().map((r) => r.id);
+    document.querySelector("#overhead-foot .oh-more").click();
+    const afterIds = mod._test.visibleResults().map((r) => r.id);
+    // Same underlying array, same order, same length — only the rendered
+    // slice grew.
+    expect(afterIds).toEqual(beforeIds);
   });
 });
 
