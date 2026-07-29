@@ -2,9 +2,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 /**
- * The Settings panel. The load-bearing behaviour here is the one the spec is
- * explicit about: Display > categories writes to settings and *only* to
- * settings — it must never reach into the legend's runtime state.
+ * The Settings panel: four cards (Privacy & Permissions, Display, Data,
+ * About), each with its own icon/title header (.set-card-t) rather than the
+ * old flat .set-h label. There is no display-categories control anymore —
+ * it was removed outright, not just visually reorganized — so this file
+ * also guards against it quietly coming back.
  */
 
 vi.mock("../src/ui/info.js", () => ({
@@ -69,12 +71,23 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("structure", () => {
-  it("renders all four sections in order", async () => {
+  it("renders all four cards in order, each with an icon + title header", async () => {
     await load();
-    const headings = [...document.querySelectorAll("#settings-body .set-h")].map(
-      (h) => h.textContent
-    );
+    const cards = [...document.querySelectorAll("#settings-body .set-card")];
+    expect(cards).toHaveLength(4);
+    const headings = cards.map((c) => c.querySelector(".set-card-t").textContent);
     expect(headings).toEqual(["Privacy & Permissions", "Display", "Data", "About"]);
+    for (const c of cards) {
+      expect(c.querySelector(".set-ic svg")).not.toBeNull();
+    }
+  });
+
+  it("gives each card a distinct accent class for wayfinding", async () => {
+    await load();
+    const accents = [...document.querySelectorAll("#settings-body .set-card")].map((c) =>
+      [...c.classList].find((cls) => cls.startsWith("set-card--"))
+    );
+    expect(new Set(accents).size).toBe(4); // all four distinct
   });
 
   it("shows the build-time app version", async () => {
@@ -89,40 +102,15 @@ describe("structure", () => {
     expect(txt).toMatch(/CelesTrak/);
     expect(txt).not.toMatch(/Open Notify/i);
   });
-});
 
-describe("display categories", () => {
-  it("renders a toggle for every category", async () => {
+  it("has no display-categories toggle list — removed, not merely restyled", async () => {
     await load();
-    const { CATS } = await import("../src/config.js");
-    expect(document.querySelectorAll(".set-cats .set-row")).toHaveLength(Object.keys(CATS).length);
-  });
-
-  it("reflects the default-hidden set on first run", async () => {
-    await load();
-    const rows = [...document.querySelectorAll(".set-cats .set-row")];
-    const byName = Object.fromEntries(
-      rows.map((r) => [r.querySelector(".set-row-nm").textContent, r])
-    );
-    expect(byName["DEBRIS"].getAttribute("aria-pressed")).toBe("false");
-    expect(byName["Stations"].getAttribute("aria-pressed")).toBe("true");
-  });
-
-  it("persists a toggle without touching the legend's runtime state", async () => {
-    const { settings, store } = await load();
-    const { state } = await import("../src/state.js");
-    const hiddenBefore = new Set(state.hidden);
-
-    const row = [...document.querySelectorAll(".set-cats .set-row")].find(
-      (r) => r.querySelector(".set-row-nm").textContent === "Stations"
-    );
-    row.click();
-
-    expect(settings.settings.displayCategories.stations).toBe(false);
-    expect(JSON.parse(store[KEY]).displayCategories.stations).toBe(false);
-    // Settings seeds the legend at boot and never after — the live globe must
-    // not change from under the user mid-session.
-    expect(new Set(state.hidden)).toEqual(hiddenBefore);
+    const body = document.querySelector("#settings-body");
+    expect(body.querySelector(".set-cats")).toBeNull();
+    // Only one .set-row exists anywhere in the panel: Reduce motion. A
+    // category-per-row list would push this well past that.
+    expect(document.querySelectorAll(".set-row")).toHaveLength(1);
+    expect(body.textContent).not.toMatch(/orbit classes/i);
   });
 });
 
