@@ -6,23 +6,19 @@
 
 - **What's Overhead** — a floating button on the globe that lists tracked objects
   currently above 40° elevation, with elevation and compass bearing per row. Tapping a
-  row opens the existing object card. Purely geometric (visible to the eye or not).
-  Asteroids/NEOs are excluded entirely, and so are "other" and "debris" — neither is
-  traffic a user asking what's overhead cares about. Results are curated, not just
-  sorted: stations, capsules, science, communications and classified objects always
-  rank ahead of everything else, elevation-descending within each group — a 45°
-  station outranks an 85° Starlink. Geostationary ranks with the rest by elevation
-  rather than being pinned to the top — it sits at a fixed elevation for as long as
-  you're standing still, so treating it as "traffic" crowded out the objects this
-  ranking exists to surface. Nothing is discarded: the default view shows the top 25,
-  with an honest total in the header, per-category filter chips, and a "Show all"
-  control that reveals the rest of the same ranked list.
-- **Settings** — the app's first preferences surface, opened from a gear button. Each
-  section is its own card with an icon and a distinct accent color for quick
-  wayfinding:
+  row opens the existing object card. Purely geometric (visible to the eye or not);
+  asteroids/NEOs are excluded. Results are curated, not just sorted: stations, capsules,
+  science, geostationary, communications and classified objects always rank ahead of
+  everything else, elevation-descending within each group — a 45° station outranks an
+  85° Starlink. Nothing is discarded: the default view shows the top 25, with an honest
+  total in the header, per-category filter chips, and a "Show all" control that reveals
+  the rest of the same ranked list.
+- **Settings** — the app's first preferences surface, opened from a gear button:
   - _Privacy & Permissions_ — location permission state, plus a "Reset & try again"
     control for a previously refused permission.
-  - _Display_ — a km/miles toggle and a reduce-motion toggle.
+  - _Display_ — which categories are shown at load (independent of the in-scene Orbit
+    Classes panel, which stays a live session-only filter), a km/miles toggle, and a
+    reduce-motion toggle.
   - _Data_ — catalog freshness and a manual "Refresh catalog now".
   - _About_ — app version, changelog and issue links, and data-source credits.
 - **km/miles units toggle** now drives the object card's telemetry (altitude, speed,

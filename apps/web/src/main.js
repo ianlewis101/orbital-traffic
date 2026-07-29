@@ -28,6 +28,7 @@ import { initGlobeStyle } from "./ui/globeStyle.js";
 import { initSearch } from "./ui/search.js";
 import { initOverhead } from "./ui/overhead.js";
 import { initSettings } from "./ui/settings.js";
+import { seedDisplayCategories } from "./settings.js";
 import { applyReduceMotion } from "./util/motion.js";
 import { initTimeMachine, updateClockMode } from "./ui/time.js";
 import { updateCount } from "./ui/status.js";
@@ -102,9 +103,7 @@ function loop(now) {
   if (++freshFrame % 30 === 0) updateFreshnessLine();
   const sd = sunDirECI(date);
   _sunW.set(sd.x, sd.z, sd.y);
-  earthUniforms.sunDir.value
-    .copy(_sunW)
-    .applyQuaternion(_invQ.copy(earthGroup.quaternion).invert());
+  earthUniforms.sunDir.value.copy(_sunW).applyQuaternion(_invQ.copy(earthGroup.quaternion).invert());
 
   if (state.tracking && state.selected && state.selected._p) frameSelected();
   applyCam();
@@ -168,6 +167,11 @@ async function boot() {
   // are a day old. The newest epoch is immune to that and is what the user
   // is actually looking at.
   state.bootCatalogTime = newestCatalogEpoch(state.sats);
+  // Must run before buildClouds(): scene/clouds.js reads state.hidden at build
+  // time to set each cloud's initial visibility, so seeding afterwards would
+  // leave the globe and the legend disagreeing until the next rebuild. One-way
+  // and boot-only — the legend never writes back to Settings (see settings.js).
+  seedDisplayCategories();
   buildClouds();
   rebuildLegend();
   updateCount();

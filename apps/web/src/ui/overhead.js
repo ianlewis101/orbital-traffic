@@ -10,9 +10,7 @@
  * Deliberately reads state.sats rather than state.sats.concat(neoSats) the
  * way search.js does — NEOs are excluded from this feature entirely, and
  * since scene/neos.js only ever registers them in state.byId, sweeping
- * state.sats excludes them by construction. "other" and "debris" are
- * excluded too, categorically — astro/overhead.js's OVERHEAD_EXCLUDED_CATS —
- * so they never reach `results` at all, not even ranked low.
+ * state.sats excludes them by construction.
  */
 import { CATS, catColorHex } from "../config.js";
 import { state, $ } from "../state.js";

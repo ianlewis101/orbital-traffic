@@ -227,19 +227,17 @@ cross-check those against this document instead.
      key). The two older ad-hoc keys, "ot_favs" and
      "ot-globe-style", are deliberately left where they are.
 
-8. SETTINGS HAS NO DISPLAY-CATEGORIES CONTROL: an earlier
-   version of Settings → Display seeded state.hidden at boot
-   from a 14-row per-category toggle list (seedDisplayCategories()
-   in settings.js, run before buildClouds()). It was removed
-   outright — not hidden, not deprecated — because it was both
-   the single largest contributor to Settings reading as one
-   dense, hard-to-scan block, and redundant with the in-scene
-   Orbit Classes legend, which already toggles every category
-   live. Do not reintroduce a "seed the legend at boot" setting
-   without re-litigating that redundancy with Ian first. The
-   in-scene legend remains what it always was: a live,
-   session-only view filter with its own state, read and
-   written by nothing outside scene/clouds.js and ui/legend.js.
+8. SETTINGS SEEDS THE LEGEND ONCE, ONE WAY: Settings →
+   Display → categories decides what is visible at BOOT.
+   seedDisplayCategories() must run before buildClouds() —
+   scene/clouds.js reads state.hidden at build time to set each
+   cloud's visibility, so seeding after it leaves the globe and
+   the legend disagreeing until the next rebuild. After boot the
+   in-scene legend is a live, session-only view filter with its
+   own state: it must NEVER write back to settings, and Settings
+   must never read the legend's runtime state. Toggling a
+   category on the globe deliberately does not change what
+   Settings shows.
 
 ── BRANCH AND PR DISCIPLINE ──────────────────────────────────
 
@@ -373,43 +371,26 @@ they can't be templated:
 
 ── KNOWN BUGS THAT MUST NOT BE REINTRODUCED ─────────────────
 
-- What's Overhead's threshold, category scope, and ranking were
-  each corrected after the feature first shipped — don't revert
-  any of the three. The original spec used a raw 0° elevation
-  cut, every catalog category, and a single elevation-only sort;
-  measured against the real ~18,700-object catalog that returns
-  roughly 1,100 objects from a typical location, dominated by
+- What's Overhead's threshold and ranking were corrected after
+  the feature first shipped — don't revert either half. The
+  original spec used a raw 0° elevation cut with a single
+  elevation-only sort; measured against the real ~18,700-object
+  catalog that returns roughly 1,100 objects from a typical
+  location (86-277 measured across seven varied locations at
+  the corrected threshold, for comparison), dominated by
   whichever Starlink/geostationary satellites happen to be up —
-  technically correct, not useful. The shipped behavior is:
-  - apps/web/src/astro/overhead.js's MIN_OVERHEAD_ELEVATION_DEG
-    (40°, not 0°) — 86-277 objects measured across seven varied
-    locations at this threshold, before the category exclusion
-    below was added.
-  - OVERHEAD_EXCLUDED_CATS ("other", "debris") — these never
-    appear in results at all, at any elevation. This is a hard
-    category exclusion applied inside overheadSweep() itself
-    (same mechanism as the NEO/null-satrec skip), not a ranking
-    choice — don't reimplement it as "rank last" in rankOverhead().
-  - rankOverhead()'s two-key sort: Tier 1 categories
-    (OVERHEAD_TIER1_CATS — stations, capsules, science,
-    communications, classified) always sort ahead of Tier 2
-    (everything else not excluded above), elevation-descending
-    within each tier. Tier 2 is a rank, not a filter — those
-    objects are never excluded from the sweep, only ranked
-    lower, and stay reachable through the UI's "Show all". If
-    Tier 1 alone exceeds the default 25-row view at some
-    location/moment, the default view can show zero Tier 2
-    objects — expected, not a bug, don't add logic to force both
-    tiers into a capped view.
-  - Geostationary is deliberately Tier 2, not Tier 1, despite
-    being in the original Tier 1 list at first ship. A GEO bird
-    sits at a fixed elevation for as long as the observer stands
-    still — it isn't "traffic" the way a passing station or an
-    active comms bird is — and at several measured locations it
-    was over half of all Tier-1-eligible objects, crowding out
-    the genuinely time-varying categories Tier 1 exists to
-    surface. It still appears in results, ranked by elevation
-    like Starlink.
+  technically correct, not useful. The shipped behavior is
+  apps/web/src/astro/overhead.js's MIN_OVERHEAD_ELEVATION_DEG
+  (40°, not 0°) plus rankOverhead()'s two-key sort: Tier 1
+  categories (OVERHEAD_TIER1_CATS — stations, capsules, science,
+  geostationary, communications, classified) always sort ahead
+  of Tier 2 (everything else), elevation-descending within each
+  tier. Tier 2 is a rank, not a filter — those objects are never
+  excluded from the sweep, only ranked lower, and stay reachable
+  through the UI's "Show all". If Tier 1 alone exceeds the
+  default 25-row view at some location/moment, the default view
+  can show zero Tier 2 objects — expected, not a bug, don't add
+  logic to force both tiers into a capped view.
 - Globe flipY: THREE texture flipY must be false — currently
   set correctly in apps/web/src/scene/earth.js (day/night
   texture setup)

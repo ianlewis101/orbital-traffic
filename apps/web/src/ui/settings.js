@@ -6,24 +6,16 @@
  * chrome, and three elements already claim the bottom edge with no
  * safe-area handling, so a sheet is the shape that fits.
  *
- * Each section renders as its own raised card (`.set-card`) rather than a
- * run of divs separated by a hairline — on a translucent, busy backdrop a
- * single 1px border-top reads as barely-there, which is what made the
- * original version feel like one dense, hard-to-scan block. A leading icon
- * + accent color per card (reusing --signal/--amber/--violet, already
- * meaningful elsewhere in the app) gives quick wayfinding between sections
- * without inventing new tokens.
- *
- * There is no display-categories control here. An earlier version seeded
- * state.hidden from a per-category toggle list; it was removed outright
- * (not merely hidden) because it was both the single largest source of the
- * "everything runs together" complaint (14 near-identical rows) and
- * redundant with the in-scene Orbit Classes legend, which already toggles
- * categories live. Don't reintroduce it as a "seed the legend at boot"
- * feature without re-litigating that redundancy.
+ * Everything here writes to settings.js and nowhere else. In particular the
+ * Display > categories list is a *separate control* from the in-scene legend:
+ * it seeds what's visible at boot, and the legend remains a live, session-only
+ * view filter with its own state. Settings never reads the legend's runtime
+ * state and the legend never writes back here — so toggling a category on the
+ * globe deliberately does not change what you see in this panel.
  */
+import { CATS } from "../config.js";
 import { state, $ } from "../state.js";
-import { settings, saveSettings } from "../settings.js";
+import { settings, saveSettings, defaultDisplayCategories } from "../settings.js";
 import { locationStatus, clearLocationDenied } from "../data/location.js";
 import { fetchLive } from "../data/live.js";
 import { formatRelativeTime } from "../util/relative-time.js";
@@ -33,40 +25,6 @@ import { toast, flash } from "./status.js";
 import { closeOtherSheets } from "./sheets.js";
 
 const GITHUB = "https://github.com/ianlewis101/orbital-traffic";
-
-// ---------------------------------------------------------------------
-// icons — same stroke language as the rest of the app's inline SVGs
-// (stroke=currentColor, width 1.7, round caps/joins, 24x24 viewBox)
-// ---------------------------------------------------------------------
-const ICONS = {
-  privacy:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M7.5 11V7.5a4.5 4.5 0 0 1 9 0V11"/></svg>',
-  display:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="9" cy="7" r="2.1"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="15" cy="17" r="2.1"/></svg>',
-  data: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3.2-6.9"/><path d="M21 3.5V9h-5.5"/></svg>',
-  about:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16.2"/><circle cx="12" cy="7.6" r="0.9" fill="currentColor" stroke="none"/></svg>',
-  changelog:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="13" y2="18"/></svg>',
-  issue:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="7.5" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.9" fill="currentColor" stroke="none"/></svg>',
-};
-
-/**
- * `el.innerHTML = ICONS[name]` is a lookup into the hand-authored, static
- * ICONS map above, keyed only by literal strings at each call site — never
- * by anything derived from feed/user data. eslint-rules/no-unescaped-innerhtml
- * only inspects `X.innerHTML = <TemplateLiteral>` assignments (documented
- * scope), so this bare-lookup assignment is outside what it checks; it's
- * safe by construction rather than by the rule's enforcement, the same way
- * index.html's own inline SVGs are.
- */
-function icon(name) {
-  const el = document.createElement("span");
-  el.className = "set-ic-svg";
-  el.innerHTML = ICONS[name] || "";
-  return el;
-}
 
 function panel() {
   return $("#settings");
@@ -85,31 +43,14 @@ export function closeSettings() {
 // building blocks
 // ---------------------------------------------------------------------
 
-/**
- * One settings card: icon + title header, plus a body container callers
- * append their content into. `accent` picks the icon's tint (a CSS class,
- * see .set-card--* in app.css) — deliberate per-section color-coding for
- * quick navigation, not decoration.
- */
-function card(title, iconName, accent) {
-  const el = document.createElement("section");
-  el.className = `set-card set-card--${accent}`;
-
-  const head = document.createElement("div");
-  head.className = "set-card-h";
-  const ic = document.createElement("span");
-  ic.className = "set-ic";
-  ic.appendChild(icon(iconName));
-  const t = document.createElement("h3");
-  t.className = "set-card-t";
-  t.textContent = title;
-  head.append(ic, t);
-
-  const body = document.createElement("div");
-  body.className = "set-card-b";
-
-  el.append(head, body);
-  return { el, body };
+function section(title) {
+  const wrap = document.createElement("section");
+  wrap.className = "set-sec";
+  const h = document.createElement("div");
+  h.className = "lab set-h";
+  h.textContent = title;
+  wrap.appendChild(h);
+  return wrap;
 }
 
 function note(text) {
@@ -152,7 +93,7 @@ function toggleRow(label, on, onChange, description) {
   return b;
 }
 
-/** A full-width action button, for things that fire immediately (not a toggle). */
+/** A small button row (the .tbtn look from the time machine). */
 function actionButton(label, onClick) {
   const b = document.createElement("button");
   b.type = "button";
@@ -162,64 +103,27 @@ function actionButton(label, onClick) {
   return b;
 }
 
-/** A two-option segmented control, matching the app's existing .gbtn look. */
-function segmented(label, options, current, onPick) {
+/** A two-option segmented control. */
+function segmented(options, current, onPick) {
   const wrap = document.createElement("div");
-  wrap.className = "set-field";
-  const lab = document.createElement("div");
-  lab.className = "set-sub";
-  lab.textContent = label;
-  const seg = document.createElement("div");
-  seg.className = "set-seg";
-  for (const [value, text] of options) {
+  wrap.className = "set-seg";
+  for (const [value, label] of options) {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "gbtn" + (value === current ? " on" : "");
     b.setAttribute("aria-pressed", value === current ? "true" : "false");
-    b.textContent = text;
+    b.textContent = label;
     b.onclick = () => {
-      for (const sib of seg.children) {
+      for (const sib of wrap.children) {
         const on = sib === b;
         sib.classList.toggle("on", on);
         sib.setAttribute("aria-pressed", on ? "true" : "false");
       }
       onPick(value);
     };
-    seg.appendChild(b);
+    wrap.appendChild(b);
   }
-  wrap.append(lab, seg);
   return wrap;
-}
-
-/** A small pill link with a leading icon — used for the About section's utility row. */
-function linkChip(href, iconName, label) {
-  const a = document.createElement("a");
-  a.className = "set-chip";
-  a.href = href;
-  a.target = "_blank";
-  a.rel = "noopener";
-  a.appendChild(icon(iconName));
-  const s = document.createElement("span");
-  s.textContent = label;
-  a.appendChild(s);
-  return a;
-}
-
-/** One data-source credit: name (linked) + a short description underneath. */
-function creditRow(href, name, desc) {
-  const a = document.createElement("a");
-  a.className = "set-credit";
-  a.href = href;
-  a.target = "_blank";
-  a.rel = "noopener";
-  const nm = document.createElement("div");
-  nm.className = "set-credit-nm";
-  nm.textContent = name;
-  const d = document.createElement("div");
-  d.className = "set-credit-d";
-  d.textContent = desc;
-  a.append(nm, d);
-  return a;
 }
 
 // ---------------------------------------------------------------------
@@ -227,14 +131,14 @@ function creditRow(href, name, desc) {
 // ---------------------------------------------------------------------
 
 async function buildPrivacy() {
-  const { el, body } = card("Privacy & Permissions", "privacy", "privacy");
+  const sec = section("Privacy & Permissions");
   const status = document.createElement("div");
   status.className = "set-status";
   status.textContent = "Location access: checking…";
-  body.appendChild(status);
+  sec.appendChild(status);
 
   const slot = document.createElement("div");
-  body.appendChild(slot);
+  sec.appendChild(slot);
 
   const paint = async () => {
     slot.innerHTML = "";
@@ -248,7 +152,6 @@ async function buildPrivacy() {
             ? "Unavailable on this device"
             : "Not requested";
     status.textContent = `Location access: ${label}`;
-    status.classList.toggle("bad", st === "denied");
     if (st === "denied") {
       slot.appendChild(
         note(
@@ -275,15 +178,40 @@ async function buildPrivacy() {
     }
   };
   await paint();
-  return el;
+  return sec;
 }
 
 function buildDisplay() {
-  const { el, body } = card("Display", "display", "display");
+  const sec = section("Display");
 
-  body.appendChild(
+  // --- default categories -------------------------------------------------
+  const catsNote = note(
+    "Which categories are shown when the app loads. The Orbit Classes panel on " +
+      "the globe stays independent for the rest of the session."
+  );
+  sec.appendChild(catsNote);
+
+  const cats = settings.displayCategories || defaultDisplayCategories();
+  const box = document.createElement("div");
+  box.className = "set-cats";
+  for (const c of Object.keys(CATS)) {
+    box.appendChild(
+      toggleRow(CATS[c].label, cats[c] !== false, (on) => {
+        const next = { ...(settings.displayCategories || defaultDisplayCategories()) };
+        next[c] = on;
+        saveSettings({ displayCategories: next });
+      })
+    );
+  }
+  sec.appendChild(box);
+
+  // --- units --------------------------------------------------------------
+  const unitsLab = document.createElement("div");
+  unitsLab.className = "set-sub";
+  unitsLab.textContent = "Units";
+  sec.appendChild(unitsLab);
+  sec.appendChild(
     segmented(
-      "Units",
       [
         ["imperial", "MILES"],
         ["metric", "KILOMETRES"],
@@ -298,7 +226,8 @@ function buildDisplay() {
     )
   );
 
-  body.appendChild(
+  // --- reduce motion ------------------------------------------------------
+  sec.appendChild(
     toggleRow(
       "Reduce motion",
       settings.reduceMotion,
@@ -310,7 +239,7 @@ function buildDisplay() {
     )
   );
 
-  return el;
+  return sec;
 }
 
 /**
@@ -332,12 +261,12 @@ function catalogAgeText() {
 }
 
 function buildData() {
-  const { el, body } = card("Data", "data", "data");
+  const sec = section("Data");
   const age = document.createElement("div");
   age.className = "set-status";
   age.textContent = catalogAgeText();
-  body.appendChild(age);
-  body.appendChild(
+  sec.appendChild(age);
+  sec.appendChild(
     note(
       "Orbital elements refresh automatically every 15 minutes while the app is " +
         "open. This fetches them again now."
@@ -357,49 +286,59 @@ function buildData() {
       btn.textContent = "Refresh catalog now";
     }
   });
-  body.appendChild(btn);
-  return el;
+  sec.appendChild(btn);
+  return sec;
+}
+
+function link(href, text) {
+  const a = document.createElement("a");
+  a.href = href;
+  a.target = "_blank";
+  a.rel = "noopener";
+  a.textContent = text;
+  return a;
 }
 
 function buildAbout() {
-  const { el, body } = card("About", "about", "about");
+  const sec = section("About");
 
   const ver = document.createElement("div");
   ver.className = "set-status";
   ver.textContent = `Orbital Traffic v${__APP_VERSION__}`;
-  body.appendChild(ver);
+  sec.appendChild(ver);
 
   const links = document.createElement("div");
   links.className = "set-links";
   links.append(
-    linkChip(`${GITHUB}/blob/main/CHANGELOG.md`, "changelog", "What's new"),
-    linkChip(`${GITHUB}/issues/new`, "issue", "Report an issue"),
-    linkChip("/privacy.html", "privacy", "Privacy")
+    link(`${GITHUB}/blob/main/CHANGELOG.md`, "What's new"),
+    link(`${GITHUB}/issues/new`, "Report an issue"),
+    link("/privacy.html", "Privacy")
   );
-  body.appendChild(links);
-
-  const sourcesLab = document.createElement("div");
-  sourcesLab.className = "set-sub";
-  sourcesLab.textContent = "Data sources";
-  body.appendChild(sourcesLab);
+  sec.appendChild(links);
 
   const credits = document.createElement("div");
   credits.className = "set-credits";
-  for (const [href, name, desc] of [
-    ["https://celestrak.org", "CelesTrak", "Orbital elements"],
+  const cLab = document.createElement("div");
+  cLab.className = "set-sub";
+  cLab.textContent = "Data sources";
+  credits.appendChild(cLab);
+  const ul = document.createElement("ul");
+  for (const [href, label] of [
+    ["https://celestrak.org", "CelesTrak — orbital elements"],
     [
       "https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html",
-      "NASA/JPL Small-Body Database",
-      "Near-Earth objects",
+      "NASA/JPL Small-Body Database — near-Earth objects",
     ],
-    ["https://thespacedevs.com", "Launch Library 2 (The Space Devs)", "Crew rosters"],
-    ["https://blogs.nasa.gov/spacestation/", "NASA Space Station Blog", "Station activity"],
+    ["https://thespacedevs.com", "Launch Library 2 (The Space Devs) — crew rosters"],
+    ["https://blogs.nasa.gov/spacestation/", "NASA Space Station Blog — station activity"],
   ]) {
-    credits.appendChild(creditRow(href, name, desc));
+    const li = document.createElement("li");
+    li.appendChild(link(href, label));
+    ul.appendChild(li);
   }
-  body.appendChild(credits);
-
-  return el;
+  credits.appendChild(ul);
+  sec.appendChild(credits);
+  return sec;
 }
 
 // ---------------------------------------------------------------------
