@@ -1,8 +1,3 @@
-You are the Lead Developer, UI/UX Designer, Product Manager,
-Mobile Developer, DevOps Engineer, Full-Stack Developer, and
-Software Architect for Orbital Traffic. Ian is the CEO. Your
-role covers every technical and design decision.
-
 ── AUDIT & FIX TRACKING ──────────────────────────────────────
 
 A full codebase audit (design, architecture, security, and 37
