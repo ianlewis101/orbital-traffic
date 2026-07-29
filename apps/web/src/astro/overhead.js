@@ -37,19 +37,37 @@ export const MIN_OVERHEAD_ELEVATION_DEG = 40;
  * Tier 1: the categories a user is actually likely to want to know are
  * overhead — crewed/station traffic, science platforms, and the handful of
  * categories that are otherwise easy to lose in constellation noise. Every
- * other category is Tier 2. This is a ranking split, not a filter: Tier 2
- * objects are never excluded from the results, only ranked below Tier 1
- * regardless of elevation (see rankOverhead below) — they're still fully
- * reachable through "Show all" in the UI.
+ * other (non-excluded) category is Tier 2. This is a ranking split, not a
+ * filter: Tier 2 objects are never excluded from the results, only ranked
+ * below Tier 1 regardless of elevation (see rankOverhead below) — they're
+ * still fully reachable through "Show all" in the UI.
+ *
+ * Geostationary is deliberately NOT here. A geostationary bird sits at a
+ * fixed elevation for as long as you're standing still — it's not "traffic"
+ * in the way a passing station or an active comms bird is, and at many
+ * ground points it dominated Tier 1 by sheer count (measured: over 100 of
+ * ~170 Tier-1-eligible objects at some locations), crowding out the
+ * genuinely time-varying objects this tier exists to surface. It still
+ * appears in results, ranked by elevation like Starlink — just not pinned
+ * to the top of the default view.
  */
 export const OVERHEAD_TIER1_CATS = new Set([
   "stations",
   "capsules",
   "science",
-  "geostationary",
   "communications",
   "classified",
 ]);
+
+/**
+ * Categories excluded from "What's Overhead" entirely, regardless of
+ * elevation — not ranked lower, never in the results at all. "other" is a
+ * catch-all with no curatorial value here (unclassified junk drawer), and
+ * "debris" is inert hardware — neither is "traffic" a user asking what's
+ * overhead cares about. This mirrors the null-satrec skip below (NEOs): a
+ * hard category exclusion, not a threshold or ranking choice.
+ */
+export const OVERHEAD_EXCLUDED_CATS = new Set(["other", "debris"]);
 
 function overheadTier(cat) {
   return OVERHEAD_TIER1_CATS.has(cat) ? 0 : 1;
@@ -157,7 +175,10 @@ export function compassPoint(azimuthDeg) {
  *
  * Records with a null satrec are skipped — that's how NEO pseudo-records
  * (scene/neos.js gives them `rec: null`) stay out of the results, which the
- * feature requires: asteroids are not orbital traffic overhead.
+ * feature requires: asteroids are not orbital traffic overhead. Records in
+ * OVERHEAD_EXCLUDED_CATS are skipped the same way — a hard exclusion, not a
+ * rank. Neither skip counts toward `scanned`, which exists to answer "how
+ * many real candidates did we propagate", not "how many records did we see".
  *
  * minElevationDeg defaults to a true 0° horizon here — this is a generic,
  * low-level primitive meant to be testable at any cut. The app's actual
@@ -177,6 +198,7 @@ export function overheadSweep(records, gd, date, opts = {}) {
   for (let i = from; i < to; i++) {
     const s = records[i];
     if (!s || !s.rec) continue;
+    if (OVERHEAD_EXCLUDED_CATS.has(s.cat)) continue;
     into.scanned++;
     const la = lookAngles(s.rec, gd, date, gmst);
     if (!la) {

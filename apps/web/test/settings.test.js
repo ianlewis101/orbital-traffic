@@ -46,7 +46,13 @@ describe("defaults", () => {
     expect(settings.units).toBe("imperial");
     expect(settings.reduceMotion).toBe(false);
     expect(settings.locationPermissionDenied).toBe(false);
-    expect(settings.displayCategories).toBeNull();
+  });
+
+  it("has no display-categories field — that control was removed entirely", async () => {
+    stubStorage();
+    const { settings, DEFAULTS } = await freshSettings();
+    expect(settings).not.toHaveProperty("displayCategories");
+    expect(DEFAULTS).not.toHaveProperty("displayCategories");
   });
 
   it("survives corrupt JSON rather than throwing", async () => {
@@ -105,40 +111,6 @@ describe("validation", () => {
   });
 });
 
-describe("displayCategories", () => {
-  it("rebuilds from the live CATS keys, so a new category appears", async () => {
-    // Written when only two categories existed.
-    stubStorage({
-      [KEY]: JSON.stringify({ displayCategories: { starlink: false, stations: true } }),
-    });
-    const { settings } = await freshSettings();
-    const { CATS } = await import("../src/config.js");
-    expect(Object.keys(settings.displayCategories).sort()).toEqual(Object.keys(CATS).sort());
-    expect(settings.displayCategories.starlink).toBe(false);
-    expect(settings.displayCategories.stations).toBe(true);
-    // A category the stored blob never mentioned falls back to its default.
-    expect(settings.displayCategories.debris).toBe(false);
-    expect(settings.displayCategories.navigation).toBe(true);
-  });
-
-  it("drops a category that no longer exists", async () => {
-    stubStorage({
-      [KEY]: JSON.stringify({ displayCategories: { starlink: true, retired_cat: true } }),
-    });
-    const { settings } = await freshSettings();
-    expect(settings.displayCategories).not.toHaveProperty("retired_cat");
-  });
-
-  it("defaultDisplayCategories hides exactly the default-hidden set", async () => {
-    stubStorage();
-    const { defaultDisplayCategories, DEFAULT_HIDDEN } = await freshSettings();
-    const cats = defaultDisplayCategories();
-    for (const [c, visible] of Object.entries(cats)) {
-      expect(visible).toBe(!DEFAULT_HIDDEN.includes(c));
-    }
-  });
-});
-
 describe("saveSettings", () => {
   it("persists a patch and merges it into the singleton", async () => {
     const store = stubStorage();
@@ -170,50 +142,11 @@ describe("saveSettings", () => {
     saveSettings({ units: "parsecs" });
     expect(settings.units).toBe("imperial");
   });
-});
 
-describe("seedDisplayCategories", () => {
-  it("does nothing when never configured, keeping the app defaults", async () => {
+  it("drops a display-categories patch — no such field exists anymore", async () => {
     stubStorage();
-    const { seedDisplayCategories } = await freshSettings();
-    const { state } = await import("../src/state.js");
-    const before = new Set(state.hidden);
-    seedDisplayCategories();
-    expect(new Set(state.hidden)).toEqual(before);
-  });
-
-  it("replaces state.hidden with exactly the categories switched off", async () => {
-    stubStorage({
-      [KEY]: JSON.stringify({
-        displayCategories: { debris: true, other: true, starlink: false },
-      }),
-    });
-    const { seedDisplayCategories } = await freshSettings();
-    const { state } = await import("../src/state.js");
-    seedDisplayCategories();
-    // debris/other were re-enabled by the user, starlink switched off.
-    expect(state.hidden.has("debris")).toBe(false);
-    expect(state.hidden.has("other")).toBe(false);
-    expect(state.hidden.has("starlink")).toBe(true);
-  });
-
-  it("can hide everything", async () => {
-    const { CATS } = await import("../src/config.js");
-    const all = {};
-    for (const c of Object.keys(CATS)) all[c] = false;
-    stubStorage({ [KEY]: JSON.stringify({ displayCategories: all }) });
-    const { seedDisplayCategories } = await freshSettings();
-    const { state } = await import("../src/state.js");
-    seedDisplayCategories();
-    expect(state.hidden.size).toBe(Object.keys(CATS).length);
-  });
-
-  it("agrees with state.js's own initial hidden set when unconfigured", async () => {
-    // The two defaults must not drift: a first-run user and a user who has
-    // opened Settings once should see the same globe.
-    stubStorage();
-    const { DEFAULT_HIDDEN } = await freshSettings();
-    const { state } = await import("../src/state.js");
-    expect([...state.hidden].sort()).toEqual([...DEFAULT_HIDDEN].sort());
+    const { settings, saveSettings } = await freshSettings();
+    saveSettings({ displayCategories: { starlink: false } });
+    expect(settings).not.toHaveProperty("displayCategories");
   });
 });

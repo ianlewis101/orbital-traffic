@@ -460,41 +460,81 @@
   .ohrow .nm{flex:1;color:var(--ink);letter-spacing:0.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .ohrow .el{color:var(--ink-dim);font-variant-numeric:tabular-nums;flex:none}
 
-  /* ---------- settings sections ---------- */
-  .set-sec{padding:14px 0 4px;border-top:1px solid var(--line)}
-  .set-sec:first-child{border-top:0}
-  .set-h{display:block;margin-bottom:8px}
-  .set-sub{font-size:8.5px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-faint);
-    font-weight:500;margin:14px 0 7px}
-  .set-note{font-size:10px;line-height:1.6;color:var(--ink-faint);letter-spacing:0.01em;margin:0 0 9px}
-  .set-status{font-size:10.5px;line-height:1.55;color:var(--ink-dim);letter-spacing:0.02em;margin-bottom:8px}
-  .set-cats{display:flex;flex-direction:column}
-  .set-row{display:flex;align-items:center;justify-content:space-between;gap:11px;width:100%;
-    padding:7px 0;background:none;border:none;border-top:1px solid var(--line);cursor:pointer;
-    text-align:left;font-family:var(--mono);touch-action:manipulation}
-  .set-cats .set-row:first-child{border-top:0}
-  .set-row-txt{display:flex;flex-direction:column;gap:2px;min-width:0}
-  .set-row-nm{font-size:11px;letter-spacing:0.04em;color:var(--ink-dim);text-transform:uppercase;font-weight:500}
-  .set-row.on .set-row-nm{color:var(--ink)}
-  .set-row-d{font-size:9.5px;line-height:1.45;color:var(--ink-faint);text-transform:none;letter-spacing:0.01em}
-  .set-sw{flex:none;width:34px;height:19px;border-radius:19px;background:rgba(255,255,255,0.08);
+  /* ---------- settings sections ----------
+     Each section is its own raised card, not a run of divs separated by a
+     single 1px border-top — on the translucent, busy backdrop the hairline
+     read as barely-there, which is what made the whole panel feel like one
+     dense block. Cards give real boundaries; a per-section icon + accent
+     color gives quick wayfinding without adding new tokens (reuses
+     --signal/--amber/--violet, already meaningful elsewhere in the app). */
+  #settings-body{display:flex;flex-direction:column;gap:13px;padding-top:2px}
+  .set-card{background:rgba(255,255,255,0.035);border:1px solid var(--line);
+    border-radius:14px;padding:14px 15px 15px;animation:rise .5s both}
+  .set-card:nth-child(1){animation-delay:.02s}
+  .set-card:nth-child(2){animation-delay:.06s}
+  .set-card:nth-child(3){animation-delay:.1s}
+  .set-card:nth-child(4){animation-delay:.14s}
+  .set-card-h{display:flex;align-items:center;gap:9px;margin-bottom:12px}
+  .set-ic{flex:none;width:26px;height:26px;border-radius:8px;display:flex;
+    align-items:center;justify-content:center}
+  .set-ic-svg{width:14px;height:14px;display:flex}
+  .set-ic-svg svg{width:100%;height:100%}
+  .set-card--privacy .set-ic{background:rgba(125,211,252,0.14);color:var(--signal)}
+  .set-card--display .set-ic{background:var(--amber-soft);color:var(--amber)}
+  .set-card--data .set-ic{background:rgba(167,139,250,0.16);color:var(--violet)}
+  .set-card--about .set-ic{background:rgba(255,255,255,0.07);color:var(--ink-dim)}
+  .set-card-t{font-family:var(--serif);font-weight:700;font-size:14px;letter-spacing:-0.005em;
+    color:var(--ink);line-height:1.1;margin:0}
+
+  .set-field{margin-bottom:12px}
+  .set-sub{font-size:8.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-faint);
+    font-weight:600;margin:0 0 8px}
+  /* A .set-sub as a direct card child (e.g. About's "Data sources") follows
+     other content and needs breathing room above it; nested inside .set-field
+     (e.g. Display's "Units") it's already the first thing in that block, so
+     the field's own margin-bottom is enough. */
+  .set-card-b>.set-sub{margin-top:14px}
+  .set-note{font-size:10.5px;line-height:1.6;color:var(--ink-dim);letter-spacing:0.005em;margin:0 0 10px}
+  .set-status{font-size:11px;line-height:1.5;color:var(--ink);letter-spacing:0.01em;
+    margin-bottom:3px;font-weight:500}
+  .set-status.bad{color:var(--bad)}
+
+  /* border-top doubles as the divider from whatever sits above it in the
+     card (a field, a note, another row) — every current call site has
+     something above it, so no first-child suppression is needed. */
+  .set-row{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;
+    padding:11px 0;background:none;border:none;border-top:1px solid var(--line);cursor:pointer;
+    text-align:left;font-family:var(--mono);touch-action:manipulation;min-height:46px}
+  .set-row-txt{display:flex;flex-direction:column;gap:3px;min-width:0}
+  .set-row-nm{font-size:11.5px;letter-spacing:0.02em;color:var(--ink);font-weight:500}
+  .set-row-d{font-size:10px;line-height:1.5;color:var(--ink-faint);letter-spacing:0.005em}
+  .set-sw{flex:none;width:38px;height:22px;border-radius:22px;background:rgba(255,255,255,0.08);
     border:1px solid var(--line);position:relative;transition:background .14s,border-color .14s}
-  .set-sw::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;
+  .set-sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;
     background:var(--ink-faint);transition:transform .14s,background .14s}
   .set-row.on .set-sw{background:var(--amber-soft);border-color:rgba(94,234,212,0.45)}
-  .set-row.on .set-sw::after{transform:translateX(15px);background:var(--amber)}
+  .set-row.on .set-sw::after{transform:translateX(16px);background:var(--amber)}
+
   .set-seg{display:flex;gap:6px}
-  .set-action{width:100%;font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;
-    padding:10px 0;margin-top:4px;color:var(--signal);background:rgba(174,227,255,0.06);
-    border:1px solid rgba(174,227,255,0.28);border-radius:8px;cursor:pointer;touch-action:manipulation}
-  .set-action:hover{background:rgba(174,227,255,0.12)}
+  .set-action{width:100%;font-family:var(--mono);font-size:10.5px;letter-spacing:0.12em;text-transform:uppercase;
+    padding:11px 0;margin-top:10px;color:var(--signal);background:rgba(174,227,255,0.07);
+    border:1px solid rgba(174,227,255,0.3);border-radius:9px;cursor:pointer;touch-action:manipulation;font-weight:500}
+  .set-action:hover{background:rgba(174,227,255,0.13)}
   .set-action:disabled{opacity:0.5;cursor:default}
-  .set-links{display:flex;flex-wrap:wrap;gap:14px;margin:4px 0 2px}
-  .set-links a,.set-credits a{font-size:10.5px;letter-spacing:0.03em;color:var(--signal);text-decoration:none;
-    border-bottom:1px solid rgba(125,211,252,0.3)}
-  .set-links a:hover,.set-credits a:hover{color:var(--ink);border-bottom-color:var(--line-bright)}
-  .set-credits ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
-  .set-credits a{font-size:10px;color:var(--ink-dim);border-bottom-color:transparent}
+
+  .set-links{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:2px}
+  .set-chip{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;font-weight:500;
+    letter-spacing:0.02em;padding:8px 12px;color:var(--ink-dim);background:rgba(255,255,255,0.04);
+    border:1px solid var(--line);border-radius:20px;text-decoration:none;touch-action:manipulation;
+    transition:border-color .12s,color .12s;min-height:36px}
+  .set-chip svg{width:12px;height:12px;flex:none}
+  .set-chip:hover{color:var(--ink);border-color:var(--line-bright)}
+
+  .set-credits{display:flex;flex-direction:column;gap:12px}
+  .set-credit{display:block;text-decoration:none;padding:2px 0}
+  .set-credit-nm{font-size:11px;color:var(--signal);letter-spacing:0.015em;font-weight:500}
+  .set-credit-d{font-size:9.5px;color:var(--ink-faint);letter-spacing:0.01em;margin-top:2px;line-height:1.4}
+  .set-credit:hover .set-credit-nm{color:var(--ink)}
   /* ── MOBILE LAYOUT ─────────────────────────────────────────────────── */
   @media (max-width:768px){
     /* Clock — compact, top right. width:fit-content (not just min-width:0) so the
@@ -647,10 +687,11 @@
     #overhead-fab{right:10px;bottom:96px;width:48px;height:48px}
     #settings-btn{right:10px;bottom:152px;width:44px;height:44px}
 
-    /* Comfortable touch targets in the lists. */
+    /* Comfortable touch targets in the lists. Settings rows are already
+       46px min-height at the base size, so no mobile override is needed
+       there — unlike .ohrow, which is smaller on desktop. */
     .ohrow{padding:11px 0;font-size:11px;min-height:44px}
     .ohrow .nm{font-size:11px}
-    .set-row{padding:10px 0;min-height:44px}
     .oh-chip{padding:6px 10px;font-size:9.5px}
     #mini-card .d{width:9px;height:9px;border-radius:50%;flex:none;box-shadow:0 0 8px currentColor}
     #mini-card .nm{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:0.03em;
