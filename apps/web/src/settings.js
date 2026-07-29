@@ -14,24 +14,10 @@
  * poisoning state. Writes are try/catch wrapped — localStorage throws in
  * Safari private mode, and a settings write must never break the app.
  */
-import { CATS } from "./config.js";
-import { state } from "./state.js";
-
 const KEY = "ot-settings";
-
-/**
- * Categories hidden when nothing has been configured. Mirrors state.js's
- * initial `hidden` set — the two must agree, or a first-run user and a user
- * who has opened Settings once would see different globes.
- */
-export const DEFAULT_HIDDEN = ["debris", "other"];
 
 export const DEFAULTS = {
   locationPermissionDenied: false,
-  // null means "never configured" — seedDisplayCategories() then leaves
-  // state.hidden at its DEFAULT_HIDDEN value. An object here is a complete
-  // {catId: visible} map covering every CATS key.
-  displayCategories: null,
   units: "imperial",
   reduceMotion: false,
 };
@@ -49,18 +35,6 @@ function validate(raw) {
   if (UNIT_VALUES.includes(raw.units)) out.units = raw.units;
   if (typeof raw.reduceMotion === "boolean") out.reduceMotion = raw.reduceMotion;
 
-  if (raw.displayCategories && typeof raw.displayCategories === "object") {
-    // Rebuild from the live CATS keys rather than trusting the stored key
-    // set: a category added since this was written must appear (visible
-    // unless it's a default-hidden one), and a category since removed must
-    // not linger.
-    const cats = {};
-    for (const c of Object.keys(CATS)) {
-      const v = raw.displayCategories[c];
-      cats[c] = typeof v === "boolean" ? v : !DEFAULT_HIDDEN.includes(c);
-    }
-    out.displayCategories = cats;
-  }
   return out;
 }
 
@@ -89,31 +63,4 @@ export function saveSettings(patch) {
     // session, which is the best we can honestly do.
   }
   return settings;
-}
-
-/** Every category visible by default, as a fresh {catId: visible} map. */
-export function defaultDisplayCategories() {
-  const cats = {};
-  for (const c of Object.keys(CATS)) cats[c] = !DEFAULT_HIDDEN.includes(c);
-  return cats;
-}
-
-/**
- * Seed `state.hidden` from the saved display categories.
- *
- * Deliberately one-way and boot-only. Settings decides what is visible when
- * the app loads; from then on the in-scene legend is a live, session-only
- * view filter with its own independent state, and never writes back here.
- *
- * MUST run before buildClouds() — scene/clouds.js reads state.hidden at build
- * time to set each cloud's initial visibility, so seeding afterwards would
- * leave the toggles and the globe disagreeing until the next rebuild.
- */
-export function seedDisplayCategories() {
-  const cats = settings.displayCategories;
-  if (!cats) return;
-  state.hidden.clear();
-  for (const [c, visible] of Object.entries(cats)) {
-    if (!visible) state.hidden.add(c);
-  }
 }
