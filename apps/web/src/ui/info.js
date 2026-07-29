@@ -2,8 +2,9 @@ import * as satellite from "satellite.js";
 import { catColorHex, CATS, WORKER_BASE } from "../config.js";
 import { state, $ } from "../state.js";
 import { DATA } from "../data/store.js";
-import { safeProp } from "../astro/propagation.js";
+import { subpoint } from "../astro/overhead.js";
 import { orbital, orbitClass, sunlit } from "../astro/orbital.js";
+import { fmtSpeed, toDistance, distanceUnit } from "../util/units.js";
 import { regionName } from "../geo/regions.js";
 import { EARTH_R } from "../config.js";
 import { geoToVec, subDot } from "../scene/earth.js";
@@ -15,6 +16,7 @@ import { figureHTML } from "./figures.js";
 import { fetchAndRenderCrew } from "./crew.js";
 import { toast } from "./status.js";
 import { esc } from "../util/html.js";
+import { motionReduced } from "../util/motion.js";
 import { collapseLegend } from "./legend.js";
 import { normalizeVehicleName } from "@orbital-traffic/catalog";
 
@@ -164,7 +166,11 @@ export function select(s) {
   setLaunchLine(s, li);
   setFlagLine(s);
   $("#info-lead").textContent = describe(s);
-  buildTrail(s, new Date(state.simNow));
+  // The orbit ring is the one piece of scene motion a comfort setting should
+  // actually remove — it sweeps a full ellipse across the view on every
+  // selection. The globe itself keeps tracking either way.
+  if (motionReduced()) clearTrail();
+  else buildTrail(s, new Date(state.simNow));
   refreshInfo();
   enrichSatcat(s);
 }
@@ -497,21 +503,20 @@ export function refreshInfo() {
     return;
   }
   const date = new Date(state.simNow),
-    p = safeProp(s.rec, date);
+    sp = subpoint(s.rec, date);
   const chips = $("#info-chips"),
     grid = $("#info-grid");
-  if (!p) {
+  if (!sp) {
     chips.innerHTML = "";
     grid.className = "grid full";
     grid.innerHTML = `<div class="stat"><div class="k">Status</div><div class="v" style="color:var(--bad);font-size:13px">No current position — this object may have re-entered the atmosphere.</div></div>`;
     subDot.visible = false;
     return;
   }
-  const gmst = satellite.gstime(date),
-    geo = satellite.eciToGeodetic(p, gmst);
-  const lat = satellite.degreesLat(geo.latitude),
-    lon = satellite.degreesLong(geo.longitude),
-    alt = geo.height;
+  const p = sp.eci,
+    lat = sp.lat,
+    lon = sp.lon,
+    alt = sp.alt;
   const vel = satellite.propagate(s.rec, date).velocity;
   const spd = Math.sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z);
   const ob = orbital(s.rec),
@@ -527,17 +532,16 @@ export function refreshInfo() {
     (s.ownerName ? `<span class="chip">${esc(s.ownerName)}</span>` : ``) +
     `<span class="chip">&asymp;${orbits.toFixed(1)} orbits / day</span>`;
   const ns = lat >= 0 ? "N" : "S",
-    ew = lon >= 0 ? "E" : "W",
-    MI = 0.621371;
+    ew = lon >= 0 ? "E" : "W";
   grid.className = "grid";
   grid.innerHTML = `
-    <div class="stat"><div class="k">Altitude</div><div class="v">${fmt(alt * MI, 0)} <small>mi up</small></div></div>
-    <div class="stat"><div class="k">Speed</div><div class="v">${fmt(spd * 3600 * MI, 0)} <small>mph</small></div></div>
+    <div class="stat"><div class="k">Altitude</div><div class="v">${toDistance(alt)} <small>${distanceUnit()} up</small></div></div>
+    <div class="stat"><div class="k">Speed</div><div class="v">${fmtSpeed(spd)}</div></div>
     <div id="tele-more" style="display:${teleOpen ? "contents" : "none"}">
       <div class="stat"><div class="k">Tilt of orbit</div><div class="v">${ob.inc.toFixed(1)}<small>° incl.</small></div></div>
       <div class="stat"><div class="k">Lap time</div><div class="v">${ob.periodMin.toFixed(0)} <small>min/orbit</small></div></div>
       <div class="stat"><div class="k">Ground point</div><div class="v">${Math.abs(lat).toFixed(1)}°${ns} ${Math.abs(lon).toFixed(1)}°${ew}</div></div>
-      <div class="stat"><div class="k">High / low point</div><div class="v">${fmt(ob.apo * MI, 0)}<small>/</small>${fmt(ob.per * MI, 0)} <small>mi</small></div></div>
+      <div class="stat"><div class="k">High / low point</div><div class="v">${toDistance(ob.apo)}<small>/</small>${toDistance(ob.per)} <small>${distanceUnit()}</small></div></div>
     </div>
     <div class="stat" style="grid-column:1/-1;padding:0">
       <button id="tele-toggle" style="background:none;border:none;cursor:pointer;font-family:var(--mono);font-size:10px;letter-spacing:0.14em;color:${teleOpen ? "var(--ink-dim)" : "var(--signal)"};padding:6px 0;text-align:left;width:100%;touch-action:manipulation">${teleOpen ? "▲ less" : "▼ more"}</button>
@@ -554,10 +558,6 @@ export function refreshInfo() {
     b.textContent = teleOpen ? "▲ less" : "▼ more";
     b.style.color = teleOpen ? "var(--ink-dim)" : "var(--signal)";
   };
-}
-
-function fmt(n, d) {
-  return n.toLocaleString(undefined, { maximumFractionDigits: d, minimumFractionDigits: d });
 }
 
 /** Wire the static info-card controls. Call once at boot. */

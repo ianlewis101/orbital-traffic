@@ -21,7 +21,8 @@ ruleTester.run("no-unescaped-innerhtml", rule, {
     // Enumerated internal formatters (fixed-shape output).
     "el.innerHTML = `<b>${timeAgo(s.since)}</b>`;",
     'el.innerHTML = `<span style="background:${catColorHex(s.cat)}"></span>`;',
-    "el.innerHTML = `<b>${fmt(alt, 0)}</b>`;",
+    "el.innerHTML = `<b>${fmtAltitude(alt)}</b>`;",
+    "el.innerHTML = `<b>${toDistance(alt)} <small>${distanceUnit()}</small></b>`;",
     // Number-formatting method calls.
     "el.innerHTML = `<b>${n.a.toFixed(3)}</b>`;",
     "el.innerHTML = `<b>${count.toLocaleString()}</b>`;",

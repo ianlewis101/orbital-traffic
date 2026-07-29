@@ -52,7 +52,14 @@ const SAFE_FUNCTIONS = new Set([
   "shortDate", // -> "Mon D" via toLocaleDateString (ui/capsule-status.js)
   "formatRelativeTime", // -> "just now" / "Xm ago" / "Xh ago" / "Xd ago" / null (util/relative-time.js)
   "regionName", // ground point -> fixed region name (geo/regions.js)
-  "fmt", // number -> localized number string (ui/info.js)
+  // util/units.js — each returns a localized number plus a fixed unit word
+  // ("409 km", "254 mi up", "17,100 mph"), chosen from a closed set by the
+  // user's units preference. No input reaches the output as text.
+  "fmtDistance",
+  "fmtAltitude",
+  "fmtSpeed",
+  "toDistance",
+  "distanceUnit",
 ]);
 
 // Number-formatting methods: the result is only digits / separators / sign,

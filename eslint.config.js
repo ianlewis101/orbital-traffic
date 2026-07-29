@@ -23,7 +23,12 @@ export default [
   {
     files: ["apps/web/**/*.js"],
     languageOptions: {
-      globals: { ...globals.browser, __OBJECT_COUNT__: "readonly" },
+      globals: {
+        ...globals.browser,
+        // Build-time constants injected by apps/web/vite.config.js's `define`.
+        __OBJECT_COUNT__: "readonly",
+        __APP_VERSION__: "readonly",
+      },
     },
   },
   {

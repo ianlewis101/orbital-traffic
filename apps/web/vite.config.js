@@ -14,11 +14,19 @@ const satellitesPath = fileURLToPath(new URL("./public/data/satellites.json", im
 const satelliteCount = JSON.parse(readFileSync(satellitesPath, "utf8")).length;
 const objectCount = `${(Math.floor(satelliteCount / 1000) * 1000).toLocaleString("en-US")}+`;
 
+// App version for Settings > About, read from this workspace's package.json so
+// there is exactly one place to bump it. Note this is the *web* version and is
+// independent of the iOS build's MARKETING_VERSION / CURRENT_PROJECT_VERSION,
+// which are set in the Xcode project and injected by ios-build.yml.
+const pkgPath = fileURLToPath(new URL("./package.json", import.meta.url));
+const appVersion = JSON.parse(readFileSync(pkgPath, "utf8")).version;
+
 export default defineConfig({
   // Served from the domain root (orbitaltraffic.app / GitHub Pages custom domain)
   base: "/",
   define: {
     __OBJECT_COUNT__: JSON.stringify(objectCount),
+    __APP_VERSION__: JSON.stringify(appVersion),
   },
   build: {
     target: "es2020",

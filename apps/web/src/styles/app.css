@@ -395,10 +395,106 @@
      explicitly, ahead of any generic UI font, fixes it on every platform. */
   #info .flagline .fl{font-size:13px;letter-spacing:1px;line-height:1;
     font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif}
-  .ohrow{display:flex;align-items:center;gap:9px;padding:5px 0;font-size:10px;border-top:1px solid var(--line);cursor:pointer}
+  /* ---------- what's overhead + settings ----------
+     Two sheets sharing one shell. On desktop they're ordinary right-hand
+     plates; on mobile both become the same bottom sheet the info card uses.
+     Only one is ever open at a time (each opener closes the other), so they
+     can share the bottom:0 slot without fighting over it. */
+  /* Above #hint (10), #mini-card (11), the openers (12) and #tip (13), but
+     below toast (30) so a "catalog refreshed" message still reads over the
+     top. Without this the boot hint prints straight through the panel header
+     and the openers float over the list rows. */
+  #overhead,#settings{top:104px;right:24px;width:320px;max-height:calc(100vh - 150px);
+    z-index:15;display:none;flex-direction:column;overflow:hidden}
+  #overhead.show,#settings.show{display:flex}
+  /* An open sheet covers the area both openers sit in, at every breakpoint,
+     so hide them rather than let them overlap the content. Relies on the
+     openers following both sheets in index.html. ✕ and Escape close. */
+  #overhead.show ~ #overhead-fab,#overhead.show ~ #settings-btn,
+  #settings.show ~ #overhead-fab,#settings.show ~ #settings-btn{display:none}
+  .sheet-drag{display:none}
+  .sheet-body{overflow-y:auto;overflow-x:hidden;padding:0 15px 14px}
+  .sheet-attr{font-size:9px;letter-spacing:0.06em;color:var(--ink-faint);opacity:0.6;
+    padding-top:12px;text-align:center;line-height:1.5}
+  #overhead .ph .x,#settings .ph .x{cursor:pointer;color:var(--ink-faint);font-size:11px;line-height:1;
+    padding:2px 4px;border:1px solid transparent;border-radius:5px;background:none}
+  #overhead .ph .x:hover,#settings .ph .x:hover{color:var(--ink);border-color:var(--line)}
+  #overhead .ph-r,#settings .ph-r{display:flex;align-items:center;gap:9px}
+
+  /* Floating openers. The mobile bottom-right column is already stacked
+     (#meta at 10px, #mini-card at 44px), so these sit above both. */
+  #overhead-fab,#settings-btn{position:fixed;z-index:12;display:flex;align-items:center;justify-content:center;
+    background:rgba(17,22,42,0.82);backdrop-filter:blur(18px) saturate(1.2);
+    -webkit-backdrop-filter:blur(18px) saturate(1.2);
+    border:1px solid rgba(94,234,212,0.24);color:var(--amber);border-radius:50%;cursor:pointer;
+    box-shadow:0 10px 30px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,255,255,0.08);
+    transition:border-color .15s,color .15s,transform .15s;
+    touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+  #overhead-fab{right:24px;bottom:24px;width:52px;height:52px}
+  #settings-btn{right:24px;bottom:86px;width:44px;height:44px;color:var(--ink-dim);
+    border-color:var(--line)}
+  #overhead-fab:hover,#settings-btn:hover{border-color:var(--line-bright);color:var(--ink);transform:translateY(-1px)}
+  #overhead-fab[aria-expanded="true"],#settings-btn[aria-expanded="true"]{color:#06122a;background:var(--amber);border-color:var(--amber)}
+
+  .oh-status{font-size:10.5px;line-height:1.55;letter-spacing:0.02em;color:var(--ink-dim);
+    padding:11px 0 3px}
+  .oh-status.bad{color:var(--bad)}
+  #overhead-filters{display:flex;flex-wrap:wrap;gap:6px;padding:9px 0 4px}
+  #overhead-filters:empty{display:none}
+  .oh-chip{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;font-weight:500;
+    letter-spacing:0.06em;text-transform:uppercase;padding:4px 8px;color:var(--ink-dim);
+    background:rgba(255,255,255,0.04);border:1px solid var(--line);border-radius:20px;cursor:pointer;
+    transition:opacity .12s,border-color .12s;touch-action:manipulation}
+  .oh-chip:hover{border-color:var(--line-bright);color:var(--ink)}
+  .oh-chip.off{opacity:0.35}
+  .oh-chip .d{width:6px;height:6px;border-radius:50%;flex:none;box-shadow:0 0 6px currentColor}
+  .oh-more{width:100%;font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;
+    padding:10px 0;margin-top:10px;color:var(--signal);background:rgba(174,227,255,0.06);
+    border:1px solid rgba(174,227,255,0.28);border-radius:8px;cursor:pointer;touch-action:manipulation}
+  .oh-more:hover{background:rgba(174,227,255,0.12)}
+
+  .ohrow{display:flex;align-items:center;gap:9px;padding:7px 0;font-size:10px;border-top:1px solid var(--line);cursor:pointer;
+    width:100%;text-align:left;background:none;font-family:var(--mono);touch-action:manipulation}
+  .ohrow:hover{background:var(--amber-soft)}
   .ohrow .d{width:7px;height:7px;border-radius:50%;flex:none;box-shadow:0 0 7px currentColor}
   .ohrow .nm{flex:1;color:var(--ink);letter-spacing:0.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .ohrow .el{color:var(--ink-dim);font-variant-numeric:tabular-nums}
+  .ohrow .el{color:var(--ink-dim);font-variant-numeric:tabular-nums;flex:none}
+
+  /* ---------- settings sections ---------- */
+  .set-sec{padding:14px 0 4px;border-top:1px solid var(--line)}
+  .set-sec:first-child{border-top:0}
+  .set-h{display:block;margin-bottom:8px}
+  .set-sub{font-size:8.5px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-faint);
+    font-weight:500;margin:14px 0 7px}
+  .set-note{font-size:10px;line-height:1.6;color:var(--ink-faint);letter-spacing:0.01em;margin:0 0 9px}
+  .set-status{font-size:10.5px;line-height:1.55;color:var(--ink-dim);letter-spacing:0.02em;margin-bottom:8px}
+  .set-cats{display:flex;flex-direction:column}
+  .set-row{display:flex;align-items:center;justify-content:space-between;gap:11px;width:100%;
+    padding:7px 0;background:none;border:none;border-top:1px solid var(--line);cursor:pointer;
+    text-align:left;font-family:var(--mono);touch-action:manipulation}
+  .set-cats .set-row:first-child{border-top:0}
+  .set-row-txt{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .set-row-nm{font-size:11px;letter-spacing:0.04em;color:var(--ink-dim);text-transform:uppercase;font-weight:500}
+  .set-row.on .set-row-nm{color:var(--ink)}
+  .set-row-d{font-size:9.5px;line-height:1.45;color:var(--ink-faint);text-transform:none;letter-spacing:0.01em}
+  .set-sw{flex:none;width:34px;height:19px;border-radius:19px;background:rgba(255,255,255,0.08);
+    border:1px solid var(--line);position:relative;transition:background .14s,border-color .14s}
+  .set-sw::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;
+    background:var(--ink-faint);transition:transform .14s,background .14s}
+  .set-row.on .set-sw{background:var(--amber-soft);border-color:rgba(94,234,212,0.45)}
+  .set-row.on .set-sw::after{transform:translateX(15px);background:var(--amber)}
+  .set-seg{display:flex;gap:6px}
+  .set-action{width:100%;font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;
+    padding:10px 0;margin-top:4px;color:var(--signal);background:rgba(174,227,255,0.06);
+    border:1px solid rgba(174,227,255,0.28);border-radius:8px;cursor:pointer;touch-action:manipulation}
+  .set-action:hover{background:rgba(174,227,255,0.12)}
+  .set-action:disabled{opacity:0.5;cursor:default}
+  .set-links{display:flex;flex-wrap:wrap;gap:14px;margin:4px 0 2px}
+  .set-links a,.set-credits a{font-size:10.5px;letter-spacing:0.03em;color:var(--signal);text-decoration:none;
+    border-bottom:1px solid rgba(125,211,252,0.3)}
+  .set-links a:hover,.set-credits a:hover{color:var(--ink);border-bottom-color:var(--line-bright)}
+  .set-credits ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+  .set-credits a{font-size:10px;color:var(--ink-dim);border-bottom-color:transparent}
   /* ── MOBILE LAYOUT ─────────────────────────────────────────────────── */
   @media (max-width:768px){
     /* Clock — compact, top right. width:fit-content (not just min-width:0) so the
@@ -526,6 +622,36 @@
       max-width:min(70vw,300px);cursor:pointer;-webkit-tap-highlight-color:transparent;
       touch-action:manipulation}
     #mini-card.show{display:flex;animation:popin .26s cubic-bezier(.34,1.56,.64,1) both}
+
+    /* Overhead + Settings → the same bottom sheet as the info card. */
+    #overhead,#settings{
+      top:auto;bottom:0;left:0;right:0;
+      width:100%;max-width:100%;max-height:82vh;
+      border-radius:18px 18px 0 0;animation:none;
+    }
+    #overhead.show,#settings.show{animation:slideup .3s cubic-bezier(.22,.7,.2,1)}
+    /* Grab handle, matching #info-drag. Purely a visual affordance here —
+       these sheets close with the ✕ or Escape rather than a swipe, so it
+       carries no touch handler and needs no touch-action override. */
+    .sheet-drag{display:block;position:sticky;top:0;z-index:3;width:100%;padding:10px 0 8px;
+      background:rgba(17,22,42,0.92);backdrop-filter:blur(12px);border-radius:18px 18px 0 0}
+    .sheet-drag::before{content:"";display:block;margin:0 auto;width:38px;height:4px;border-radius:2px;
+      background:rgba(255,255,255,0.22)}
+    #overhead .ph,#settings .ph{position:sticky;top:24px;z-index:2;
+      background:rgba(17,22,42,0.92);backdrop-filter:blur(12px)}
+    /* The ✕ stays on mobile here (unlike #info, which has the mini-card and
+       swipe-down to fall back on — these sheets have neither). */
+    #overhead .ph .x,#settings .ph .x{display:block;padding:6px 8px;font-size:13px}
+
+    /* Openers move above #mini-card (44px) and #meta (10px). */
+    #overhead-fab{right:10px;bottom:96px;width:48px;height:48px}
+    #settings-btn{right:10px;bottom:152px;width:44px;height:44px}
+
+    /* Comfortable touch targets in the lists. */
+    .ohrow{padding:11px 0;font-size:11px;min-height:44px}
+    .ohrow .nm{font-size:11px}
+    .set-row{padding:10px 0;min-height:44px}
+    .oh-chip{padding:6px 10px;font-size:9.5px}
     #mini-card .d{width:9px;height:9px;border-radius:50%;flex:none;box-shadow:0 0 8px currentColor}
     #mini-card .nm{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:0.03em;
       color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -562,4 +688,25 @@
     /* Info card: a short opacity fade replaces the desktop slide-in and the
        mobile slide-up (both), with no lateral/vertical travel. */
     #info.show{animation:info-fade .18s ease both !important}
+    #overhead.show,#settings.show{animation:info-fade .18s ease both !important}
   }
+  /* In-app equivalent of the block above, for users whose OS setting doesn't
+     match what they want here. Set from Settings > Display via
+     util/motion.js. Same rules, same deliberate exception: the globe keeps
+     animating, because it's the content rather than decoration. */
+  :root.reduce-motion *,
+  :root.reduce-motion *::before,
+  :root.reduce-motion *::after{
+    animation-duration:.01ms !important;
+    animation-delay:0ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;
+    scroll-behavior:auto !important;
+  }
+  :root.reduce-motion .ph-i.loading,
+  :root.reduce-motion #clock-mode.live,
+  :root.reduce-motion #sel-marker .ring{animation:none !important}
+  :root.reduce-motion #splash .ld i{animation:none !important;transform:none}
+  :root.reduce-motion #info.show,
+  :root.reduce-motion #overhead.show,
+  :root.reduce-motion #settings.show{animation:info-fade .18s ease both !important}
