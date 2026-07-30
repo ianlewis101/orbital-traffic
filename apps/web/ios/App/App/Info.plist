@@ -25,7 +25,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Orbital Traffic uses your location to work out which satellites are above your horizon right now. Your location is used only on this device and is never stored or sent anywhere.</string>
+	<string>OrbitalTraffic uses your location to show you which tracked satellites are currently above you. Your location is never stored or sent anywhere — all calculations happen on your device.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
