@@ -2,9 +2,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 /**
- * The Settings panel: five cards (Privacy & Permissions, Saved, Display,
- * Data, About), each with its own icon/title header (.set-card-t) rather than
- * the old flat .set-h label. There is no display-categories control anymore —
+ * The Settings panel: six cards (Privacy & Permissions, Saved, Display,
+ * Globe Style, Data, About), each with its own icon/title header
+ * (.set-card-t) rather than the old flat .set-h label. There is no
+ * display-categories control anymore —
  * it was removed outright, not just visually reorganized — so this file
  * also guards against it quietly coming back.
  */
@@ -25,6 +26,18 @@ vi.mock("../src/ui/status.js", () => ({
   toast: () => {},
   flash: () => {},
   updateCount: () => {},
+}));
+
+// The Globe Style card talks to scene/earth.js, which owns the style and its
+// own `ot-globe-style` storage key. Stubbed here so the card can be tested
+// without standing up THREE: setGlobeStyle() builds globe textures for real.
+const globe = vi.hoisted(() => ({ style: "real", picked: [] }));
+vi.mock("../src/scene/earth.js", () => ({
+  getGlobeStyle: () => globe.style,
+  setGlobeStyle: (s) => {
+    globe.style = s;
+    globe.picked.push(s);
+  },
 }));
 
 const MARKUP = `
@@ -73,17 +86,26 @@ async function load(stored, objects) {
 beforeEach(() => {
   fetchLiveSpy.mockClear();
   selectSpy.mockClear();
+  globe.style = "real";
+  globe.picked.length = 0;
   vi.resetModules();
 });
 afterEach(() => vi.unstubAllGlobals());
 
 describe("structure", () => {
-  it("renders all five cards in order, each with an icon + title header", async () => {
+  it("renders all six cards in order, each with an icon + title header", async () => {
     await load();
     const cards = [...document.querySelectorAll("#settings-body .set-card")];
-    expect(cards).toHaveLength(5);
+    expect(cards).toHaveLength(6);
     const headings = cards.map((c) => c.querySelector(".set-card-t").textContent);
-    expect(headings).toEqual(["Privacy & Permissions", "Saved", "Display", "Data", "About"]);
+    expect(headings).toEqual([
+      "Privacy & Permissions",
+      "Saved",
+      "Display",
+      "Globe Style",
+      "Data",
+      "About",
+    ]);
     for (const c of cards) {
       expect(c.querySelector(".set-ic svg")).not.toBeNull();
     }
@@ -94,7 +116,7 @@ describe("structure", () => {
     const accents = [...document.querySelectorAll("#settings-body .set-card")].map((c) =>
       [...c.classList].find((cls) => cls.startsWith("set-card--"))
     );
-    expect(new Set(accents).size).toBe(5); // all five distinct
+    expect(new Set(accents).size).toBe(6); // all six distinct
   });
 
   it("shows the build-time app version", async () => {
@@ -295,5 +317,67 @@ describe("privacy section", () => {
     expect(document.querySelector("#settings-body").textContent).toMatch(
       /never stored or sent anywhere/i
     );
+  });
+});
+
+/**
+ * Globe Style used to live in its own floating #globe-style plate, wired up by
+ * ui/globeStyle.js. Both are gone; the control is a Settings card now. These
+ * assertions cover the relocation: that it reads and writes the same
+ * scene/earth.js pair the plate did, and that its buttons kept the semantics
+ * the old plate's a11y test pinned down (real <button>s, in the tab order,
+ * exposing aria-pressed).
+ */
+describe("globe style", () => {
+  const buttons = () => [
+    ...document.querySelectorAll("#settings-body .set-card--globe .set-seg .gbtn"),
+  ];
+
+  it("offers both styles, reflecting the current one as pressed", async () => {
+    globe.style = "ops";
+    await load();
+    const btns = buttons();
+    expect(btns.map((b) => b.textContent)).toEqual(["REALISTIC", "OPS CONSOLE"]);
+    expect(btns.map((b) => b.getAttribute("aria-pressed"))).toEqual(["false", "true"]);
+  });
+
+  it("controls are <button>s in the tab order", async () => {
+    await load();
+    const btns = buttons();
+    expect(btns).toHaveLength(2);
+    for (const b of btns) {
+      expect(b.tagName).toBe("BUTTON");
+      expect(b.getAttribute("type")).toBe("button");
+      expect(b.disabled).toBe(false);
+      expect(b.tabIndex).not.toBe(-1);
+      expect(b.hasAttribute("aria-pressed")).toBe(true);
+    }
+  });
+
+  it("picking a style calls setGlobeStyle and moves the pressed state", async () => {
+    await load();
+    const [real, ops] = buttons();
+    ops.click();
+    expect(globe.picked).toEqual(["ops"]);
+    expect(ops.getAttribute("aria-pressed")).toBe("true");
+    expect(real.getAttribute("aria-pressed")).toBe("false");
+    expect(ops.classList.contains("on")).toBe(true);
+  });
+
+  it("persists through earth.js, not settings.js's own storage key", async () => {
+    const { store } = await load();
+    buttons()[1].click();
+    expect(globe.style).toBe("ops");
+    // ot-globe-style is owned by scene/earth.js; the relocation must not have
+    // migrated it into the "ot-settings" blob.
+    expect(JSON.parse(store[KEY] || "{}")).not.toHaveProperty("globeStyle");
+  });
+
+  it("reopening reflects a style changed elsewhere", async () => {
+    const { ui } = await load();
+    expect(buttons()[0].getAttribute("aria-pressed")).toBe("true");
+    globe.style = "ops";
+    await ui._test.render();
+    expect(buttons()[1].getAttribute("aria-pressed")).toBe("true");
   });
 });

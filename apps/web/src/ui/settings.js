@@ -30,6 +30,7 @@ import { fetchLive } from "../data/live.js";
 import { formatRelativeTime } from "../util/relative-time.js";
 import { applyReduceMotion } from "../util/motion.js";
 import { esc } from "../util/html.js";
+import { getGlobeStyle, setGlobeStyle } from "../scene/earth.js";
 import { savedIds } from "./favorites.js";
 import { refreshInfo, select } from "./info.js";
 import { toast, flash } from "./status.js";
@@ -46,6 +47,8 @@ const ICONS = {
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M7.5 11V7.5a4.5 4.5 0 0 1 9 0V11"/></svg>',
   display:
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="9" cy="7" r="2.1"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="15" cy="17" r="2.1"/></svg>',
+  globe:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><line x1="3" y1="12" x2="21" y2="12"/></svg>',
   data: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3.2-6.9"/><path d="M21 3.5V9h-5.5"/></svg>',
   saved:
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 4h11a1.5 1.5 0 0 1 1.5 1.5V20l-7-3.6L5 20V5.5A1.5 1.5 0 0 1 6.5 4Z"/></svg>',
@@ -406,6 +409,44 @@ function buildDisplay() {
 }
 
 /**
+ * Globe Style was its own floating plate pinned under the clock until it
+ * moved in here. It's a set-once preference, so it didn't earn permanent
+ * screen space beside live telemetry — and at mobile widths the plate sat
+ * low enough to overlap the info sheet's header controls.
+ *
+ * The preference itself is unchanged: scene/earth.js still owns it and still
+ * persists it under `ot-globe-style`, one of the two deliberate exceptions to
+ * settings.js's single "ot-settings" key. This card only calls the same
+ * getGlobeStyle()/setGlobeStyle() pair the old plate did, so a style picked
+ * here survives reload exactly as before (initEarth() reads it at boot).
+ */
+function buildGlobe() {
+  const { el, body } = card("Globe Style", "globe", "globe");
+
+  body.appendChild(
+    segmented(
+      "Appearance",
+      [
+        ["real", "REALISTIC"],
+        ["ops", "OPS CONSOLE"],
+      ],
+      getGlobeStyle(),
+      (style) => setGlobeStyle(style)
+    )
+  );
+
+  body.appendChild(
+    note(
+      "Realistic renders day/night terrain with city lights and an atmosphere halo. " +
+        "Ops console swaps it for a dark chart — glowing coastlines, graticule, city " +
+        "markers — so the satellite clouds dominate."
+    )
+  );
+
+  return el;
+}
+
+/**
  * The two timestamps here mean different things and must not be conflated:
  * `srcTime` is when we last successfully pulled fresh elements, while
  * `bootCatalogTime` is the newest TLE epoch in the bundled catalog — a
@@ -500,7 +541,7 @@ async function render() {
   const body = $("#settings-body");
   if (!body) return;
   body.innerHTML = "";
-  body.append(buildSaved(), buildDisplay(), buildData(), buildAbout());
+  body.append(buildSaved(), buildDisplay(), buildGlobe(), buildData(), buildAbout());
   // Permission state is async; insert it first once it resolves so the
   // section order stays stable regardless of how fast the query answers.
   const privacy = await buildPrivacy();
@@ -529,4 +570,12 @@ export function initSettings() {
   });
 }
 
-export const _test = { render, buildSaved, buildDisplay, buildData, buildAbout, buildPrivacy };
+export const _test = {
+  render,
+  buildSaved,
+  buildDisplay,
+  buildGlobe,
+  buildData,
+  buildAbout,
+  buildPrivacy,
+};
