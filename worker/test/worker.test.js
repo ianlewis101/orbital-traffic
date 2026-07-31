@@ -9,13 +9,20 @@ import worker, {
 } from "../src/index.js";
 import { GROUPS } from "@orbital-traffic/catalog";
 
-const ISS_TLE = `ISS (ZARYA)
-1 25544U 98067A   26181.86323116  .00005885  00000+0  11296-3 0  9995
-2 25544  51.6310 232.3923 0004309 252.2804 107.7714 15.50129012345678`;
+// CelesTrak GP rows, in the CSV shape the Worker now fetches. These are the
+// same two elsets these fixtures always described — the TLE text feed can't
+// represent catalog numbers above 99999, so the Worker reads CSV and
+// synthesizes the TLE lines itself (see parseGp).
+const GP_HEADER =
+  "OBJECT_NAME,OBJECT_ID,EPOCH,MEAN_MOTION,ECCENTRICITY,INCLINATION,RA_OF_ASC_NODE," +
+  "ARG_OF_PERICENTER,MEAN_ANOMALY,EPHEMERIS_TYPE,CLASSIFICATION_TYPE,NORAD_CAT_ID," +
+  "ELEMENT_SET_NO,REV_AT_EPOCH,BSTAR,MEAN_MOTION_DOT,MEAN_MOTION_DDOT";
 
-const DEBRIS_TLE = `CZ-4B R/B
-1 43012U 17072B   26181.50000000  .00000100  00000+0  10000-3 0  9990
-2 43012  98.7000 100.0000 0001000 100.0000 260.0000 14.20000000123456`;
+const ISS_GP = `${GP_HEADER}
+ISS (ZARYA),1998-067A,2026-06-30T20:43:03.172224,15.50129012,.0004309,51.6310,232.3923,252.2804,107.7714,0,U,25544,999,34567,.11296E-3,.5885E-4,0`;
+
+const DEBRIS_GP = `${GP_HEADER}
+CZ-4B R/B,2017-072B,2026-06-30T12:00:00.000000,14.20000000,.0001000,98.7000,100.0000,100.0000,260.0000,0,U,43012,999,12345,.10000E-3,.1E-5,0`;
 
 function textResponse(body) {
   return new Response(body, { status: 200 });
@@ -95,9 +102,9 @@ describe("worker routes", () => {
 
   it("serves merged, classified TLE records on /tle", async () => {
     fetch.mockImplementation((url) => {
-      if (url.includes("GROUP=stations")) return Promise.resolve(textResponse(ISS_TLE));
+      if (url.includes("GROUP=stations")) return Promise.resolve(textResponse(ISS_GP));
       if (url.includes("GROUP=active"))
-        return Promise.resolve(textResponse(ISS_TLE + "\n" + DEBRIS_TLE));
+        return Promise.resolve(textResponse(ISS_GP + "\n" + DEBRIS_GP));
       return Promise.resolve(textResponse(""));
     });
     const res = await worker.fetch(new Request("https://x/tle"), {}, ctx);
@@ -528,7 +535,7 @@ describe("buildTLERecords", () => {
 
   it("survives individual group failures", async () => {
     fetch.mockImplementation((url) => {
-      if (url.includes("GROUP=stations")) return Promise.resolve(textResponse(ISS_TLE));
+      if (url.includes("GROUP=stations")) return Promise.resolve(textResponse(ISS_GP));
       return Promise.reject(new Error("celestrak flaky"));
     });
     const recs = await buildTLERecords();

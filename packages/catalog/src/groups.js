@@ -3,7 +3,14 @@
  * the data pipeline, and the web app's direct-fetch fallback.
  */
 
-export const CELESTRAK_BASE = "https://celestrak.org/NORAD/elements/gp.php?FORMAT=tle&GROUP=";
+/**
+ * CSV, not TLE. The fixed-width TLE format can't hold a catalog number wider
+ * than five characters, and CelesTrak's response to that is to omit those
+ * objects from FORMAT=tle altogether — silently, with no gap in the output.
+ * CSV carries the full numeric NORAD_CAT_ID (and is ~10% smaller than the
+ * TLE feed); parseGp() synthesizes the TLE lines downstream consumers need.
+ */
+export const CELESTRAK_BASE = "https://celestrak.org/NORAD/elements/gp.php?FORMAT=csv&GROUP=";
 
 /**
  * Groups fetched for the full catalog, listed in merge priority order.
@@ -33,5 +40,5 @@ export const GROUPS = [
 
 export const FETCH_HEADERS = {
   "User-Agent": "OrbitalTraffic/2.0 (+https://orbitaltraffic.app)",
-  Accept: "text/plain",
+  Accept: "text/csv",
 };
