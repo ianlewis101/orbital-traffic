@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-31T12:52:10.348Z",
+  "updated": "2026-07-31T15:15:00.483Z",
   "capsules": {
     "66664": {
       "name": "SOYUZ-MS 28",
@@ -71,7 +71,7 @@
       "phase": "docked",
       "stationKey": "css",
       "since": "2026-07-10T20:18:26.588Z",
-      "distanceKm": 3,
+      "distanceKm": 2.9,
       "altitudeKm": 401.1,
       "inclinationDeg": 41.469,
       "l1": "1 69049U 26102A   26211.01949408  .00019887  00000+0  25599-3 0  9991",
@@ -84,11 +84,24 @@
       "phase": "docked",
       "stationKey": "css",
       "since": "2026-07-03T10:34:14.509Z",
-      "distanceKm": 3,
+      "distanceKm": 2.9,
       "altitudeKm": 401.1,
       "inclinationDeg": 41.469,
       "l1": "1 69180U 26113A   26211.01949408  .00019887  00000+0  25599-3 0  9999",
       "l2": "2 69180  41.4685  61.9555 0001079 294.5442  65.5284 15.58575375299294"
+    },
+    "100057": {
+      "name": "SOYUZ-MS 29",
+      "kind": "crew",
+      "family": "soyuz",
+      "phase": "docked",
+      "stationKey": "iss",
+      "since": "2026-07-31T15:15:00.483Z",
+      "distanceKm": 0.2,
+      "altitudeKm": 426.5,
+      "inclinationDeg": 51.632,
+      "l1": "1 A0057U 26162A   26211.15218593  .00008758  00000+0  16539-3 0  9999",
+      "l2": "2 A0057  51.6319  87.4712 0007078 352.8836   7.2051 15.49259390578333"
     }
   },
   "events": [
@@ -136,6 +149,15 @@
       "stationKey": "iss",
       "event": "landed",
       "at": "2026-07-26T22:54:59.436Z"
+    },
+    {
+      "id": "100057",
+      "name": "SOYUZ-MS 29",
+      "kind": "crew",
+      "family": "soyuz",
+      "stationKey": "iss",
+      "event": "launched",
+      "at": "2026-07-31T15:15:00.483Z"
     }
   ]
 }
