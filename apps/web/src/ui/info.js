@@ -259,7 +259,7 @@ const FLAGS = {
   VNM: "\u{1F1FB}\u{1F1F3}", AGO: "\u{1F1E6}\u{1F1F4}",
 };
 
-function inferOwner(s) {
+export function inferOwner(s) {
   const n = " " + s.name.toUpperCase() + " ";
   // Catalogs hyphenate these inconsistently ("SHENZHOU-23 (SZ-23)", "BEIDOU-2
   // G1", "GSAT0101 (GALILEO-PFM)") — matched against the shared normalized
@@ -278,18 +278,23 @@ function inferOwner(s) {
   // (a space-padded pattern here would silently match zero real objects).
   if (/\bSTARLINK\b/.test(vn)) return { code: "US", name: "United States" };
   if (/\bONEWEB\b/.test(vn)) return { code: "GBR", name: "OneWeb (Eutelsat)" };
-  if (/ GLONASS | SOYUZ | PROGRESS | COSMOS | METEOR | RESURS /.test(n))
+  if (/\bGLONASS\b|\bSOYUZ\b|\bPROGRESS\b|\bCOSMOS\b|\bMETEOR\b|\bRESURS\b/.test(vn))
     return { code: "CIS", name: "Russia" };
   if (/\bBEIDOU\b|\bFENGYUN\b|\bTIANGONG\b|\bTIANZHOU\b|\bSHENZHOU\b|\bYAOGAN\b|\bCHANGGUANG\b/.test(vn))
     return { code: "PRC", name: "China" };
   if (/\bGALILEO\b/.test(vn)) return { code: "ESA", name: "European Space Agency" };
-  if (/ GPS | NAVSTAR /.test(n)) return { code: "US", name: "United States" };
-  if (/ GOES | NOAA | LANDSAT | TERRA | AQUA | TESS | KEPLER | DSCOVR | HUBBLE | CHANDRA | FERMI /.test(n))
+  if (/\bGPS\b|\bNAVSTAR\b/.test(vn)) return { code: "US", name: "United States" };
+  // Every keyword here runs against vn EXCEPT HUBBLE, which stays space-bounded
+  // against the padded name for the same reason describe.js's telescope pattern
+  // does: Spire's "LEMUR-2-HUBBLE-4"/"-5" are commemoratively named cubesats
+  // that a normalized \bHUBBLE\b would sweep in. The vn half is what lets
+  // "EWS-G3 (GOES 14)" resolve — space-padded GOES missed those entirely.
+  if (/\bGOES\b|\bNOAA\b|\bLANDSAT\b|\bTERRA\b|\bAQUA\b|\bTESS\b|\bKEPLER\b|\bDSCOVR\b|\bCHANDRA\b|\bFERMI\b/.test(vn) || / HUBBLE /.test(n))
     return { code: "US", name: "United States" };
-  if (/ ZARYA | ISS /.test(n) || s.id === "25544") return { code: "ISS", name: "ISS Partners" };
-  if (/ HIMAWARI | ALOS | HAYABUSA /.test(n)) return { code: "JPN", name: "Japan" };
-  if (/ INSAT | CARTOSAT | RESOURCESAT | IRNSS | GSAT /.test(n)) return { code: "IND", name: "India" };
-  if (/ AEOLUS | ENVISAT | CRYOSAT | SWARM /.test(n))
+  if (/\bZARYA\b|\bISS\b/.test(vn) || s.id === "25544") return { code: "ISS", name: "ISS Partners" };
+  if (/\bHIMAWARI\b|\bALOS\b|\bHAYABUSA\b/.test(vn)) return { code: "JPN", name: "Japan" };
+  if (/\bINSAT\b|\bCARTOSAT\b|\bRESOURCESAT\b|\bIRNSS\b|\bGSAT\b/.test(vn)) return { code: "IND", name: "India" };
+  if (/\bAEOLUS\b|\bENVISAT\b|\bCRYOSAT\b|\bSWARM\b/.test(vn))
     return { code: "ESA", name: "European Space Agency" };
   if (s.cat === "starlink") return { code: "US", name: "United States" };
   if (s.cat === "navigation") return null;

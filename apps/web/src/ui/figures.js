@@ -1,22 +1,32 @@
+import { normalizeVehicleName } from "@orbital-traffic/catalog";
 import { DATA } from "../data/store.js";
 import { classify } from "./describe.js";
 import { esc } from "../util/html.js";
 
 export function photoKey(s) {
   const n = " " + s.name.toUpperCase() + " ",
+    // Real catalog names are inconsistently punctuated ("SOYUZ-MS 29",
+    // "PROGRESS-MS 33", "ISS (ZARYA)"), so spacecraft matching runs against
+    // the shared normalized form + \b. The old space-padded patterns needed a
+    // space on BOTH sides and so matched zero real objects: PROGRESS-MS 33/34
+    // fell through to the generic SVG while progress.jpg shipped unused.
+    vn = normalizeVehicleName(s.name),
     id = s.id;
-  if (id === "25544" || / ZARYA /.test(n)) return "iss";
+  if (id === "25544" || /\bZARYA\b/.test(vn)) return "iss";
+  // DELIBERATELY space-bounded — do not "fix" this one to use vn. Spire's
+  // "LEMUR-2-HUBBLE-4"/"-5" cubesats are commemoratively named, not the
+  // telescope, and a hyphen-aware pattern matches them. The real Hubble is
+  // caught by its NORAD ID above. Same rationale as describe.js's telescope
+  // pattern — see CLAUDE.md.
   if (id === "20580" || / HUBBLE | HST /.test(n)) return "hubble";
-  if (/ WEBB | JWST /.test(n)) return "jwst";
-  if (/ DRAGON | ENDEAVOUR | ENDURANCE | RESILIENCE | FREEDOM /.test(n)) return "dragon";
-  if (/ SOYUZ /.test(n)) return "soyuz";
-  if (/ PROGRESS /.test(n)) return "progress";
-  if (/ CYGNUS /.test(n)) return "cygnus";
-  // No trailing space required: CelesTrak hyphenates these directly
-  // (e.g. "SHENZHOU-21", "TIANZHOU-9"), unlike "SOYUZ MS-28" above.
-  if (/ STARLINER/.test(n)) return "starliner";
-  if (/ SHENZHOU/.test(n)) return "shenzhou";
-  if (/ TIANZHOU/.test(n)) return "tianzhou";
+  if (/\bWEBB\b|\bJWST\b/.test(vn)) return "jwst";
+  if (/\bDRAGON\b|\bENDEAVOUR\b|\bENDURANCE\b|\bRESILIENCE\b|\bFREEDOM\b/.test(vn)) return "dragon";
+  if (/\bSOYUZ\b/.test(vn)) return "soyuz";
+  if (/\bPROGRESS\b/.test(vn)) return "progress";
+  if (/\bCYGNUS\b/.test(vn)) return "cygnus";
+  if (/\bSTARLINER\b/.test(vn)) return "starliner";
+  if (/\bSHENZHOU\b/.test(vn)) return "shenzhou";
+  if (/\bTIANZHOU\b/.test(vn)) return "tianzhou";
   // asteroid real photos
   if (s._neo) {
     if (/ GEOGRAPHOS /.test(n)) return "asteroid_geographos";
