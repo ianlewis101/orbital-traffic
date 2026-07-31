@@ -4,6 +4,69 @@ import { select } from "./info.js";
 import { esc } from "../util/html.js";
 import { neoSats } from "../scene/neos.js";
 
+/** Most results the panel will show. */
+export const SEARCH_LIMIT = 40;
+
+// Match quality, best first. Matching itself is unchanged — plain
+// case-insensitive substring on name or NORAD id — these only decide order.
+export const RANK_EXACT = 0;
+export const RANK_PREFIX = 1;
+export const RANK_SUBSTRING = 2;
+export const RANK_NONE = -1;
+
+/**
+ * Score one object against a lowercased query. `lowerName` is passed in
+ * already lowercased so the caller can do it once per object per keystroke
+ * rather than once per comparison.
+ */
+export function rankMatch(lowerName, id, q) {
+  if (lowerName === q || id === q) return RANK_EXACT;
+  if (lowerName.startsWith(q) || id.startsWith(q)) return RANK_PREFIX;
+  if (lowerName.includes(q) || id.includes(q)) return RANK_SUBSTRING;
+  return RANK_NONE;
+}
+
+/**
+ * Rank-ordered catalog search.
+ *
+ * Previously this was a bare `filter(...).slice(0, 40)`, which returned
+ * matches in raw catalog order. That buried any object whose name is a
+ * substring of a large constellation's: searching "LINK" matched 10,774
+ * objects, and the actual LINK spacecraft (69792) sat at index 10,769 behind
+ * every STARLINK-*, so it never appeared at all.
+ *
+ * Results are bucketed by rank rather than sorted: there are only three tiers,
+ * so bucketing is O(n) instead of O(n log n), and capping each bucket at
+ * `limit` bounds the memory too — the old filter built a 10,774-element array
+ * on every keystroke to then throw all but 40 away. Within a tier, catalog
+ * order is preserved, so queries where everything ties (e.g. "starlink", where
+ * all 10,771 hits are prefix matches) are ordered exactly as before.
+ */
+export function searchCatalog(list, query, limit = SEARCH_LIMIT) {
+  const q = String(query || "")
+    .trim()
+    .toLowerCase();
+  if (!q) return [];
+
+  const exact = [];
+  const prefix = [];
+  const substring = [];
+  for (let i = 0; i < list.length; i++) {
+    const s = list[i];
+    const r = rankMatch(s.name.toLowerCase(), s.id, q);
+    // Each bucket only needs its first `limit` entries: order within a tier is
+    // preserved, so a later same-tier match can never displace an earlier one.
+    if (r === RANK_EXACT) {
+      if (exact.length < limit) exact.push(s);
+    } else if (r === RANK_PREFIX) {
+      if (prefix.length < limit) prefix.push(s);
+    } else if (r === RANK_SUBSTRING) {
+      if (substring.length < limit) substring.push(s);
+    }
+  }
+  return exact.concat(prefix, substring).slice(0, limit);
+}
+
 export function initSearch() {
   const sIn = $("#search-in"),
     sRes = $("#results"),
@@ -80,10 +143,7 @@ export function initSearch() {
       showResults(false);
       return;
     }
-    hits = state.sats
-      .concat(neoSats)
-      .filter((s) => s.name.toLowerCase().includes(q) || s.id.includes(q))
-      .slice(0, 40);
+    hits = searchCatalog(state.sats.concat(neoSats), q);
     if (!hits.length) {
       showResults(false);
       return;
