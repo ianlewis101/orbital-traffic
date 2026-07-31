@@ -9,7 +9,7 @@ application server and no database.
 ```
                                         ┌──────────────────────────────┐
    CelesTrak ──┐                        │   GitHub Pages (static)      │
-   Open Notify ┼── Cloudflare Worker ── │   apps/web/dist              │
+   Space Devs  ┼── Cloudflare Worker ── │   apps/web/dist              │
    NASA blog ──┘   /tle /crew /today    │   + /data/*.json catalog     │
                     /capsules           └──────────────┬───────────────┘
         │                 ▲                            │ app shell + bundled catalog
@@ -91,7 +91,7 @@ Four GET routes, each edge-cached (`caches.default`) with per-route TTLs:
 | Route | Upstream | TTL |
 |-------|----------|-----|
 | `/tle` | CelesTrak groups, merged + classified via `catalog` | 20 min |
-| `/crew` | Open Notify `astros.json` | 1 h |
+| `/crew` | Launch Library 2 `/spacestation/` (ISS + Tiangong) | 1 h |
 | `/today` | `iss-today.json` from this repo (raw.githubusercontent) | 5 min |
 | `/capsules` | `capsule-status.json` from this repo (raw.githubusercontent) | 10 min |
 

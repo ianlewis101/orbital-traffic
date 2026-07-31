@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
  * update-iss-today.mjs
- * Fetches the current ISS crew roster and the most recent ISS activity
- * headlines from NASA's space station blog, and writes iss-today.json in
- * the repo root (served to clients via the Worker's /today endpoint).
+ * Fetches the most recent ISS activity headlines from NASA's space station
+ * blog and writes iss-today.json in the repo root (served to clients via the
+ * Worker's /today endpoint).
  * Run locally or via the scheduled update-iss-today workflow.
  */
 import { readFile, writeFile } from "node:fs/promises";
@@ -11,7 +11,6 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), "../iss-today.json");
-const ASTROS_URL = "http://api.open-notify.org/astros.json";
 const RSS_URL = "https://blogs.nasa.gov/spacestation/feed/";
 const HEADERS = {
   "User-Agent": "OrbitalTraffic/2.0 (+https://orbitaltraffic.app)",
@@ -30,20 +29,6 @@ function unescapeXml(s) {
     .replace(/&#0?39;|&apos;|&#8217;/g, "'")
     .replace(/&#8220;|&#8221;/g, '"')
     .trim();
-}
-
-/** Crew roster is informational only — never fatal. */
-async function fetchIssCrew() {
-  try {
-    const res = await fetch(ASTROS_URL, { headers: HEADERS });
-    const data = await res.json();
-    const crew = (data.people || []).filter((p) => p.craft === "ISS").map((p) => p.name);
-    console.log(`  ISS crew (${crew.length}): ${crew.join(", ") || "none reported"}`);
-    return crew;
-  } catch (e) {
-    console.log(`  Crew lookup failed (${e.message}) — continuing without it.`);
-    return [];
-  }
 }
 
 /**
@@ -99,10 +84,7 @@ async function main() {
   const existing = await loadExisting();
   const fallbackExpedition = existing.expedition || "Expedition 74";
 
-  console.log("Checking ISS crew roster:");
-  await fetchIssCrew();
-
-  console.log("\nFetching recent ISS activity from NASA blog feed:");
+  console.log("Fetching recent ISS activity from NASA blog feed:");
   let headlines;
   try {
     headlines = await fetchRecentHeadlines();
