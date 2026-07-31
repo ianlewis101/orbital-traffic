@@ -199,6 +199,11 @@ describe("correctOtherCat", () => {
     }
   });
 
+  it("promotes LINK (NORAD 69792, NASA's active rescue mission) to science instead of other", () => {
+    expect(correctOtherCat("69792", "LINK", "other")).toBe("science");
+    expect(categorize("69792", "LINK", "other")).toBe("science");
+  });
+
   it("science IDs corrected after an initial ID/description mismatch (GreenCube, IMECE)", () => {
     // 53109 is GREENCUBE (IO-117), not the Vega AVUM stage originally attributed to it
     expect(correctOtherCat("53109", "GREENCUBE (IO-117)", "other")).toBe("science");
