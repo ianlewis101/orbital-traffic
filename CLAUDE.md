@@ -224,8 +224,20 @@ cross-check those against this document instead.
      value slips straight past a `<= minElevation` filter.
    - apps/web/src/settings.js is the single home for persisted
      user preferences (one validated "ot-settings" localStorage
-     key). The two older ad-hoc keys, "ot_favs" and
-     "ot-globe-style", are deliberately left where they are.
+     key), including the two Saved lists —
+     saved.favorites / saved.watchlist, arrays of object IDs,
+     read and written through ui/favorites.js (both lists, both
+     info-card buttons) and saveList(), never by patching
+     `saved` directly: saveSettings() validates a merged blob,
+     so a patch carrying one list silently blanks the other.
+     "ot-globe-style" is the one older ad-hoc key still
+     deliberately left where it is. "ot_favs" is legacy: its
+     contents are copied forward into saved.favorites on first
+     read (migrateLegacyFavs(), gated on the stored blob having
+     no `saved` object, so a removal can't be resurrected), and
+     the key itself is then never written to or deleted — a
+     read-and-copy-forward, not a move. Don't "finish" that
+     migration by clearing it.
 
 8. SETTINGS HAS NO DISPLAY-CATEGORIES CONTROL: an earlier
    version of Settings → Display seeded state.hidden at boot
