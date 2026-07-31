@@ -22,13 +22,16 @@
  * categories live. Don't reintroduce it as a "seed the legend at boot"
  * feature without re-litigating that redundancy.
  */
+import { CATS, catColorHex } from "../config.js";
 import { state, $ } from "../state.js";
 import { settings, saveSettings } from "../settings.js";
 import { locationStatus, clearLocationDenied } from "../data/location.js";
 import { fetchLive } from "../data/live.js";
 import { formatRelativeTime } from "../util/relative-time.js";
 import { applyReduceMotion } from "../util/motion.js";
-import { refreshInfo } from "./info.js";
+import { esc } from "../util/html.js";
+import { savedIds } from "./favorites.js";
+import { refreshInfo, select } from "./info.js";
 import { toast, flash } from "./status.js";
 import { closeOtherSheets } from "./sheets.js";
 
@@ -44,6 +47,8 @@ const ICONS = {
   display:
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="9" cy="7" r="2.1"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="15" cy="17" r="2.1"/></svg>',
   data: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3.2-6.9"/><path d="M21 3.5V9h-5.5"/></svg>',
+  saved:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 4h11a1.5 1.5 0 0 1 1.5 1.5V20l-7-3.6L5 20V5.5A1.5 1.5 0 0 1 6.5 4Z"/></svg>',
   about:
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16.2"/><circle cx="12" cy="7.6" r="0.9" fill="currentColor" stroke="none"/></svg>',
   changelog:
@@ -278,6 +283,93 @@ async function buildPrivacy() {
   return el;
 }
 
+/** A saved ID with nothing behind it: show something honest, never a blank row. */
+function orphanName(id) {
+  return /^\d+$/.test(id) ? `NORAD ${id}` : id;
+}
+
+/**
+ * One saved object as a `.today-row` — the same swatch + name + caption shape
+ * the ISS Today list uses, so Saved reads as the app's existing list language
+ * rather than a new row style.
+ *
+ * A saved ID that no longer resolves (pruned from the catalog, capsule landed)
+ * still gets a row: dropping it silently would read as lost data. It just
+ * isn't tappable, because there's nothing to select.
+ */
+function savedRow(id) {
+  const s = state.byId.get(id);
+  const hex = catColorHex(s ? s.cat : "other");
+  const name = s ? s.name : orphanName(id);
+  const label = s ? (CATS[s.cat] || CATS.other).label : "";
+  const caption = !s ? "No longer in the catalog" : s._neo ? label : `${label} · NORAD ${id}`;
+
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "today-row";
+  b.innerHTML = `<span class="sw" style="background:${hex};color:${hex}"></span>
+    <span class="info"><span class="nm">${esc(name)}</span><span class="reason">${esc(caption)}</span></span>`;
+  if (!s) {
+    b.disabled = true;
+    return b;
+  }
+  b.onclick = () => {
+    // Re-resolve through byId rather than holding the record: a live sync can
+    // prune objects out from under a panel that's been open a while. Same
+    // pattern (and same close-then-select order) as the overhead results list.
+    const sat = state.byId.get(id);
+    if (!sat) return;
+    closeSettings();
+    select(sat);
+  };
+  return b;
+}
+
+/** One list within the Saved card: its label, then its rows or its empty state. */
+function savedList(body, list, label, empty) {
+  const ids = savedIds(list);
+  const sub = document.createElement("div");
+  sub.className = "set-sub";
+  sub.textContent = ids.length ? `${label} (${ids.length})` : label;
+  body.appendChild(sub);
+
+  if (!ids.length) {
+    body.appendChild(note(empty));
+    return 0;
+  }
+  const wrap = document.createElement("div");
+  wrap.className = "set-saved";
+  // Newest first — the object you just saved is the one you're most likely
+  // reaching for. savedIds() hands them back oldest-first (insertion order).
+  for (const id of [...ids].reverse()) wrap.appendChild(savedRow(id));
+  body.appendChild(wrap);
+  return ids.length;
+}
+
+/**
+ * Favourites and Watchlist: two independent lists, so an object can sit in
+ * both. Tapping a row selects that object and closes the sheet.
+ */
+function buildSaved() {
+  const { el, body } = card("Saved", "saved", "saved");
+  const n =
+    savedList(
+      body,
+      "favorites",
+      "Favourites",
+      "Nothing here yet. Tap the ☆ on an object's card to keep it — favourites are the objects you want one tap away."
+    ) +
+    savedList(
+      body,
+      "watchlist",
+      "Watchlist",
+      "Nothing here yet. Tap the eye on an object's card to add it — a watchlist is for objects you want to check back on later."
+    );
+  if (n)
+    body.appendChild(note("Both lists are kept on this device only, and are never sent anywhere."));
+  return el;
+}
+
 function buildDisplay() {
   const { el, body } = card("Display", "display", "display");
 
@@ -408,7 +500,7 @@ async function render() {
   const body = $("#settings-body");
   if (!body) return;
   body.innerHTML = "";
-  body.append(buildDisplay(), buildData(), buildAbout());
+  body.append(buildSaved(), buildDisplay(), buildData(), buildAbout());
   // Permission state is async; insert it first once it resolves so the
   // section order stays stable regardless of how fast the query answers.
   const privacy = await buildPrivacy();
@@ -437,4 +529,4 @@ export function initSettings() {
   });
 }
 
-export const _test = { render, buildDisplay, buildData, buildAbout, buildPrivacy };
+export const _test = { render, buildSaved, buildDisplay, buildData, buildAbout, buildPrivacy };

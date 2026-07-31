@@ -2,16 +2,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 /**
- * The Settings panel: four cards (Privacy & Permissions, Display, Data,
- * About), each with its own icon/title header (.set-card-t) rather than the
- * old flat .set-h label. There is no display-categories control anymore —
+ * The Settings panel: five cards (Privacy & Permissions, Saved, Display,
+ * Data, About), each with its own icon/title header (.set-card-t) rather than
+ * the old flat .set-h label. There is no display-categories control anymore —
  * it was removed outright, not just visually reorganized — so this file
  * also guards against it quietly coming back.
  */
 
+const selectSpy = vi.fn();
 vi.mock("../src/ui/info.js", () => ({
   refreshInfo: () => {},
-  select: () => {},
+  select: (...a) => selectSpy(...a),
   initInfoCard: () => {},
   enrichSatcat: () => {},
 }));
@@ -49,7 +50,7 @@ function stubStorage(initial = {}) {
 
 const KEY = "ot-settings";
 
-async function load(stored) {
+async function load(stored, objects) {
   document.body.innerHTML = MARKUP;
   vi.resetModules();
   // Injected by apps/web/vite.config.js's `define` in a real build; vitest
@@ -58,25 +59,31 @@ async function load(stored) {
   const store = stubStorage(stored ? { [KEY]: JSON.stringify(stored) } : {});
   // jsdom's navigator is read-only-ish; define what location.js needs.
   vi.stubGlobal("navigator", { geolocation: { getCurrentPosition: () => {} } });
+  // Seed the catalog before the panel renders — the Saved card resolves its
+  // stored IDs through state.byId. Same module instance the panel imports,
+  // because this happens after the resetModules() above.
+  const { state } = await import("../src/state.js");
+  if (objects) state.byId = new Map(objects.map((o) => [o.id, o]));
   const ui = await import("../src/ui/settings.js");
   const settings = await import("../src/settings.js");
   await ui._test.render();
-  return { ui, settings, store };
+  return { ui, settings, store, state };
 }
 
 beforeEach(() => {
   fetchLiveSpy.mockClear();
+  selectSpy.mockClear();
   vi.resetModules();
 });
 afterEach(() => vi.unstubAllGlobals());
 
 describe("structure", () => {
-  it("renders all four cards in order, each with an icon + title header", async () => {
+  it("renders all five cards in order, each with an icon + title header", async () => {
     await load();
     const cards = [...document.querySelectorAll("#settings-body .set-card")];
-    expect(cards).toHaveLength(4);
+    expect(cards).toHaveLength(5);
     const headings = cards.map((c) => c.querySelector(".set-card-t").textContent);
-    expect(headings).toEqual(["Privacy & Permissions", "Display", "Data", "About"]);
+    expect(headings).toEqual(["Privacy & Permissions", "Saved", "Display", "Data", "About"]);
     for (const c of cards) {
       expect(c.querySelector(".set-ic svg")).not.toBeNull();
     }
@@ -87,7 +94,7 @@ describe("structure", () => {
     const accents = [...document.querySelectorAll("#settings-body .set-card")].map((c) =>
       [...c.classList].find((cls) => cls.startsWith("set-card--"))
     );
-    expect(new Set(accents).size).toBe(4); // all four distinct
+    expect(new Set(accents).size).toBe(5); // all five distinct
   });
 
   it("shows the build-time app version", async () => {
@@ -111,6 +118,111 @@ describe("structure", () => {
     // category-per-row list would push this well past that.
     expect(document.querySelectorAll(".set-row")).toHaveLength(1);
     expect(body.textContent).not.toMatch(/orbit classes/i);
+  });
+});
+
+describe("saved card", () => {
+  const ISS = { id: "25544", name: "ISS (ZARYA)", cat: "stations" };
+  const HST = { id: "20580", name: "HST", cat: "science" };
+
+  const savedCard = () =>
+    [...document.querySelectorAll("#settings-body .set-card")].find(
+      (c) => c.querySelector(".set-card-t").textContent === "Saved"
+    );
+  const rowsUnder = (label) => {
+    const card = savedCard();
+    const kids = [...card.querySelector(".set-card-b").children];
+    const start = kids.findIndex(
+      (k) => k.classList.contains("set-sub") && k.textContent.startsWith(label)
+    );
+    const list = kids[start + 1];
+    return list && list.classList.contains("set-saved")
+      ? [...list.querySelectorAll(".today-row")]
+      : [];
+  };
+
+  it("shows both lists, each with an empty state saying what it's for", async () => {
+    await load();
+    const txt = savedCard().textContent;
+    expect(txt).toMatch(/Favourites/);
+    expect(txt).toMatch(/Watchlist/);
+    expect(txt).toMatch(/Tap the ☆ on an object's card/);
+    expect(txt).toMatch(/objects you want to check back on later/);
+    expect(savedCard().querySelectorAll(".today-row")).toHaveLength(0);
+  });
+
+  it("lists each saved object independently, newest first", async () => {
+    await load({ saved: { favorites: ["20580", "25544"], watchlist: ["20580"] } }, [ISS, HST]);
+    expect(rowsUnder("Favourites").map((r) => r.querySelector(".nm").textContent)).toEqual([
+      "ISS (ZARYA)",
+      "HST",
+    ]);
+    expect(rowsUnder("Watchlist").map((r) => r.querySelector(".nm").textContent)).toEqual(["HST"]);
+  });
+
+  it("counts each list in its label", async () => {
+    await load({ saved: { favorites: ["25544", "20580"], watchlist: [] } }, [ISS, HST]);
+    const subs = [...savedCard().querySelectorAll(".set-sub")].map((s) => s.textContent);
+    expect(subs).toEqual(["Favourites (2)", "Watchlist"]);
+  });
+
+  it("reuses the today-row shape: colour swatch, name, caption", async () => {
+    await load({ saved: { favorites: ["25544"] } }, [ISS]);
+    const row = rowsUnder("Favourites")[0];
+    expect(row.tagName).toBe("BUTTON");
+    expect(row.querySelector(".sw").getAttribute("style")).toContain("#ffd23d"); // stations
+    expect(row.querySelector(".reason").textContent).toBe("Stations · NORAD 25544");
+  });
+
+  it("escapes object names rather than trusting the catalog", async () => {
+    await load({ saved: { favorites: ["99999"] } }, [
+      { id: "99999", name: "<img src=x onerror=alert(1)>", cat: "other" },
+    ]);
+    const row = rowsUnder("Favourites")[0];
+    expect(row.querySelector("img")).toBeNull();
+    expect(row.querySelector(".nm").textContent).toBe("<img src=x onerror=alert(1)>");
+  });
+
+  it("selects the object and closes the sheet when a row is tapped", async () => {
+    await load({ saved: { watchlist: ["25544"] } }, [ISS]);
+    document.getElementById("settings").classList.add("show");
+    rowsUnder("Watchlist")[0].click();
+    expect(selectSpy).toHaveBeenCalledTimes(1);
+    expect(selectSpy.mock.calls[0][0]).toBe(ISS);
+    expect(document.getElementById("settings").classList.contains("show")).toBe(false);
+    expect(document.getElementById("settings-btn").getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("keeps a row for an object that has left the catalog, but inert", async () => {
+    await load({ saved: { favorites: ["25544", "44444"] } }, [ISS]);
+    const rows = rowsUnder("Favourites");
+    expect(rows).toHaveLength(2);
+    const orphan = rows.find((r) => r.querySelector(".nm").textContent === "NORAD 44444");
+    expect(orphan).not.toBeUndefined();
+    expect(orphan.disabled).toBe(true);
+    expect(orphan.querySelector(".reason").textContent).toBe("No longer in the catalog");
+    orphan.click();
+    expect(selectSpy).not.toHaveBeenCalled();
+  });
+
+  it("says where the lists live once there's something in them", async () => {
+    await load({ saved: { favorites: ["25544"] } }, [ISS]);
+    expect(savedCard().textContent).toMatch(/kept on this device only/i);
+  });
+
+  it("shows favourites migrated from the legacy ot_favs key", async () => {
+    document.body.innerHTML = MARKUP;
+    vi.resetModules();
+    vi.stubGlobal("__APP_VERSION__", "2.0.0");
+    stubStorage({ ot_favs: JSON.stringify(["25544"]) });
+    vi.stubGlobal("navigator", { geolocation: { getCurrentPosition: () => {} } });
+    const { state } = await import("../src/state.js");
+    state.byId = new Map([[ISS.id, ISS]]);
+    const ui = await import("../src/ui/settings.js");
+    await ui._test.render();
+    expect(rowsUnder("Favourites").map((r) => r.querySelector(".nm").textContent)).toEqual([
+      "ISS (ZARYA)",
+    ]);
   });
 });
 

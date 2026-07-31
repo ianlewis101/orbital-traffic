@@ -10,11 +10,10 @@ import { EARTH_R } from "../config.js";
 import { geoToVec, subDot } from "../scene/earth.js";
 import { buildTrail, clearTrail } from "../scene/trail.js";
 import { frameSelected } from "../scene/core.js";
-import { favs, saveFavs, updateFavBtn } from "./favorites.js";
+import { updateSavedButtons, initSavedButtons } from "./favorites.js";
 import { describe } from "./describe.js";
 import { figureHTML } from "./figures.js";
 import { fetchAndRenderCrew } from "./crew.js";
-import { toast } from "./status.js";
 import { esc } from "../util/html.js";
 import { motionReduced } from "../util/motion.js";
 import { collapseLegend } from "./legend.js";
@@ -140,7 +139,7 @@ export function select(s) {
   fetchAndRenderCrew(s);
   info.classList.add("show");
   info.scrollTop = 0;
-  updateFavBtn(s);
+  updateSavedButtons(s);
   // "other"-category objects with no curated description get a frosted veil
   // over the detail sections (see #info-veil in index.html) — header, figure
   // and flag stay visible. Content-based within "other", not purely
@@ -570,15 +569,9 @@ export function initInfoCard() {
   infoCard.addEventListener("touchcancel", onCardTouchCancel);
   miniCard.addEventListener("click", expandCard);
 
-  document.getElementById("fav-btn").onclick = () => {
-    const s = state.selected;
-    if (!s) return;
-    if (favs.has(s.id)) favs.delete(s.id);
-    else favs.add(s.id);
-    saveFavs();
-    updateFavBtn(s);
-    toast(favs.has(s.id) ? "★ Saved to favourites" : "Removed from favourites");
-  };
+  // Both Saved buttons (star = favourites, eye = watchlist) are wired by
+  // favorites.js, which owns the two lists and their paint.
+  initSavedButtons();
   // Single listener only — do not also bind touchend here, the browser's
   // synthesized click already fires on tap and a second listener would close
   // then immediately re-trigger on the same gesture.

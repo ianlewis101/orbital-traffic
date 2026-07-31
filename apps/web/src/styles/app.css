@@ -411,6 +411,16 @@
     color:var(--ink-dim);transition:color .15s,transform .15s;line-height:1;margin-left:auto}
   #fav-btn:hover{color:var(--amber)}
   #fav-btn.saved{color:#fbbf24;transform:scale(1.15)}
+  /* Watchlist, sitting next to the star: an eye in the app's inline-SVG icon
+     language (24 viewBox, stroke=currentColor, 1.7, round caps) rather than a
+     second text glyph. Its on/off state mirrors ☆→★ — colour plus a filled
+     pupil. */
+  #watch-btn{background:none;border:none;cursor:pointer;padding:3px 5px;line-height:0;
+    display:flex;align-items:center;color:var(--ink-dim);touch-action:manipulation;
+    transition:color .15s,transform .15s}
+  #watch-btn:hover{color:var(--signal)}
+  #watch-btn.saved{color:var(--signal);transform:scale(1.1)}
+  #watch-btn.saved .pupil{fill:currentColor}
   .cat.fav-only .sw::after{content:"★";font-size:8px;margin-left:2px}
   #info .launch{display:none;margin-top:5px;font-family:var(--mono);font-size:9.5px;font-weight:400;letter-spacing:0.04em;color:var(--ink-faint)}
   #info-track{color:#06122a;background:linear-gradient(95deg,#5eead4,#7dd3fc);border:none;font-weight:700}
@@ -514,6 +524,7 @@
   .set-card:nth-child(2){animation-delay:.06s}
   .set-card:nth-child(3){animation-delay:.1s}
   .set-card:nth-child(4){animation-delay:.14s}
+  .set-card:nth-child(5){animation-delay:.18s}
   .set-card-h{display:flex;align-items:center;gap:9px;margin-bottom:12px}
   .set-ic{flex:none;width:26px;height:26px;border-radius:8px;display:flex;
     align-items:center;justify-content:center}
@@ -523,6 +534,10 @@
   .set-card--display .set-ic{background:var(--amber-soft);color:var(--amber)}
   .set-card--data .set-ic{background:rgba(167,139,250,0.16);color:var(--violet)}
   .set-card--about .set-ic{background:rgba(255,255,255,0.07);color:var(--ink-dim)}
+  /* Saved reuses the exact gold the saved star already carries
+     (#fbbf24 on #fav-btn.saved), so the section and the control that fills
+     it read as the same thing. */
+  .set-card--saved .set-ic{background:rgba(251,191,36,0.14);color:#fbbf24}
   .set-card-t{font-family:var(--serif);font-weight:700;font-size:14px;letter-spacing:-0.005em;
     color:var(--ink);line-height:1.1;margin:0}
 
@@ -534,6 +549,19 @@
      (e.g. Display's "Units") it's already the first thing in that block, so
      the field's own margin-bottom is enough. */
   .set-card-b>.set-sub{margin-top:14px}
+  /* ...except when it opens the card (Saved's "Favourites"), where there's
+     nothing above it to separate from. */
+  .set-card-b>.set-sub:first-child{margin-top:0}
+
+  /* Saved lists: .today-row from the Popular Objects list, unchanged, in a
+     tighter stack. A row whose object has left the catalog stays visible but
+     dimmed and inert (disabled) rather than vanishing. */
+  .set-saved{display:flex;flex-direction:column;gap:1px;margin-bottom:4px}
+  .set-saved .today-row{width:100%;align-items:center;padding:8px 7px;min-height:44px;
+    background:none;border:none;text-align:left;font-family:var(--mono)}
+  .set-saved .today-row .sw{margin-top:0}
+  .set-saved .today-row:disabled{opacity:0.5;cursor:default}
+  .set-saved .today-row:disabled:hover{background:none}
   .set-note{font-size:10.5px;line-height:1.6;color:var(--ink-dim);letter-spacing:0.005em;margin:0 0 10px}
   .set-status{font-size:11px;line-height:1.5;color:var(--ink);letter-spacing:0.01em;
     margin-bottom:3px;font-weight:500}
