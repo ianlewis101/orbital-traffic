@@ -15,14 +15,14 @@
  *   GET /astronaut — one crew member's public profile (bio, photo, flight stats)
  *
  * TLE parsing lives in @orbital-traffic/catalog (shared with the web
- * app). parseTle() runs the full categorize() pipeline on every record,
+ * app). parseGp() runs the full categorize() pipeline on every record,
  * so /tle emits fully classified records ("communications",
  * "classified", "debris", etc.); apps/web/src/data/ingest.js re-runs
  * categorize() client-side on every ingest anyway, so clients never
  * depend on a stale Worker deploy for a classification fix.
  */
 import {
-  parseTle,
+  parseGp,
   mergeRecords,
   GROUPS,
   CELESTRAK_BASE,
@@ -99,7 +99,7 @@ async function fetchGroup([group, cat]) {
       cf: { cacheTtl: TLE_TTL, cacheEverything: true },
     });
     if (!res.ok) return [];
-    return parseTle(await res.text(), cat);
+    return parseGp(await res.text(), cat);
   } catch {
     return [];
   }

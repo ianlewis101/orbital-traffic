@@ -22,7 +22,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  parseTle,
+  parseGp,
   mergeRecords,
   noradId,
   CELESTRAK_BASE,
@@ -33,7 +33,7 @@ import {
 } from "@orbital-traffic/catalog";
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), "../capsule-status.json");
-const CATNR_BASE = "https://celestrak.org/NORAD/elements/gp.php?FORMAT=tle&CATNR=";
+const CATNR_BASE = "https://celestrak.org/NORAD/elements/gp.php?FORMAT=csv&CATNR=";
 const ISS_NORAD_ID = "25544";
 const POLITE_DELAY_MS = 1000; // between CelesTrak requests
 
@@ -66,7 +66,7 @@ export async function loadExisting(path = OUT) {
   }
 }
 
-async function fetchTleText(url) {
+async function fetchGpCsv(url) {
   const res = await fetch(url, { headers: FETCH_HEADERS });
   if (!res.ok) throw new Error(`CelesTrak HTTP ${res.status}`);
   return res.text();
@@ -74,19 +74,19 @@ async function fetchTleText(url) {
 
 /**
  * The stations group is load-bearing (hubs + docked vehicles) and fails
- * the whole run; parseTle() runs each record through the full categorize()
+ * the whole run; parseGp() runs each record through the full categorize()
  * pipeline, so debris is correctly tagged and crew/cargo vehicles from
  * the generic feeds are promoted to "capsules" by name.
  */
 async function fetchStationsGroup() {
-  const recs = parseTle(await fetchTleText(CELESTRAK_BASE + "stations"), "stations");
+  const recs = parseGp(await fetchGpCsv(CELESTRAK_BASE + "stations"), "stations");
   if (!recs.length) throw new Error("CelesTrak returned no station-group records");
   return recs;
 }
 
 async function fetchLast30DaysGroup() {
   try {
-    return parseTle(await fetchTleText(CELESTRAK_BASE + "last-30-days"), "other");
+    return parseGp(await fetchGpCsv(CELESTRAK_BASE + "last-30-days"), "other");
   } catch (e) {
     // Soft failure: its absence can't mass-land anything — previously
     // tracked capsules missing from the feeds get CATNR-re-verified below.
@@ -98,7 +98,7 @@ async function fetchLast30DaysGroup() {
 /** One-object fetch for a previously-tracked capsule missing from the group feeds. */
 async function fetchByCatnr(id) {
   try {
-    return parseTle(await fetchTleText(CATNR_BASE + id), "other");
+    return parseGp(await fetchGpCsv(CATNR_BASE + id), "other");
   } catch (e) {
     console.warn(`   - CATNR ${id} FAILED (${e.message})`);
     return [];

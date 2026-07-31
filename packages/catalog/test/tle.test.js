@@ -2,6 +2,9 @@ import { describe, it, expect } from "vitest";
 import * as satellite from "satellite.js";
 import {
   parseTle,
+  parseGp,
+  encodeAlpha5,
+  decodeAlpha5,
   mergeRecords,
   noradId,
   tleEpochDate,
@@ -95,5 +98,130 @@ describe("mergeRecords", () => {
     const b = parseTle(TWO_SATS, "other");
     const merged = mergeRecords([a, b]);
     expect(merged).toHaveLength(2);
+  });
+});
+
+/* ---------------------------------------------------------------- *
+ * CelesTrak GP (CSV) → TLE
+ * ---------------------------------------------------------------- */
+
+// Real CelesTrak rows, captured 2026-07-30. ISS_CSV and ISS_REAL_TLE are the
+// same elset served in both formats: synthesizing from the CSV must reproduce
+// the TLE byte-for-byte, which is what makes the CSV switch a provable no-op
+// for every object the TLE feed already carried.
+const CSV_HEADER =
+  "OBJECT_NAME,OBJECT_ID,EPOCH,MEAN_MOTION,ECCENTRICITY,INCLINATION,RA_OF_ASC_NODE," +
+  "ARG_OF_PERICENTER,MEAN_ANOMALY,EPHEMERIS_TYPE,CLASSIFICATION_TYPE,NORAD_CAT_ID," +
+  "ELEMENT_SET_NO,REV_AT_EPOCH,BSTAR,MEAN_MOTION_DOT,MEAN_MOTION_DDOT";
+
+const ISS_CSV = `${CSV_HEADER}
+ISS (ZARYA),1998-067A,2026-07-30T20:40:53.573952,15.49272805,.0007096,51.6314,83.9591,355.3737,4.7185,0,U,25544,999,57852,.17005E-3,.9023E-4,0`;
+
+const ISS_REAL_L1 = "1 25544U 98067A   26211.86173118  .00009023  00000+0  17005-3 0  9996";
+const ISS_REAL_L2 = "2 25544  51.6314  83.9591 0007096 355.3737   4.7185 15.49272805578527";
+
+// Soyuz MS-29: catalog number 100057, which the fixed-width TLE feed cannot
+// represent and therefore omits entirely. This is the object the switch exists
+// for — it must classify as a capsule, not vanish.
+const SOYUZ_CSV = `${CSV_HEADER}
+SOYUZ-MS 29,2026-162A,2026-07-30T03:39:08.864352,15.49259390,.0007078,51.6319,87.4712,352.8836,7.2051,0,U,100057,999,57833,.16539E-3,.8758E-4,0`;
+
+describe("Alpha-5 catalog numbers", () => {
+  it("encodes and decodes above 99999, skipping I and O", () => {
+    expect(encodeAlpha5(100057)).toBe("A0057");
+    expect(decodeAlpha5("A0057")).toBe("100057");
+    expect(encodeAlpha5(170000)).toBe("H0000");
+    expect(decodeAlpha5("J0000")).toBe("180000"); // I is skipped, so J follows H
+    expect(decodeAlpha5(encodeAlpha5(339999))).toBe("339999");
+  });
+
+  it("leaves 5-digit numbers alone and zero-pads short ones", () => {
+    expect(encodeAlpha5(25544)).toBe("25544");
+    expect(encodeAlpha5(900)).toBe("00900");
+  });
+
+  it("noradId decodes Alpha-5 but preserves numeric fields verbatim", () => {
+    expect(noradId("1 A0057U 26162A   26211.15218593")).toBe("100057");
+    // Leading zeros are load-bearing: descriptions.json and capsule-status.json
+    // already key on the TLE feed's zero-padded form.
+    expect(noradId("1 00900U 64063C   26211.15218593")).toBe("00900");
+  });
+});
+
+describe("gpToTleLines", () => {
+  it("reproduces CelesTrak's own TLE byte-for-byte", () => {
+    const [rec] = parseGp(ISS_CSV, "stations");
+    expect(rec.l1).toBe(ISS_REAL_L1);
+    expect(rec.l2).toBe(ISS_REAL_L2);
+  });
+
+  it("emits 69-character lines with valid checksums", () => {
+    const [rec] = parseGp(SOYUZ_CSV, "stations");
+    const sum = (line) =>
+      [...line.slice(0, 68)].reduce((n, c) => n + (c >= "0" && c <= "9" ? +c : c === "-" ? 1 : 0), 0) % 10;
+    for (const line of [rec.l1, rec.l2]) {
+      expect(line).toHaveLength(69);
+      expect(Number(line[68])).toBe(sum(line));
+    }
+  });
+
+  it("truncates the CSV's 8th eccentricity digit rather than rounding it", () => {
+    // CelesTrak's own TLE for 49271 reads 0904965, not 0904966.
+    const csv = ISS_CSV.replace(",.0007096,", ",.09049659,");
+    expect(parseGp(csv, "other")[0].l2.slice(26, 33)).toBe("0904965");
+  });
+
+  it("formats BSTAR and the second derivative in TLE exponent notation", () => {
+    const bstar = (v) => parseGp(ISS_CSV.replace(",.17005E-3,", `,${v},`), "other")[0].l1.slice(53, 61);
+    expect(bstar(".17005E-3")).toBe(" 17005-3");
+    expect(bstar("-.51837E-6")).toBe("-51837-6");
+    expect(bstar("0")).toBe(" 00000+0");
+    // Rounds on the digit string, not the float: .518375 → 51838, not 51837.
+    expect(bstar("-.518375E-6")).toBe("-51838-6");
+    // Overflow carries into the exponent: .999995 → .10000 one decade up.
+    expect(bstar(".999995E-6")).toBe(" 10000-5");
+    // The second derivative shares the same formatter and is usually zero.
+    expect(parseGp(ISS_CSV, "other")[0].l1.slice(44, 52)).toBe(" 00000+0");
+  });
+
+  it("drops records it cannot render as well-formed lines", () => {
+    expect(parseGp(ISS_CSV.replace("2026-07-30T20:40:53.573952", "not-a-date"), "other")).toEqual([]);
+  });
+});
+
+describe("parseGp", () => {
+  it("surfaces a 6-digit object the TLE feed omits, correctly classified", () => {
+    const [rec] = parseGp(SOYUZ_CSV, "stations");
+    expect(noradId(rec.l1)).toBe("100057");
+    expect(rec.name).toBe("SOYUZ-MS 29");
+    expect(rec.cat).toBe("capsules");
+  });
+
+  it("produces a satrec that propagates", () => {
+    const [rec] = parseGp(SOYUZ_CSV, "stations");
+    const satrec = satellite.twoline2satrec(rec.l1, rec.l2);
+    expect(satrec.error).toBe(0);
+    const { position } = satellite.propagate(satrec, new Date("2026-07-30T12:00:00Z"));
+    expect(Number.isFinite(position.x)).toBe(true);
+    // ~420 km up, so a little over one Earth radius from the geocentre.
+    expect(Math.hypot(position.x, position.y, position.z)).toBeGreaterThan(6600);
+  });
+
+  it("honours RFC 4180 quoting so commas in names don't shift columns", () => {
+    const csv = ISS_CSV.replace("ISS (ZARYA),1998-067A", '"ISS (ZARYA), MODULE 1",1998-067A');
+    const [rec] = parseGp(csv, "stations");
+    expect(rec.name).toBe("ISS (ZARYA), MODULE 1");
+    expect(rec.l1).toBe(ISS_REAL_L1);
+  });
+
+  it("skips malformed rows without abandoning the rest of the feed", () => {
+    const rows = ISS_CSV.split("\n");
+    const csv = [rows[0], "truncated,row", rows[1], "", rows[1].replace("25544", "25545")].join("\n");
+    expect(parseGp(csv, "other")).toHaveLength(2);
+  });
+
+  it("returns an empty array for empty or header-only input", () => {
+    expect(parseGp("", "other")).toEqual([]);
+    expect(parseGp(CSV_HEADER, "other")).toEqual([]);
   });
 });

@@ -24,7 +24,8 @@ application server and no database.
 
 ### `packages/catalog` — the single source of truth
 
-TLE parsing (`parseTle`, `mergeRecords`, `noradId`), CelesTrak group definitions
+CelesTrak GP parsing (`parseGp` for the CSV feed, `parseTle` for TLE-shaped
+stored data, plus `mergeRecords`, `noradId`), group definitions
 (`GROUPS`, in merge-priority order), and the classification pipeline (`categorize`).
 
 Classification runs in a fixed, canonical order:

@@ -1,4 +1,4 @@
-import { parseTle, mergeRecords, GROUPS, CELESTRAK_BASE } from "@orbital-traffic/catalog";
+import { parseGp, mergeRecords, GROUPS, CELESTRAK_BASE } from "@orbital-traffic/catalog";
 import { WORKER_BASE } from "../config.js";
 import { state, $ } from "../state.js";
 import { ingest, removeSats } from "./ingest.js";
@@ -84,7 +84,7 @@ async function runLiveSync() {
       GROUPS.map(async ([grp, cat]) => {
         const r = await fetch(CELESTRAK_BASE + grp, { cache: "no-store" });
         if (!r.ok) return [];
-        return parseTle(await r.text(), cat);
+        return parseGp(await r.text(), cat);
       })
     );
     // Merge in GROUPS order (not fetch-completion order) so a satellite

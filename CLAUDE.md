@@ -44,8 +44,9 @@ cross-check those against this document instead.
    assignment, name-pattern matching, station allowlist,
    crew/cargo-vehicle promotion, debris detection) lives in ONE
    place: packages/catalog/src/classify.js, exported as
-   categorize(). parseTle() (packages/catalog/src/tle.js) runs
-   it on every record it parses, so the Worker's /tle output,
+   categorize(). parseGp() — and parseTle(), its predecessor —
+   in packages/catalog/src/tle.js run it on every record they
+   parse, so the Worker's /tle output,
    the bundled-data pipeline, and the capsule-status tool all
    emit fully classified records — expect fine-grained
    categories ("communications"/"classified"/"debris"/etc.) in
@@ -422,6 +423,29 @@ they can't be templated:
     the genuinely time-varying categories Tier 1 exists to
     surface. It still appears in results, ranked by elevation
     like Starlink.
+- CelesTrak must be fetched as CSV (FORMAT=csv), never TLE
+  (FORMAT=tle). The fixed-width TLE format has no way to express
+  a catalog number wider than five characters, and CelesTrak's
+  response to that is to omit those objects from FORMAT=tle
+  *entirely* — silently, with no gap or malformed row to notice.
+  The catalog passed 100000 in 2026 and 173 objects were already
+  invisible when this was found, including the docked Soyuz
+  MS-29 (100057), 21 Praetorian SDA payloads and ~100 Starlink;
+  that number grows with every launch. packages/catalog/src/
+  tle.js's parseGp() reads CSV and synthesizes the TLE lines
+  itself (Alpha-5 encoding the satellite number), so everything
+  downstream still receives {name, l1, l2, cat}. noradId()
+  decodes Alpha-5 back to the canonical numeric ID ("A0057" →
+  "100057") that SATCAT, capsule-status.json and
+  descriptions.json are keyed by — and still returns purely
+  numeric fields untouched, leading zeros included ("00900").
+  Four places fetch CelesTrak and all four must stay on CSV:
+  worker/src/index.js's fetchGroup(), tools/fetch-tles.mjs,
+  tools/update-capsule-status.mjs (GROUP *and* CATNR URLs), and
+  apps/web/src/data/live.js's direct-fetch fallback. parseTle()
+  is retained for the TLE-shaped data already in
+  satellites.json and capsule-status.json — don't delete it, and
+  don't point a CelesTrak fetch back at it.
 - Globe flipY: THREE texture flipY must be false — currently
   set correctly in apps/web/src/scene/earth.js (day/night
   texture setup)
@@ -588,7 +612,7 @@ the automatic workflow can't cover:
 
 Verify the Worker is returning data correctly:
   curl https://orbital-traffic.ianlewis101.workers.dev/tle
-  Check for fully classified "cat" tags — parseTle() runs the
+  Check for fully classified "cat" tags — parseGp() runs the
   complete categorize() pipeline, so "cat":"communications",
   "cat":"classified", "cat":"debris" etc. all appear in this
   raw response, and every crewed capsule or cargo vehicle

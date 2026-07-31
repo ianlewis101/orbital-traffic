@@ -12,7 +12,7 @@ import { writeFile, mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  parseTle,
+  parseGp,
   mergeRecords,
   GROUPS,
   CELESTRAK_BASE,
@@ -32,7 +32,7 @@ async function fetchGroup(group, cat) {
       console.log(`FAILED (HTTP ${res.status})`);
       return [];
     }
-    const recs = parseTle(await res.text(), cat);
+    const recs = parseGp(await res.text(), cat);
     console.log(`${recs.length} objects`);
     return recs;
   } catch (e) {
