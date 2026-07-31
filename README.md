@@ -73,7 +73,7 @@ something changed.
 | Satellite TLEs | [CelesTrak](https://celestrak.org) | Worker: 20 min edge cache · bundled catalog: daily |
 | Object metadata | CelesTrak SATCAT | on selection, browser-cached |
 | NEO elements | NASA/JPL SBDB | bundled |
-| Crew roster | [Open Notify](http://open-notify.org) | 1 h edge cache |
+| Crew roster | [Launch Library 2 (The Space Devs)](https://thespacedevs.com) | 1 h edge cache |
 | ISS activity | [NASA space station blog](https://blogs.nasa.gov/spacestation/) | daily |
 
 Orbital data is for informational use only.
