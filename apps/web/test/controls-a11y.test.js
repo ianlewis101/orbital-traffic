@@ -2,15 +2,19 @@
 import { describe, it, expect, beforeEach } from "vitest";
 
 /**
- * The time-machine rate controls, legend category rows, globe-style toggle,
- * and hotlist rows used to be onclick <div>s — invisible to the keyboard and
- * to assistive tech. They are now real <button type="button"> elements, which
- * this test pins down: correct tag, keyboard-reachable (in the tab order), and
- * with the ARIA state the toggles expose.
+ * The time-machine rate controls, legend category rows, and hotlist rows used
+ * to be onclick <div>s — invisible to the keyboard and to assistive tech. They
+ * are now real <button type="button"> elements, which this test pins down:
+ * correct tag, keyboard-reachable (in the tab order), and with the ARIA state
+ * the toggles expose.
+ *
+ * The globe-style toggle was covered here too, until it moved out of its
+ * floating plate and into the Settings panel. Its equivalent assertions live
+ * in settings-ui.test.js's "globe style" block now — they need that file's
+ * module mocks, so they moved rather than being duplicated here.
  */
 import { initTimeMachine } from "../src/ui/time.js";
 import { rebuildLegend } from "../src/ui/legend.js";
-import { initGlobeStyle } from "../src/ui/globeStyle.js";
 import { renderToday } from "../src/ui/today.js";
 import { state } from "../src/state.js";
 import { DATA } from "../src/data/store.js";
@@ -25,7 +29,6 @@ beforeEach(() => {
   document.body.innerHTML = `
     <div id="rate-btns"></div><div id="jump-btns"></div>
     <div id="cats"></div>
-    <div id="globe-style-btns"></div><span id="globe-style-lbl"></span>
     <div id="today-list"></div>`;
 });
 
@@ -57,17 +60,6 @@ describe("interactive controls are semantic, tab-reachable buttons", () => {
       expect(inTabOrder(b)).toBe(true);
       // shown categories are pressed; hidden ones are not
       expect(["true", "false"]).toContain(b.getAttribute("aria-pressed"));
-    });
-  });
-
-  it("globe-style controls are <button>s in tab order", () => {
-    initGlobeStyle();
-    const btns = document.querySelectorAll("#globe-style-btns .gbtn");
-    expect(btns.length).toBe(2);
-    btns.forEach((b) => {
-      expect(b.tagName).toBe("BUTTON");
-      expect(inTabOrder(b)).toBe(true);
-      expect(b.hasAttribute("aria-pressed")).toBe(true);
     });
   });
 

@@ -24,7 +24,6 @@ import { updateSelMarker } from "./scene/marker.js";
 import { refreshInfo, initInfoCard } from "./ui/info.js";
 import { rebuildLegend, initLegendToggle } from "./ui/legend.js";
 import { renderToday, initTodayToggle } from "./ui/today.js";
-import { initGlobeStyle } from "./ui/globeStyle.js";
 import { initSearch } from "./ui/search.js";
 import { initOverhead } from "./ui/overhead.js";
 import { initSettings } from "./ui/settings.js";
@@ -150,7 +149,6 @@ async function boot() {
   initNeos();
   initInfoCard();
   initTimeMachine();
-  initGlobeStyle();
   initTodayToggle();
   initLegendToggle();
   initSearch();
