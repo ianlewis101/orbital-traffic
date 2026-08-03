@@ -65,14 +65,31 @@ function trackedWidth(ctx, text, spacing) {
   return Math.max(0, w - spacing);
 }
 
-/** The #brandMarkGrad orbit mark from index.html, redrawn at `size` px. */
-function drawWordmark(ctx, x, y, size) {
-  const g = ctx.createLinearGradient(x, y, x + size, y + size);
-  g.addColorStop(0, BRAND_GRAD[0]);
-  g.addColorStop(0.45, BRAND_GRAD[1]);
-  g.addColorStop(1, BRAND_GRAD[2]);
+/**
+ * Rounded rectangle via arcTo rather than ctx.roundRect: roundRect only
+ * arrived in Safari 16.4, and this has to draw inside the Capacitor iOS
+ * wrapper on whatever WebKit the device is running.
+ */
+function roundedRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
 
-  const cx = x + size / 2;
+/**
+ * The satellite brand mark from index.html, redrawn at `size` px.
+ *
+ * A direct port of the inline SVG: the transform below puts the canvas into
+ * that mark's 64-unit viewBox with the same -22 degree tilt, so every
+ * coordinate here is the number in the SVG and the two can be diffed against
+ * each other. The gradient is created after the transform so it rotates with
+ * the craft, matching the SVG's gradientUnits="userSpaceOnUse".
+ */
+function drawWordmark(ctx, x, y, size) {
   const cy = y + size / 2;
   const s = size / 64; // source artwork is a 64-unit viewBox
 
@@ -83,19 +100,68 @@ function drawWordmark(ctx, x, y, size) {
   ctx.shadowBlur = 12;
 
   ctx.save();
-  ctx.globalAlpha = 0.8;
-  ctx.strokeStyle = g;
-  ctx.lineWidth = 2.4 * s;
-  ctx.beginPath();
-  ctx.ellipse(cx, cy, 26 * s, 10.5 * s, (-24 * Math.PI) / 180, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.restore();
+  ctx.translate(x, y);
+  ctx.scale(s, s);
+  ctx.translate(32, 32);
+  ctx.rotate((-22 * Math.PI) / 180);
+  ctx.translate(-32, -32);
 
-  ctx.save();
+  const g = ctx.createLinearGradient(4, 4, 60, 60);
+  g.addColorStop(0, BRAND_GRAD[0]);
+  g.addColorStop(0.45, BRAND_GRAD[1]);
+  g.addColorStop(1, BRAND_GRAD[2]);
+
+  // solar arrays
   ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.arc(cx, cy, 7.5 * s, 0, Math.PI * 2);
+  roundedRect(ctx, 6.5, 25.5, 17, 9, 1.4);
   ctx.fill();
+  roundedRect(ctx, 40.5, 25.5, 17, 9, 1.4);
+  ctx.fill();
+
+  // cell divisions
+  ctx.strokeStyle = "rgba(11,16,32,0.3)";
+  ctx.lineWidth = 0.7;
+  ctx.beginPath();
+  for (const ax of [6.5, 40.5]) {
+    ctx.moveTo(ax, 30);
+    ctx.lineTo(ax + 17, 30);
+    for (const dx of [5.7, 11.3]) {
+      ctx.moveTo(ax + dx, 26.2);
+      ctx.lineTo(ax + dx, 33.8);
+    }
+  }
+  ctx.stroke();
+
+  // booms, mast, gold instrument bar
+  ctx.fillStyle = "#cbd5e1";
+  roundedRect(ctx, 23.2, 29.35, 3.2, 1.1, 0.55);
+  ctx.fill();
+  roundedRect(ctx, 37.6, 29.35, 3.2, 1.1, 0.55);
+  ctx.fill();
+  roundedRect(ctx, 31.55, 35, 0.9, 3.6, 0.45);
+  ctx.fill();
+  ctx.fillStyle = "#f5c168";
+  roundedRect(ctx, 29.4, 38.2, 5.2, 1.7, 0.75);
+  ctx.fill();
+
+  // bus body: lighter upper half, darker lower half, dark sensor panel
+  ctx.fillStyle = "#eef1f8";
+  roundedRect(ctx, 26, 24.2, 12, 10.8, 1.8);
+  ctx.fill();
+  ctx.fillStyle = "#c3ccd8";
+  ctx.beginPath();
+  ctx.moveTo(26, 29.3);
+  ctx.lineTo(38, 29.3);
+  ctx.lineTo(38, 33.2);
+  ctx.arcTo(38, 35, 36.2, 35, 1.8);
+  ctx.lineTo(27.8, 35);
+  ctx.arcTo(26, 35, 26, 33.2, 1.8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "#0b1020";
+  roundedRect(ctx, 27.9, 26.1, 4.2, 2.3, 0.5);
+  ctx.fill();
+
   ctx.restore();
 
   ctx.save();
