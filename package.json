@@ -17,6 +17,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "icons:generate": "node tools/generate-icons.mjs",
     "data:tle": "node tools/fetch-tles.mjs",
     "data:iss-today": "node tools/update-iss-today.mjs",
     "data:capsule-status": "node tools/update-capsule-status.mjs"
