@@ -158,7 +158,10 @@
       <div class="tele-h lab">Live Telemetry</div>
       <div class="grid" id="info-grid"></div>
       <div class="bar"></div>
-      <div class="foot"><button id="info-track">◎ Center on Globe</button></div>
+      <div class="foot">
+        <button id="info-track">◎ Center on Globe</button>
+        <button id="info-share">↗ Share Image</button>
+      </div>
       <div id="info-attr">Orbital data: <a href="https://celestrak.org" target="_blank" rel="noopener">CelesTrak</a> &middot; For informational use only</div>
       <div id="info-veil">
         <div class="veil-tag">
@@ -166,6 +169,14 @@
           <span class="veil-lbl">Catalogued. Not curated.</span>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div id="share-preview" role="dialog" aria-modal="true" aria-label="Share image preview">
+    <div class="share-preview-inner">
+      <img id="share-preview-img" alt="">
+      <p class="share-preview-hint">Press and hold the image to save or share it.</p>
+      <button type="button" id="share-preview-close">Done</button>
     </div>
   </div>
 

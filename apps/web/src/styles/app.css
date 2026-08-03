@@ -220,10 +220,27 @@
     letter-spacing:0.01em;font-variant-numeric:tabular-nums}
   .stat .v small{font-size:9.5px;color:var(--ink-dim);font-weight:400;letter-spacing:0.04em}
   #info .bar{height:1px;background:var(--line)}
-  #info .foot{padding:9px 15px 12px}
-  #info-track{width:100%;text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:0.18em;padding:9px 0;text-transform:uppercase;
+  #info .foot{padding:9px 15px 12px;display:flex;flex-direction:column;gap:7px}
+  #info-track,#info-share{width:100%;text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:0.18em;padding:9px 0;text-transform:uppercase;
     color:var(--signal);background:rgba(174,227,255,0.06);border:1px solid rgba(174,227,255,0.28);cursor:pointer;transition:all .12s}
-  #info-track:hover{background:rgba(174,227,255,0.13)}
+  #info-track:hover,#info-share:hover{background:rgba(174,227,255,0.13)}
+  /* Secondary to "Center on Globe" — quieter so the primary action still leads. */
+  #info-share{color:var(--ink-dim);background:none;border-color:var(--line)}
+  #info-share:hover{background:rgba(255,255,255,0.05);color:var(--ink)}
+  #info-share:disabled{opacity:0.55;cursor:default}
+
+  /* Save-image fallback: shown where neither the Web Share API nor a download
+     link works (WKWebView), so the user can press-and-hold to save instead. */
+  #share-preview{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;
+    background:rgba(4,5,10,0.88);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);padding:20px}
+  #share-preview.show{display:flex}
+  #share-preview .share-preview-inner{display:flex;flex-direction:column;align-items:center;gap:13px;max-width:min(420px,100%)}
+  #share-preview img{max-width:100%;max-height:68vh;border-radius:12px;border:1px solid var(--line);
+    box-shadow:0 18px 50px rgba(0,0,0,0.55)}
+  #share-preview .share-preview-hint{font-family:var(--mono);font-size:11px;letter-spacing:0.08em;color:var(--ink-dim);text-align:center}
+  #share-preview button{font-family:var(--mono);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;
+    padding:10px 28px;color:var(--signal);background:rgba(174,227,255,0.06);border:1px solid rgba(174,227,255,0.28);
+    border-radius:8px;cursor:pointer}
   #info-attr{font-family:var(--mono);font-size:10px;letter-spacing:0.03em;color:var(--ink-faint);opacity:0.5;padding:0 15px 12px;text-align:center}
   #info-attr a{color:inherit;text-decoration:underline}
   /* "other" category — uncurated objects get a frosted veil over everything
@@ -696,8 +713,10 @@
     .crew-av-n{font-size:7.5px}
     .crew-bio-img{width:64px;height:64px}
     /* Foot buttons bigger */
-    #info .foot{padding:10px 15px 16px;display:flex;gap:8px}
-    #info-track{padding:12px 0}
+    /* Stays a column: both labels are letter-spaced uppercase and would be
+       badly cramped side by side at phone widths. */
+    #info .foot{padding:10px 15px 16px;display:flex;flex-direction:column;gap:8px}
+    #info-track,#info-share{padding:12px 0}
 
     /* Hint — below the clock + Globe Style stack (Globe Style now sits
        right under the clock on mobile too; its real rendered bottom edge

@@ -11,6 +11,7 @@ import { geoToVec, subDot } from "../scene/earth.js";
 import { buildTrail, clearTrail } from "../scene/trail.js";
 import { frameSelected } from "../scene/core.js";
 import { updateSavedButtons, initSavedButtons } from "./favorites.js";
+import { updateShareButton } from "./share.js";
 import { describe } from "./describe.js";
 import { figureHTML } from "./figures.js";
 import { fetchAndRenderCrew } from "./crew.js";
@@ -140,6 +141,7 @@ export function select(s) {
   info.classList.add("show");
   info.scrollTop = 0;
   updateSavedButtons(s);
+  updateShareButton(s);
   // "other"-category objects with no curated description get a frosted veil
   // over the detail sections (see #info-veil in index.html) — header, figure
   // and flag stay visible. Content-based within "other", not purely

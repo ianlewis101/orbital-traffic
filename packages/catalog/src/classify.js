@@ -330,6 +330,11 @@ export const SCIENCE_IDS = new Set([
   "07646", // STARLETTE
   "22824", // STELLA
   "37849", // SUOMI NPP
+  // 2026-07-31: LINK (2026-152A) — decaying orbit, subject of NASA's active
+  // rescue mission. CelesTrak's OBJECT_TYPE for it is the generic "PAY" with
+  // no name pattern to rescue by, so without this ID it falls through to
+  // "other" (hidden by default) despite being a genuinely notable object.
+  "69792", // LINK
 ]);
 /** Cataloged fragments/sub-payloads with no name DEBRIS_NAME_RE can match. */
 export const DEBRIS_IDS = new Set(["51950", "69320"]);

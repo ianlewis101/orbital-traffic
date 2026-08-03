@@ -25,6 +25,7 @@ import { refreshInfo, initInfoCard } from "./ui/info.js";
 import { rebuildLegend, initLegendToggle } from "./ui/legend.js";
 import { renderToday, initTodayToggle } from "./ui/today.js";
 import { initSearch } from "./ui/search.js";
+import { initShare } from "./ui/share.js";
 import { initOverhead } from "./ui/overhead.js";
 import { initSettings } from "./ui/settings.js";
 import { applyReduceMotion } from "./util/motion.js";
@@ -152,6 +153,7 @@ async function boot() {
   initTodayToggle();
   initLegendToggle();
   initSearch();
+  initShare();
   initOverhead();
   initSettings();
   initPicking();
