@@ -515,7 +515,7 @@ export function refreshInfo() {
   if (!sp) {
     chips.innerHTML = "";
     grid.className = "grid full";
-    grid.innerHTML = `<div class="stat"><div class="k">Status</div><div class="v" style="color:var(--bad);font-size:13px">No current position — this object may have re-entered the atmosphere.</div></div>`;
+    grid.innerHTML = `<div class="stat"><div class="k">Status</div><div class="v" style="color:var(--bad)">No current position — this object may have re-entered the atmosphere.</div></div>`;
     subDot.visible = false;
     return;
   }
