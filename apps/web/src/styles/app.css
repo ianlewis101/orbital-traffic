@@ -216,9 +216,9 @@
   #info .grid{padding:10px 15px;display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
   #info .grid.full{grid-template-columns:1fr}
   .stat .k{font-size:8px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-faint);font-weight:500}
-  .stat .v{font-family:var(--mono);font-size:14px;font-weight:500;color:var(--ink);margin-top:3px;
+  .stat .v{font-family:var(--mono);font-size:13.5px;font-weight:500;color:var(--ink);margin-top:3px;
     letter-spacing:0.01em;font-variant-numeric:tabular-nums}
-  .stat .v small{font-size:9.5px;color:var(--ink-dim);font-weight:400;letter-spacing:0.04em}
+  .stat .v small{font-size:9px;color:var(--ink-dim);font-weight:400;letter-spacing:0.04em}
   #info .bar{height:1px;background:var(--line)}
   #info .foot{padding:9px 15px 12px;display:flex;flex-direction:column;gap:7px}
   #info-track,#info-share{width:100%;text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:0.18em;padding:9px 0;text-transform:uppercase;
@@ -391,8 +391,6 @@
   .chip.shad{color:var(--ink-faint)}.chip.shad i{background:var(--ink-faint)}
   #info .tele-h{padding:14px 16px 0;color:var(--ink-faint)}
   #info .grid{padding:9px 16px 14px;grid-template-columns:1fr 1fr;gap:12px 16px}
-  #info .stat .v{font-size:13.5px;color:var(--ink)}
-  #info .stat .v small{font-size:9px}
 
   /* clock readouts */
   #clock .cap{font-size:8px;letter-spacing:0.1em;color:var(--ink-faint);text-transform:uppercase}
@@ -500,7 +498,7 @@
   .oh-status.bad{color:var(--bad)}
   #overhead-filters{display:flex;flex-wrap:wrap;gap:6px;padding:9px 0 4px}
   #overhead-filters:empty{display:none}
-  .oh-chip{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;font-weight:500;
+  .oh-chip{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;font-weight:500;
     letter-spacing:0.06em;text-transform:uppercase;padding:4px 8px;color:var(--ink-dim);
     background:rgba(255,255,255,0.04);border:1px solid var(--line);border-radius:20px;cursor:pointer;
     transition:opacity .12s,border-color .12s;touch-action:manipulation}
@@ -629,13 +627,12 @@
        whole card, shrink to roughly match the compact content. */
     #clock{top:10px;right:10px;width:fit-content;min-width:0;max-width:200px;animation:none}
     #clock .body{padding:7px 11px 8px}
-    #clock .utc{font-size:20px;letter-spacing:0.01em;text-align:center;margin-top:4px}
+    #clock .utc{font-size:26px;letter-spacing:0.01em;text-align:center;margin-top:4px}
     #clock .utc small{font-size:10px}
     #clock .date{font-size:8.5px;text-align:center}
     #clock .row{display:none}
     .utc-full{display:none!important}
     .utc-compact{display:inline!important}
-    #clock .utc{font-size:26px}
 
     /* Search — collapses to an icon button; tap slides it open
        #search inherits position:fixed from .plate, which on desktop is anchored to
@@ -670,7 +667,7 @@
     #today .body{max-height:34vh;overflow-y:auto}
     .today-row{padding:5px 7px;gap:7px}
     .today-row .nm{font-size:9px;letter-spacing:0.08em}
-    .today-row .reason{font-size:8.5px}
+    .today-row .reason{font-size:9px}
     .today-row .sw{width:7px;height:7px}
 
     /* Brand — smaller */
@@ -774,7 +771,7 @@
        there — unlike .ohrow, which is smaller on desktop. */
     .ohrow{padding:11px 0;font-size:11px;min-height:44px}
     .ohrow .nm{font-size:11px}
-    .oh-chip{padding:6px 10px;font-size:9.5px}
+    .oh-chip{padding:6px 10px}
     #mini-card .d{width:9px;height:9px;border-radius:50%;flex:none;box-shadow:0 0 8px currentColor}
     #mini-card .nm{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:0.03em;
       color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
