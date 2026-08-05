@@ -1,0 +1,209 @@
+/* Orbital Traffic — App Store screenshot composition.
+   Type, colour and overlay values are lifted from apps/web/src/styles/app.css
+   so the poster and the app read as one surface. */
+
+@font-face {
+  font-family: "Bricolage Grotesque";
+  font-weight: 800;
+  src: url("../../../apps/web/public/fonts/bricolage-grotesque-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Bricolage Grotesque";
+  font-weight: 700;
+  src: url("../../../apps/web/public/fonts/bricolage-grotesque-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Oxanium";
+  font-weight: 500;
+  src: url("../../../apps/web/public/fonts/oxanium-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Oxanium";
+  font-weight: 600;
+  src: url("../../../apps/web/public/fonts/oxanium-latin.woff2") format("woff2");
+}
+
+:root {
+  --bg: #07080f;
+  --ink: #eef1f8;
+  --ink-dim: #9aa2b8;
+  --ink-faint: #737a90;
+  --teal: #5eead4;
+  --violet: #a78bfa;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 1320px;
+  height: 2868px;
+  background: var(--bg);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.poster {
+  position: relative;
+  width: 1320px;
+  height: 2868px;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* The app's own #fx-scan glows, scaled to poster size. */
+.scan {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    radial-gradient(54% 34% at 14% 88%, rgba(94, 234, 212, 0.13), transparent 70%),
+    radial-gradient(50% 30% at 88% 10%, rgba(167, 139, 250, 0.16), transparent 70%);
+}
+
+/* The real app capture. Cropped by background-position, feathered at the top
+   so the crop line never reads as a seam against the poster background. */
+.shot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  background-repeat: no-repeat;
+  background-size: 1320px 2868px;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 130px);
+  mask-image: linear-gradient(180deg, transparent 0, #000 130px);
+}
+
+/* The app's #fx-vignette, over everything so the whole poster sits in one
+   pool of light rather than the capture reading as a pasted rectangle. */
+.vig {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: radial-gradient(
+    ellipse 120% 110% at 50% 52%,
+    transparent 40%,
+    rgba(4, 4, 12, 0.4) 82%,
+    rgba(3, 3, 9, 0.8) 100%
+  );
+}
+
+.grain {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Instrument corner ticks — the #bezel motif, retired in the app's Aurora
+   pass, kept here as a frame cue at poster scale. */
+.ticks span {
+  position: absolute;
+  z-index: 5;
+  width: 58px;
+  height: 58px;
+  border: 0 solid rgba(255, 255, 255, 0.18);
+}
+.ticks .tl {
+  top: 46px;
+  left: 46px;
+  border-top-width: 2px;
+  border-left-width: 2px;
+}
+.ticks .tr {
+  top: 46px;
+  right: 46px;
+  border-top-width: 2px;
+  border-right-width: 2px;
+}
+.ticks .bl {
+  bottom: 46px;
+  left: 46px;
+  border-bottom-width: 2px;
+  border-left-width: 2px;
+}
+.ticks .br {
+  bottom: 46px;
+  right: 46px;
+  border-bottom-width: 2px;
+  border-right-width: 2px;
+}
+
+.copy {
+  position: absolute;
+  z-index: 6;
+  left: 96px;
+  right: 96px;
+  top: 196px;
+}
+
+.eyebrow {
+  font-family: "Oxanium", sans-serif;
+  font-weight: 600;
+  font-size: 29px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--teal);
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.eyebrow::before {
+  content: "";
+  width: 34px;
+  height: 2px;
+  background: var(--teal);
+  opacity: 0.75;
+}
+
+h1 {
+  margin-top: 34px;
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 800;
+  font-size: 124px;
+  line-height: 0.98;
+  letter-spacing: -0.032em;
+  color: var(--ink);
+}
+h1 em {
+  font-style: normal;
+  background: linear-gradient(96deg, var(--teal) 8%, var(--violet) 92%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* The .plate::after hairline — the app's signature accent rule. */
+.rule {
+  margin-top: 42px;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    rgba(94, 234, 212, 0.55),
+    rgba(167, 139, 250, 0.55) 46%,
+    transparent 92%
+  );
+}
+
+.sub {
+  margin-top: 36px;
+  font-family: "Oxanium", sans-serif;
+  font-weight: 500;
+  font-size: 40px;
+  line-height: 1.38;
+  letter-spacing: 0.012em;
+  color: var(--ink-dim);
+  max-width: 1000px;
+}
+.sub b {
+  font-weight: 600;
+  color: var(--ink);
+}

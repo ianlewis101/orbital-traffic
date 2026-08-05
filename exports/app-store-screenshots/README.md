@@ -1,30 +1,124 @@
-# App Store screenshot raw captures
+# App Store screenshots
 
-Clean captures of the live app — no browser chrome, no mockup frame, no
-headline text. Device mockup and marketing copy get composed around these
-separately.
+Five upload-ready screenshots at 1320×2868 — the App Store's 6.9" display size
+— in `composed/`, built from real captures of the live app in `raw/`, by the
+scripts in `tooling/`.
 
-Captured 3 Aug 2026 from a production build of the current `main` head
-(`npm run build` → `vite preview`), driven with Playwright against the real
-production Worker (`/tle`, `/capsules`, `/crew`, `/today`, `/satcat`) — live
-catalog, 18,924 objects, live telemetry. Service workers were blocked in the
-capture context, so nothing came from a stale `sw.js` cache; the brand mark
-shown throughout is the current satellite identity, not the retired orbit-ring
-mark (verified on the splash lockup and on the share card's wordmark).
+Nothing here is wired into a build. It's a kit you re-run when the listing
+needs re-cutting.
 
-| File | Size | What it shows |
-| --- | --- | --- |
-| `01-globe.png` | 1320×2868 | Live 3D globe. Terminator through Europe/Africa with night-side city lights, sunlit Atlantic and Americas, full Orbit Classes legend, live clock. |
-| `02-whats-overhead.png` | 1320×2868 | What's Overhead results sheet — 129 objects above 40° from Los Angeles (34.05, -118.24), category filter chips, tier-ranked list. |
-| `03-link-detail.png` | 1320×2868 | LINK (NORAD 69792) detail card — Science category, operator, launch date, full curated description, orbit chips, six live telemetry stats. |
-| `04-link-share-card.png` | 1080×1350 | The generated share card for LINK, exactly as the Share Image button exports it (4:5, PNG, opaque). Not a screenshot of the app — the composed image itself. |
+---
 
-Screen size is the 6.9" iPhone class: 440×956 CSS px at `deviceScaleFactor: 3`
-= 1320×2868 device px, which is the App Store's 6.9" display requirement.
+## The strategy
 
-Reproduce with `scratchpad/capture.mjs` from the session that made these, or
-follow the `/verify` skill's Playwright setup — the only non-obvious parts are
-that Chromium needs `--use-angle=swiftshader` for WebGL in this environment,
-and that sheet slide-in animations run roughly ten times slower under
-SwiftShader, so screenshots must wait on `getAnimations()` rather than a fixed
-timeout.
+In App Store search results people see the **first two or three screenshots at
+about 150px wide**, and that's where the decision gets made — the product page
+is a formality for someone already sold. Everything below follows from that:
+
+- Headlines are 4–6 words at 124px, so they survive an 8× downscale.
+- Each image reads as a **silhouette**. Fine HUD text is texture, not message.
+- Shots 1–3 are a complete pitch on their own; 4–5 are for people who tap in.
+
+The listing's job is to say the things a competing tracker can't copy in an
+afternoon. Not "3D globe, 18,000 objects" — every tracker claims that. Instead:
+the app is an *instrument* rather than a game; 1,791 objects carry hand-written
+descriptions; What's Overhead is curated rather than a horizon dump; and the
+sky it draws is visibly, alarmingly crowded.
+
+## The set
+
+| # | File | Says | Shows |
+|---|---|---|---|
+| 1 | `01-look-up.png` | Look up. **It's crowded.** | The live globe, terminator down the left limb, night-side city lights, full Orbit Classes legend |
+| 2 | `02-overhead.png` | Right now, **N are over you.** | What's Overhead from Los Angeles — category chips, tier-ranked list |
+| 3 | `03-every-dot.png` | Every dot **has a story.** | LINK's card, leading with the curated write-up and its failing reaction wheels |
+| 4 | `04-starlink.png` | One company. **10,871 satellites.** | Every class hidden but Starlink — the shell, and the legend showing why |
+| 5 | `05-crew.png` | Seven people **live up there.** | The ISS card: live crew, expedition, and today's activity |
+
+Shot 2 is the conversion shot. A globe is impressive; *your* sky is personal.
+
+Shot 4 was originally planned as the geostationary belt — 568 objects in one
+perfect ring is a lovely diagram. It was tested and dropped: at the distance
+needed to close the ring in a 0.46 aspect frame, Earth shrinks to nothing and
+the belt reads as scattered dots. Starlink's shell keeps its density at
+thumbnail size and carries a sharper fact.
+
+## Design
+
+Full bleed, no device mockup. A phone frame on a gradient would have made a
+dark, precise app look like a template.
+
+The poster background is the app's own: `--bg` `#07080f`, the `#fx-scan` corner
+glows and the `#fx-vignette` radial, re-created at poster scale in
+`tooling/poster.css`, with the capture feathered into it at the crop line — so
+the screenshot never reads as a rectangle pasted onto a marketing board. Type
+is the app's own (Bricolage Grotesque 800 for headlines, Oxanium for the
+eyebrow and subline, loaded from `apps/web/public/fonts/`), the accent rule is
+the `.plate::after` teal→violet hairline, and the second headline line takes
+the same gradient.
+
+The corner ticks are the `#bezel` motif. Worth knowing: the app itself retired
+that element in the Aurora pass (`#bezel{display:none}`), so this is a
+deliberate revival for the poster frame, not a live element.
+
+## Re-cutting
+
+```bash
+npm run build
+npm run preview -w @orbital-traffic/web -- --port 4173 --strictPort
+node exports/app-store-screenshots/tooling/capture.mjs   # -> raw/ + raw/facts.json
+node exports/app-store-screenshots/tooling/render.mjs    # -> composed/
+```
+
+`capture.mjs` needs `playwright` importable (install to a scratch dir and
+symlink into `node_modules`). Never run `playwright install` — this
+environment ships Chromium at `/opt/pw-browsers/chromium`.
+
+**Every number in the copy is interpolated from `raw/facts.json`, which
+`capture.mjs` writes in the same session that produced the pixels.** The
+catalog moves daily and the overhead count moves by the minute; templating is
+what stops a headline claiming a figure the screenshot beneath it contradicts.
+`render.mjs` throws rather than rendering a `{{placeholder}}` it has no value
+for. This is also why the object count here is *not* on CLAUDE.md's list of
+hand-maintained "18,000+" surfaces — there is nothing here to maintain by hand.
+
+Two environment gotchas, both already handled in the scripts: Chromium needs
+`--use-angle=swiftshader` for WebGL here, and sheet slide-in animations run
+about ten times slower under SwiftShader, so screenshots wait on
+`getAnimations()` rather than a fixed timeout — a fixed wait catches the info
+card mid-animation with its body unpainted.
+
+## Provenance
+
+Captured from a production build of the branch head against the **real
+production Worker** (`/tle`, `/capsules`, `/crew`, `/today`, `/satcat`) — live
+catalog, live telemetry, live SATCAT enrichment, live ISS roster. Not fixtures.
+Service workers are blocked in the capture context, so nothing can come from a
+stale `sw.js` cache; `facts.json` records an assertion that the brand mark in
+the DOM is the current satellite (8 `<rect>`s, no `<ellipse>`) rather than the
+retired orbit ring.
+
+`raw/` also holds `04-link-share-card.png`, the share-card export at its native
+1080×1350. It isn't in the final five — the set was stronger with the crew shot
+— but it's the cleanest single asset for social or a press kit.
+
+## Known issues these screenshots had to work around
+
+1. **Photo provenance.** 11 of the 20 entries in
+   `apps/web/public/data/photos.json` — including `iss`, `hubble`, `jwst`,
+   `dragon`, `soyuz`, `cygnus` and all five asteroids — are credited "Source
+   unconfirmed — pre-existing image", and that credit renders on screen over
+   the photo. Shot 5 scrolls the figure out of frame for this reason. Unknown
+   provenance is a rights problem on a public store listing, and worth
+   resolving before submission independently of any screenshot.
+2. **The mobile clock reads 12-hour with no meridiem.** `clock.js` renders
+   `.utc-compact` as `6:44 UTC` when it is 18:44 UTC (the share card's own
+   timestamp correctly says `18:44 UTC`). It's deliberate CSS, but it sits in
+   the corner of most of these frames and reads as a bug.
+3. **Time Machine can't be shown at all.** `#time` is `display:none !important`
+   under 768px — it's desktop-only, so it cannot appear in an iPhone
+   screenshot.
+4. **LINK's photo is a category-generic Landsat 9 press image.** Correctly
+   credited, but it reads as "this is Landsat". Shot 3 crops below the figure,
+   which also puts the curated writing — the actual point of that screenshot —
+   at the top of the card.
