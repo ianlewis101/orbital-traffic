@@ -91,24 +91,6 @@ async function zoom(page, ticks) {
   await page.waitForTimeout(600);
 }
 
-/** Hide every legend category except those matching `keep`. */
-async function isolate(page, keep) {
-  const rows = await page.$$eval("#cats .cat", (els) =>
-    els.map((e, i) => ({
-      i,
-      txt: e.textContent.replace(/\s+/g, " ").trim(),
-      off: e.classList.contains("off"),
-    }))
-  );
-  for (const r of rows) {
-    const wanted = keep.some((k) => new RegExp(k, "i").test(r.txt));
-    if (wanted === !r.off) continue;
-    await page.evaluate((i) => document.querySelectorAll("#cats .cat")[i].click(), r.i);
-    await page.waitForTimeout(120);
-  }
-  await page.waitForTimeout(1500);
-}
-
 async function selectByName(page, name) {
   await page.click("#search svg"); // mobile: magnifier slides the bar open
   await page.waitForSelector("#search-wrap.expanded");
@@ -239,15 +221,9 @@ await page.waitForFunction(
   { timeout: 60000 }
 );
 await page.waitForTimeout(2500);
-// Scroll the figure clear: 11 of the 20 entries in photos.json are credited
-// "Source unconfirmed — pre-existing image", and that credit renders over the
-// photo. The crew block is the subject of this shot anyway.
-await page.evaluate(() => {
-  const info = document.querySelector("#info");
-  const fig = document.querySelector("#info-figure");
-  info.scrollTop = fig.getBoundingClientRect().bottom - info.getBoundingClientRect().top + info.scrollTop + 70;
-});
-await page.waitForTimeout(1200);
+// Left unscrolled so the object photo is in frame. Note this puts the figure's
+// credit line on the poster, and photos.json credits `iss` "Source unconfirmed
+// — pre-existing image" — see the README's known-issues section.
 facts.crew = await page.evaluate(() => ({
   aboard: document.querySelector(".crew-count")?.textContent?.trim(),
   names: [...document.querySelectorAll(".crew-av-n")].map((e) => e.textContent),
@@ -256,24 +232,18 @@ facts.crew = await page.evaluate(() => ({
 await page.screenshot({ path: `${RAW}/05-iss-crew.png` });
 console.log("05 ISS crew —", facts.crew.aboard, "aboard");
 
-// ── 6. Starlink shell, every other class hidden ────────────────────────────
-// Reload first: zoom() and drag() are relative, so without resetting the rig
-// this shot would inherit the hero camera's distance and frame the shell far
-// too small. A reload puts cam back at its scene/core.js defaults.
-await page.reload({ waitUntil: "load" });
-await ready(page);
-await isolate(page, ["STARLINK"]);
-await zoom(page, 6);
-for (let i = 0; i < 6; i++) await drag(page, -110, 0);
-await page.waitForTimeout(1800);
-await drag(page, 0, -80); // tilt so the shell's plane banding reads
-await page.waitForTimeout(1800);
-facts.starlink = await page.$$eval("#cats .cat", (els) => {
-  const r = els.find((e) => /STARLINK/i.test(e.textContent));
-  return (r?.textContent.replace(/\s+/g, " ").match(/([\d,]+)\s*$/) || [])[1];
-});
-await page.screenshot({ path: `${RAW}/06-starlink-shell.png` });
-console.log("06 Starlink shell —", facts.starlink);
+// ── 6. Crew Dragon 12 — a capsule mid-mission ──────────────────────────────
+// Docked at the ISS, so its card also carries the station's crew block. Like
+// shot 5 this is left unscrolled so the object photo is in frame.
+await selectByName(page, "CREW DRAGON 12");
+await page.waitForTimeout(3000);
+facts.dragon = await page.evaluate(() => ({
+  name: document.querySelector("#info-nm")?.textContent,
+  cat: document.querySelector("#info-cat")?.textContent?.trim(),
+  chips: [...document.querySelectorAll("#info-chips .chip")].map((c) => c.textContent),
+}));
+await page.screenshot({ path: `${RAW}/06-crew-dragon.png` });
+console.log("06 Crew Dragon —", facts.dragon.name, "/", facts.dragon.cat);
 
 await writeFile(`${RAW}/facts.json`, JSON.stringify(facts, null, 2) + "\n");
 console.log("\nfacts.json:", JSON.stringify(facts, null, 2));

@@ -30,18 +30,26 @@ sky it draws is visibly, alarmingly crowded.
 | # | File | Says | Shows |
 |---|---|---|---|
 | 1 | `01-look-up.png` | Look up. **It's crowded.** | The live globe, terminator down the left limb, night-side city lights, full Orbit Classes legend |
-| 2 | `02-overhead.png` | Right now, **N are over you.** | What's Overhead from Los Angeles — category chips, tier-ranked list |
-| 3 | `03-every-dot.png` | Every dot **has a story.** | LINK's card, leading with the curated write-up and its failing reaction wheels |
-| 4 | `04-starlink.png` | One company. **10,871 satellites.** | Every class hidden but Starlink — the shell, and the legend showing why |
-| 5 | `05-crew.png` | Seven people **live up there.** | The ISS card: live crew, expedition, and today's activity |
+| 2 | `02-overhead.png` | Right now, **See what objects are overhead** | What's Overhead from Los Angeles — category chips, tier-ranked list |
+| 3 | `03-every-dot.png` | Every dot **has a story.** | LINK's card — photo, identity, and the full curated write-up down to its failing reaction wheels |
+| 4 | `04-capsules.png` | Follow the fleet, **launch to landing.** | Crew Dragon 12 mid-mission: its photo, its DOCKED phase block ("at ISS · 33 days in this phase") and recent activity |
+| 5 | `05-crew.png` | Seven people **live up there.** | The ISS card: photo, live crew, expedition, today's activity |
 
 Shot 2 is the conversion shot. A globe is impressive; *your* sky is personal.
 
-Shot 4 was originally planned as the geostationary belt — 568 objects in one
-perfect ring is a lovely diagram. It was tested and dropped: at the distance
-needed to close the ring in a 0.46 aspect frame, Earth shrinks to nothing and
-the belt reads as scattered dots. Starlink's shell keeps its density at
-thumbnail size and carries a sharper fact.
+Shot 4 went through two earlier drafts. The geostationary belt — 568 objects in
+one perfect ring — was tested and dropped: at the distance needed to close that
+ring in a 0.46 aspect frame Earth shrinks to nothing and the belt reads as
+scatter. An isolated Starlink shell replaced it and worked visually, but the
+capsule card is the better story: phase tracking from launch through docking to
+landing is something no other tracker does, and Crew Dragon 12's card shows it
+running live.
+
+The cost of that swap is worth knowing: shots 3, 4 and 5 are now all object
+cards with a photo band, so the set carries less structural variety than when
+shot 4 was a globe. Swapping any one of them back for a globe view (the
+Starlink shell capture is still reproducible from git history) would restore
+the rhythm if it ever reads as repetitive.
 
 ## Design
 
@@ -104,13 +112,15 @@ retired orbit ring.
 
 ## Known issues these screenshots had to work around
 
-1. **Photo provenance.** 11 of the 20 entries in
+1. **Photo provenance — visible on shots 4 and 5.** 11 of the 20 entries in
    `apps/web/public/data/photos.json` — including `iss`, `hubble`, `jwst`,
    `dragon`, `soyuz`, `cygnus` and all five asteroids — are credited "Source
-   unconfirmed — pre-existing image", and that credit renders on screen over
-   the photo. Shot 5 scrolls the figure out of frame for this reason. Unknown
-   provenance is a rights problem on a public store listing, and worth
-   resolving before submission independently of any screenshot.
+   unconfirmed — pre-existing image", and the app renders that credit over the
+   photo. Both card shots that show an object photo therefore carry that line,
+   small, at the photo's bottom right. Unknown provenance is a rights problem
+   on a public store listing regardless of the screenshots; replacing those 11
+   files with properly-licensed NASA/ESA/SpaceX imagery fixes the listing and
+   the app in one move, and these screenshots would only need a re-run.
 2. **The mobile clock reads 12-hour with no meridiem.** `clock.js` renders
    `.utc-compact` as `6:44 UTC` when it is 18:44 UTC (the share card's own
    timestamp correctly says `18:44 UTC`). It's deliberate CSS, but it sits in
@@ -119,6 +129,6 @@ retired orbit ring.
    under 768px — it's desktop-only, so it cannot appear in an iPhone
    screenshot.
 4. **LINK's photo is a category-generic Landsat 9 press image.** Correctly
-   credited, but it reads as "this is Landsat". Shot 3 crops below the figure,
-   which also puts the curated writing — the actual point of that screenshot —
-   at the top of the card.
+   credited, and shown by request, but at a glance it reads as "this is
+   Landsat" rather than as an illustration of the science category. A curated
+   photo for LINK, or a procedural fallback, would both be clearer.

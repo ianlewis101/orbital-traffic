@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-08-05T16:09:19.516Z",
+  "capturedAt": "2026-08-05T17:05:36.936Z",
   "brandMark": {
     "rects": 8,
     "ellipse": false
@@ -22,5 +22,15 @@
       "Spacewalk Preps, Health Research on Station as NASA Introduces SpaceX Crew-13"
     ]
   },
-  "starlink": "10,871"
+  "dragon": {
+    "name": "CREW DRAGON 12",
+    "cat": "Capsules",
+    "chips": [
+      "Low Earth Orbit",
+      "In Earth’s shadow",
+      "Over the Indian Ocean",
+      "United States",
+      "≈15.5 orbits / day"
+    ]
+  }
 }

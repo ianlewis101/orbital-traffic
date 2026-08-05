@@ -45,38 +45,40 @@ const SHOTS = [
     cropY: 764,
     eyebrow: "The whole sky",
     h1: "Look&nbsp;up.<br><em>It's crowded.</em>",
-    sub: `<b>{{total}} tracked objects</b>, live from CelesTrak and propagated on your phone.`,
+    sub: `<b>{{total}} tracked objects</b>,<br>Live in orbit just for you to explore.`,
   },
   {
     file: "02-overhead.png",
     img: "02-whats-overhead.png",
-    shotTop: 764,
+    // Three headline lines instead of two, so the type drops a step and the
+    // panel starts lower to keep the same air under the copy.
+    h1Size: 104,
+    shotTop: 872,
     cropY: 450,
     eyebrow: "What's overhead",
-    h1: "Right&nbsp;now,<br><em>{{overhead}} are over you.</em>",
-    sub: "One tap reads your sky and ranks it by what's actually worth stepping outside for.",
+    h1: "Right&nbsp;now,<br><em>See what objects<br>are overhead</em>",
+    sub: "Tap and see what satellites are currently overhead your location.",
   },
   {
+    // Card shots share one crop: sheet top at 516 and figure at 705 both land
+    // on the poster, and each card's description runs out well before the
+    // bottom edge (LINK's is the longest, ending at 1865).
     file: "03-every-dot.png",
     img: "03-link-detail.png",
-    // The LINK card is barely taller than the sheet viewport, so its
-    // category-generic figure can't be scrolled away the way the ISS card's
-    // can. Cropping below it instead leads with the curated write-up, which is
-    // the entire point of this screenshot.
-    shotTop: 1040,
-    cropY: 1040,
+    shotTop: 764,
+    cropY: 450,
     eyebrow: "Every object, explained",
     h1: "Every&nbsp;dot<br><em>has a story.</em>",
     sub: "Who built it, why it's up there — and, for this one, what's gone wrong since.",
   },
   {
-    file: "04-starlink.png",
-    img: "06-starlink-shell.png",
+    file: "04-capsules.png",
+    img: "06-crew-dragon.png",
     shotTop: 764,
-    cropY: 764,
-    eyebrow: "Megaconstellations",
-    h1: "One&nbsp;company.<br><em>{{starlink}} satellites.</em>",
-    sub: "Isolate any class from the legend and watch the shape of the sky change.",
+    cropY: 450,
+    eyebrow: "Crew & cargo",
+    h1: "Follow&nbsp;the&nbsp;fleet,<br><em>launch to landing.</em>",
+    sub: "Dragon, Soyuz, Progress, Cygnus — followed from liftoff until they come home.",
   },
   {
     file: "05-crew.png",
@@ -95,7 +97,6 @@ const WORDS = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "E
 const vars = {
   total: facts.total,
   overhead: facts.overhead,
-  starlink: facts.starlink,
   crewWord: WORDS[Number(facts.crew?.aboard)] ?? facts.crew?.aboard,
 };
 
@@ -122,7 +123,7 @@ const html = (s) => `<link rel="stylesheet" href="${HERE}/poster.css">
   <div class="ticks"><span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span></div>
   <div class="copy">
     <div class="eyebrow">${s.eyebrow}</div>
-    <h1>${fill(s.h1)}</h1>
+    <h1${s.h1Size ? ` style="font-size:${s.h1Size}px"` : ""}>${fill(s.h1)}</h1>
     <div class="rule"></div>
     <p class="sub">${fill(s.sub)}</p>
   </div>
