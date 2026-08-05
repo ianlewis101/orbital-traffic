@@ -52,12 +52,18 @@ const SHOTS = [
     img: "02-whats-overhead.png",
     // Three headline lines instead of two, so the type drops a step and the
     // panel starts lower to keep the same air under the copy.
-    h1Size: 104,
-    shotTop: 872,
+    // Headline runs to three lines here — two plain, then the gradient line —
+    // so the type drops a step and the panel starts lower to keep the same air
+    // under the copy.
+    h1Size: 96,
+    shotTop: 800,
     cropY: 450,
     eyebrow: "What's overhead",
-    h1: "Right&nbsp;now,<br><em>See what objects<br>are overhead</em>",
-    sub: "Tap and see what satellites are currently overhead your location.",
+    h1: "What's flying over<br>your head right now?<br><em>Tap and find out.</em>",
+    // Deliberately not "Tap and see ..." — the gradient line above already
+    // opens with "Tap", and the original copy's "overhead your location" was
+    // the grammar slip being fixed.
+    sub: "See which satellites are currently above your location.",
   },
   {
     // Card shots share one crop: sheet top at 516 and figure at 705 both land
@@ -88,6 +94,15 @@ const SHOTS = [
     eyebrow: "Life in orbit",
     h1: "{{crewWord}}&nbsp;people<br><em>live up there.</em>",
     sub: "The current crew, their expedition, and what they actually did today.",
+  },
+  {
+    file: "06-daylight.png",
+    img: "07-globe-daylight.png",
+    shotTop: 764,
+    cropY: 764,
+    eyebrow: "Day and night",
+    h1: "Real&nbsp;sunlight,<br><em>real shadow.</em>",
+    sub: "The terminator moves as the planet turns — Earth is lit exactly as it is right now.",
   },
 ];
 

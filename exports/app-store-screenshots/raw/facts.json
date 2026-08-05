@@ -1,11 +1,11 @@
 {
-  "capturedAt": "2026-08-05T17:05:36.936Z",
+  "capturedAt": "2026-08-05T18:52:39.918Z",
   "brandMark": {
     "rects": 8,
     "ellipse": false
   },
-  "total": "18,927",
-  "overhead": "133",
+  "total": "18,951",
+  "overhead": "127",
   "crew": {
     "aboard": "7",
     "names": [
@@ -28,9 +28,10 @@
     "chips": [
       "Low Earth Orbit",
       "In Earth’s shadow",
-      "Over the Indian Ocean",
+      "Over Australia",
       "United States",
       "≈15.5 orbits / day"
     ]
-  }
+  },
+  "daylightLuminance": 72.6
 }

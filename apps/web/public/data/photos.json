@@ -1,8 +1,8 @@
 {
-  "iss": { "path": "/photos/iss.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
+  "iss": { "path": "/photos/iss.jpg", "credit": "NASA (ISS from Crew Dragon Endeavour, 2021)" },
   "hubble": { "path": "/photos/hubble.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
   "jwst": { "path": "/photos/jwst.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
-  "dragon": { "path": "/photos/dragon.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
+  "dragon": { "path": "/photos/dragon.jpg", "credit": "NASA (Crew-11 Dragon approaching the ISS, 2025)" },
   "soyuz": { "path": "/photos/soyuz.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
   "progress": { "path": "/photos/progress.jpg", "credit": "NASA (ISS Expedition 14)" },
   "cygnus": { "path": "/photos/cygnus.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
@@ -36,7 +36,7 @@
   ] },
   "science_generic": { "pool": [
     { "path": "/photos/science_generic.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
-    { "path": "/photos/science_generic_2.jpg", "credit": "NASA (Landsat 9)" },
+    { "path": "/photos/science_generic_2.jpg", "credit": "NASA (STS-82, Hubble released from Discovery, 1997)" },
     { "path": "/photos/science_generic_3.jpg", "credit": "NASA (Terra)" },
     { "path": "/photos/science_generic_4.jpg", "credit": "NASA (TESS)" }
   ] },

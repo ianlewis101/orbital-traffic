@@ -30,10 +30,16 @@ sky it draws is visibly, alarmingly crowded.
 | # | File | Says | Shows |
 |---|---|---|---|
 | 1 | `01-look-up.png` | Look up. **It's crowded.** | The live globe, terminator down the left limb, night-side city lights, full Orbit Classes legend |
-| 2 | `02-overhead.png` | Right now, **See what objects are overhead** | What's Overhead from Los Angeles — category chips, tier-ranked list |
+| 2 | `02-overhead.png` | What's flying over your head right now? **Tap and find out.** | What's Overhead from Los Angeles — category chips, tier-ranked list |
 | 3 | `03-every-dot.png` | Every dot **has a story.** | LINK's card — photo, identity, and the full curated write-up down to its failing reaction wheels |
 | 4 | `04-capsules.png` | Follow the fleet, **launch to landing.** | Crew Dragon 12 mid-mission: its photo, its DOCKED phase block ("at ISS · 33 days in this phase") and recent activity |
 | 5 | `05-crew.png` | Seven people **live up there.** | The ISS card: photo, live crew, expedition, today's activity |
+| 6 | `06-daylight.png` | Real sunlight, **real shadow.** | The daylight companion to shot 1 — one zoom step further out, sunlit hemisphere facing the camera |
+
+Shot 6 is captured by sweeping the camera past the terminator and keeping the
+frame with the highest mean luminance, rather than by a fixed rotation: which
+angle lands on full daylight depends on where the sun is at capture time, so a
+hard-coded drag count would silently produce a night shot on a later re-run.
 
 Shot 2 is the conversion shot. A globe is impressive; *your* sky is personal.
 
@@ -110,17 +116,37 @@ retired orbit ring.
 1080×1350. It isn't in the final five — the set was stronger with the crew shot
 — but it's the cleanest single asset for social or a press kit.
 
+## Photo provenance
+
+Every object photo in this set is a NASA public-domain image with a verifiable
+ID, sourced from `images-api.nasa.gov`. None contains an identifiable person.
+
+| Slot | NASA ID | Subject |
+|---|---|---|
+| `iss` | `iss066e081189` | ISS from Crew Dragon Endeavour's flyaround, 8 Nov 2021 |
+| `dragon` | `iss073e0505071` | Crew-11 Dragon approaching the ISS, 2 Aug 2025 |
+| `science_generic` pool[1] | `s82e5937` | Hubble separating from Discovery after release, STS-82, Feb 1997 |
+
+This replaced three images the app was shipping under the credit "Source
+unconfirmed — pre-existing image" (`iss`, `dragon`) and a NASA Landsat 9 press
+photo of two identifiable people (`science_generic` pool[1], which is the entry
+LINK's ID hashes to). The credit line the app draws over each photo now names a
+real source, so the "source unconfirmed" text is absent from these screenshots
+because it is no longer true — not because it was hidden.
+
+**These are app-data changes, not screenshot-only ones**
+(`apps/web/public/data/photos.json` plus three files in
+`apps/web/public/photos/`), so they only reach users once merged. They are
+separable from the screenshots if you would rather land them on their own.
+
 ## Known issues these screenshots had to work around
 
-1. **Photo provenance — visible on shots 4 and 5.** 11 of the 20 entries in
-   `apps/web/public/data/photos.json` — including `iss`, `hubble`, `jwst`,
-   `dragon`, `soyuz`, `cygnus` and all five asteroids — are credited "Source
-   unconfirmed — pre-existing image", and the app renders that credit over the
-   photo. Both card shots that show an object photo therefore carry that line,
-   small, at the photo's bottom right. Unknown provenance is a rights problem
-   on a public store listing regardless of the screenshots; replacing those 11
-   files with properly-licensed NASA/ESA/SpaceX imagery fixes the listing and
-   the app in one move, and these screenshots would only need a re-run.
+1. **14 photo entries elsewhere in the app are still unconfirmed.** `hubble`,
+   `jwst`, `soyuz`, `cygnus`, all five asteroids, and index 0 of each of the
+   five generic pools still carry "Source unconfirmed — pre-existing image".
+   None of them appears in this screenshot set, but each is the same rights
+   question, and any of them can surface in the app the moment a user taps the
+   wrong object. The three above show the pattern for fixing the rest.
 2. **The mobile clock reads 12-hour with no meridiem.** `clock.js` renders
    `.utc-compact` as `6:44 UTC` when it is 18:44 UTC (the share card's own
    timestamp correctly says `18:44 UTC`). It's deliberate CSS, but it sits in
@@ -128,7 +154,8 @@ retired orbit ring.
 3. **Time Machine can't be shown at all.** `#time` is `display:none !important`
    under 768px — it's desktop-only, so it cannot appear in an iPhone
    screenshot.
-4. **LINK's photo is a category-generic Landsat 9 press image.** Correctly
-   credited, and shown by request, but at a glance it reads as "this is
-   Landsat" rather than as an illustration of the science category. A curated
-   photo for LINK, or a procedural fallback, would both be clearer.
+4. **LINK still shows a category-generic photo**, now Hubble rather than the
+   Landsat press shot. It is a real satellite on orbit and thematically apt —
+   LINK's own mission is to reboost an ageing space telescope — but it is not a
+   picture of LINK. A curated photo keyed to LINK's NORAD ID would be exact;
+   no public image of the spacecraft on orbit appears to exist yet.

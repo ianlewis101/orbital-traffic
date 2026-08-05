@@ -101,11 +101,53 @@ async function selectByName(page, name) {
   await settle(page, "#info");
 }
 
-/** Camera preset used by every globe shot: terminator down the left limb. */
+/** Lead globe shot: terminator down the left limb, night-side city lights. */
 async function heroCamera(page) {
   await zoom(page, 3);
   for (let i = 0; i < 6; i++) await drag(page, -110, 0);
   await page.waitForTimeout(1800);
+}
+
+/**
+ * Daylight companion: one zoom step further out than the lead shot, rotated on
+ * past the terminator so the sunlit hemisphere faces the camera. Which drag
+ * count lands on full daylight depends on the sun's longitude at capture time,
+ * so this sweeps and keeps the frame with the most lit pixels rather than
+ * trusting a fixed number.
+ */
+async function daylightCamera(page, screenshotPath) {
+  await zoom(page, 4);
+  for (let i = 0; i < 6; i++) await drag(page, -110, 0);
+  let best = null;
+  for (let i = 0; i < 7; i++) {
+    await drag(page, -110, 0);
+    await page.waitForTimeout(1400);
+    const buf = await page.screenshot();
+    // Score by mean luminance over the globe's bounding box: a daylit
+    // hemisphere is far brighter than a night side lit only by cities.
+    const lit = await page.evaluate(async (b64) => {
+      const img = new Image();
+      img.src = "data:image/png;base64," + b64;
+      await img.decode();
+      const c = document.createElement("canvas");
+      c.width = 220;
+      c.height = 220;
+      const g = c.getContext("2d");
+      // sample the middle of the frame, where the globe sits
+      g.drawImage(img, 0, img.height * 0.28, img.width, img.width, 0, 0, 220, 220);
+      const d = g.getImageData(0, 0, 220, 220).data;
+      let sum = 0;
+      for (let p = 0; p < d.length; p += 4) sum += d[p] + d[p + 1] + d[p + 2];
+      return sum / (d.length / 4) / 3;
+    }, buf.toString("base64"));
+    console.log(`   daylight sweep ${i + 7} drags — mean luminance ${lit.toFixed(1)}`);
+    if (!best || lit > best.lit) {
+      best = { lit, buf };
+    }
+  }
+  const { writeFile } = await import("node:fs/promises");
+  await writeFile(screenshotPath, best.buf);
+  return best.lit;
 }
 
 await mkdir(RAW, { recursive: true });
@@ -244,6 +286,16 @@ facts.dragon = await page.evaluate(() => ({
 }));
 await page.screenshot({ path: `${RAW}/06-crew-dragon.png` });
 console.log("06 Crew Dragon —", facts.dragon.name, "/", facts.dragon.cat);
+
+// ── 7. Daylight globe ──────────────────────────────────────────────────────
+// Reload first: zoom() and drag() are relative, so this would otherwise
+// inherit the hero camera and the card selections above.
+await page.reload({ waitUntil: "load" });
+await ready(page);
+facts.daylightLuminance = Number(
+  (await daylightCamera(page, `${RAW}/07-globe-daylight.png`)).toFixed(1)
+);
+console.log("07 daylight globe");
 
 await writeFile(`${RAW}/facts.json`, JSON.stringify(facts, null, 2) + "\n");
 console.log("\nfacts.json:", JSON.stringify(facts, null, 2));
