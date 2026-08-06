@@ -1,6 +1,6 @@
 # App Store screenshots
 
-Five upload-ready screenshots at 1320×2868 — the App Store's 6.9" display size
+Six upload-ready screenshots at 1320×2868 — the App Store's 6.9" display size
 — in `composed/`, built from real captures of the live app in `raw/`, by the
 scripts in `tooling/`.
 
