@@ -597,8 +597,13 @@
   .set-row.on .set-sw::after{transform:translateX(16px);background:var(--amber)}
 
   .set-seg{display:flex;gap:6px}
+  /* text-align:center overrides the button{text-align:inherit} reset above —
+     without it this full-width pill inherits the page's left alignment and
+     its label sits flush against the left edge instead of centered like
+     every other pill control in the app (.gbtn, .tbtn, .jbtn all set this
+     explicitly for the same reason). */
   .set-action{width:100%;font-family:var(--mono);font-size:10.5px;letter-spacing:0.12em;text-transform:uppercase;
-    padding:11px 0;margin-top:10px;color:var(--signal);background:rgba(174,227,255,0.07);
+    text-align:center;padding:11px 0;margin-top:10px;color:var(--signal);background:rgba(174,227,255,0.07);
     border:1px solid rgba(174,227,255,0.3);border-radius:9px;cursor:pointer;touch-action:manipulation;font-weight:500}
   .set-action:hover{background:rgba(174,227,255,0.13)}
   .set-action:disabled{opacity:0.5;cursor:default}
@@ -749,9 +754,12 @@
       border-radius:18px 18px 0 0;animation:none;
     }
     #overhead.show,#settings.show{animation:slideup .3s cubic-bezier(.22,.7,.2,1)}
-    /* Grab handle, matching #info-drag. Purely a visual affordance here —
-       these sheets close with the ✕ or Escape rather than a swipe, so it
-       carries no touch handler and needs no touch-action override. */
+    /* Grab handle, matching #info-drag. Settings now closes on a downward
+       swipe too (ui/settings.js's onSheetTouchStart/Move/End, bound to the
+       whole #settings panel so a drag can start from the handle, header, or
+       list once it's scrolled to the top — same shape as #info's own
+       swipe-to-collapse). Overhead still relies on ✕/Escape only; it has no
+       touch handler here and needs no touch-action override. */
     .sheet-drag{display:block;position:sticky;top:0;z-index:3;width:100%;padding:10px 0 8px;
       background:rgba(17,22,42,0.92);backdrop-filter:blur(12px);border-radius:18px 18px 0 0}
     .sheet-drag::before{content:"";display:block;margin:0 auto;width:38px;height:4px;border-radius:2px;
