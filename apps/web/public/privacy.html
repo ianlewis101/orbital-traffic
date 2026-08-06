@@ -52,7 +52,11 @@ or deleting the app, removes them.</p>
 
 <h2>Third-party services this app talks to</h2>
 <p>These are services the app fetches public orbital/space data from. None of them
-receive any information that identifies you:</p>
+receive any information that identifies you, with one exception: if the app's backend
+is ever temporarily unreachable, the app falls back to fetching data directly from
+CelesTrak from your own device, in which case CelesTrak sees your device's IP address
+for that request. This fallback is rare — in normal operation, every such request is
+proxied through the app's backend and CelesTrak never sees your device directly.</p>
 <ul>
   <li><a href="https://celestrak.org" target="_blank" rel="noopener">CelesTrak</a> —
     public-domain satellite orbital element data</li>
@@ -63,7 +67,10 @@ receive any information that identifies you:</p>
 </ul>
 <p>The app's backend runs on Cloudflare, which, like any web infrastructure provider,
 processes standard connection metadata (such as IP address) as a normal part of serving
-requests. Orbital Traffic itself does not read, log, or use this information.</p>
+requests. Orbital Traffic's own code does not read, log, or use this information — though
+Cloudflare's platform-level request logging, enabled for operational debugging, does make
+this connection metadata visible to the app's operator via the Cloudflare dashboard,
+separately from anything the app itself does.</p>
 
 <h2>Data shown in the app</h2>
 <p>Orbital positions are computed on your own device from cached and periodically
