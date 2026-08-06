@@ -84,8 +84,93 @@ function isOpen() {
   return panel()?.classList.contains("show");
 }
 
+// =====================================================================
+// MOBILE — swipe-down-to-close
+//
+// Same drag physics as the object card's swipe-to-collapse (ui/info.js —
+// dragging only "grabs" past a 6px vertical threshold, only when scrolled
+// to the top, and only commits past an 80px drag or a fast-enough flick;
+// otherwise it snaps back open). Adapted to close outright rather than
+// collapse to a mini-card: unlike the info card, this sheet has nothing to
+// collapse into.
+// =====================================================================
+const isMobileLayout = () => window.matchMedia("(max-width:768px)").matches;
+let sheetDrag = null,
+  sheetAnimGen = 0;
+
+function onSheetTouchStart(e) {
+  if (!isMobileLayout()) return;
+  sheetDrag = { startY: e.touches[0].clientY, dragging: false };
+}
+function onSheetTouchMove(e) {
+  if (!sheetDrag) return;
+  const y = e.touches[0].clientY;
+  if (!sheetDrag.dragging) {
+    const dy0 = y - sheetDrag.startY;
+    const body = $("#settings-body");
+    if (dy0 > 6 && (!body || body.scrollTop <= 0)) {
+      sheetDrag.dragging = true;
+      sheetDrag.dragStartY = y;
+      sheetDrag.dragStartTime = performance.now();
+      panel().style.transition = "none";
+    } else if (dy0 < -6) {
+      sheetDrag = null;
+      return;
+    } else return;
+  }
+  sheetDrag.lastY = y;
+  e.preventDefault();
+  panel().style.transform = `translateY(${Math.max(0, y - sheetDrag.dragStartY)}px)`;
+}
+function onSheetTouchEnd() {
+  if (!sheetDrag || !sheetDrag.dragging) {
+    sheetDrag = null;
+    return;
+  }
+  const dy = Math.max(0, sheetDrag.lastY - sheetDrag.dragStartY);
+  const elapsed = Math.max(1, performance.now() - sheetDrag.dragStartTime);
+  sheetDrag = null;
+  panel().style.transition = "";
+  if (dy > 80 || dy / elapsed > 0.5) dismissSheet();
+  else snapSheetOpen();
+}
+function onSheetTouchCancel() {
+  if (!sheetDrag) return;
+  const wasDragging = sheetDrag.dragging;
+  sheetDrag = null;
+  panel().style.transition = "";
+  if (wasDragging) snapSheetOpen();
+}
+function dismissSheet() {
+  const p = panel();
+  const gen = ++sheetAnimGen;
+  p.style.transition = "transform .3s cubic-bezier(.32,.72,0,1)";
+  p.style.transform = "translateY(110%)";
+  setTimeout(() => {
+    if (sheetAnimGen !== gen) return;
+    closeSettings();
+  }, 300);
+}
+function snapSheetOpen() {
+  const p = panel();
+  const gen = ++sheetAnimGen;
+  p.style.transition = "transform .32s cubic-bezier(.34,1.56,.64,1)";
+  p.style.transform = "translateY(0)";
+  setTimeout(() => {
+    if (sheetAnimGen !== gen) return;
+    p.style.transition = "";
+    p.style.transform = "";
+  }, 320);
+}
+
 export function closeSettings() {
-  panel()?.classList.remove("show");
+  sheetAnimGen++; // invalidate any in-flight drag animation
+  const p = panel();
+  p?.classList.remove("show");
+  if (p) {
+    p.style.transition = "";
+    p.style.transform = "";
+  }
   $("#settings-btn")?.setAttribute("aria-expanded", "false");
 }
 
@@ -328,9 +413,19 @@ function savedRow(id) {
   return b;
 }
 
+/**
+ * Rows shown per Saved list before a "Show all" tap reveals the rest — same
+ * cap-then-expand idiom as Overhead's PAGE/oh-more, needed for the same
+ * reason: an unbounded list of rows was the single biggest thing pushing the
+ * rest of Settings out of easy reach.
+ */
+const SAVED_PAGE = 3;
+
 /** One list within the Saved card: its label, then its rows or its empty state. */
 function savedList(body, list, label, empty) {
-  const ids = savedIds(list);
+  // Newest first — the object you just saved is the one you're most likely
+  // reaching for. savedIds() hands them back oldest-first (insertion order).
+  const ids = [...savedIds(list)].reverse();
   const sub = document.createElement("div");
   sub.className = "set-sub";
   sub.textContent = ids.length ? `${label} (${ids.length})` : label;
@@ -340,12 +435,29 @@ function savedList(body, list, label, empty) {
     body.appendChild(note(empty));
     return 0;
   }
+
   const wrap = document.createElement("div");
-  wrap.className = "set-saved";
-  // Newest first — the object you just saved is the one you're most likely
-  // reaching for. savedIds() hands them back oldest-first (insertion order).
-  for (const id of [...ids].reverse()) wrap.appendChild(savedRow(id));
-  body.appendChild(wrap);
+  const foot = document.createElement("div");
+  body.append(wrap, foot);
+
+  let shown = SAVED_PAGE;
+  const paint = () => {
+    wrap.className = "set-saved";
+    wrap.innerHTML = "";
+    for (const id of ids.slice(0, shown)) wrap.appendChild(savedRow(id));
+    foot.innerHTML = "";
+    if (ids.length > shown) {
+      const remaining = ids.length - shown;
+      foot.appendChild(
+        actionButton(`Show all (${remaining} more)`, () => {
+          shown = ids.length;
+          paint();
+        })
+      );
+    }
+  };
+  paint();
+
   return ids.length;
 }
 
@@ -552,6 +664,9 @@ export function openSettings() {
   const p = panel();
   if (!p) return;
   closeOtherSheets("settings");
+  sheetAnimGen++; // invalidate any leftover drag animation from the last close
+  p.style.transition = "";
+  p.style.transform = "";
   p.classList.add("show");
   p.scrollTop = 0;
   $("#settings-btn")?.setAttribute("aria-expanded", "true");
@@ -561,9 +676,16 @@ export function openSettings() {
 export function initSettings() {
   const btn = $("#settings-btn");
   const x = $("#settings-x");
+  const p = panel();
   if (x) x.onclick = () => closeSettings();
   if (btn) {
     btn.onclick = () => (isOpen() ? closeSettings() : openSettings());
+  }
+  if (p) {
+    p.addEventListener("touchstart", onSheetTouchStart, { passive: true });
+    p.addEventListener("touchmove", onSheetTouchMove, { passive: false });
+    p.addEventListener("touchend", onSheetTouchEnd);
+    p.addEventListener("touchcancel", onSheetTouchCancel);
   }
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && isOpen()) closeSettings();
@@ -578,4 +700,5 @@ export const _test = {
   buildData,
   buildAbout,
   buildPrivacy,
+  SAVED_PAGE,
 };
