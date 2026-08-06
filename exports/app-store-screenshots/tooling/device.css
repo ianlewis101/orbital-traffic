@@ -1,0 +1,128 @@
+/* iPhone device mockup — the device-framed variant of the screenshot set.
+   Loaded AFTER poster.css, which supplies the background, the copy block and
+   the type. This file adds only the phone.
+
+   Proportions are taken from real 6.9" hardware rather than eyeballed, so the
+   frame reads as a device and not as a rounded rectangle:
+
+     screen            440 x 956 pt  (1320 x 2868 at 3x — the capture, exactly)
+     bezel             ~4% of body width, uniform on all four sides
+     screen corner     ~55pt, i.e. 12.5% of screen width
+     body corner       screen corner + bezel, so the curves stay concentric
+     Dynamic Island    125 x 36 pt, 11pt below the top of the screen
+
+   Everything below is derived from --device-w, so changing that one value
+   rescales the whole phone and keeps the proportions honest. */
+
+.poster {
+  --device-w: 950px;
+  --bezel: 38px; /* 4% of --device-w */
+  --screen-w: 874px; /* --device-w - 2 * --bezel */
+  --screen-h: 1899px; /* --screen-w * 2868/1320 */
+  --screen-r: 109px; /* 12.5% of --screen-w */
+  --body-r: 147px; /* --screen-r + --bezel */
+  --island-scale: 1.9864; /* --screen-w / 440pt */
+}
+
+.device {
+  position: absolute;
+  z-index: 2;
+  top: 800px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: var(--device-w);
+  height: calc(var(--screen-h) + 2 * var(--bezel));
+  border-radius: var(--body-r);
+  /* Brushed-titanium band: a light catch along the top-left edge falling to
+     near-black at the bottom right, which is what sells it as metal. */
+  background: linear-gradient(152deg, #4a505a 0%, #23272e 18%, #14161b 52%, #2c313a 82%, #171a1f 100%);
+  box-shadow:
+    /* A black cast shadow does almost nothing on a near-black background, so
+       separation comes mostly from the rim light on the band. The shadow is
+       still worth having: it darkens the #fx-scan glows behind the phone,
+       which is what stops it reading as a flat sticker. */
+    0 24px 55px rgba(0, 0, 0, 0.8),
+    0 85px 150px rgba(0, 0, 0, 0.85),
+    0 170px 260px rgba(0, 0, 0, 0.55),
+    /* rim light and inner darkening so the band has thickness */
+    inset 0 0 0 2px rgba(255, 255, 255, 0.15),
+    inset 0 3px 4px rgba(255, 255, 255, 0.2),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.6);
+}
+
+.screen {
+  position: absolute;
+  inset: var(--bezel);
+  border-radius: var(--screen-r);
+  overflow: hidden;
+  background: #000 no-repeat center / cover;
+  /* the glass sits fractionally below the band it is set into */
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.9);
+}
+
+/* Dynamic Island. Drawn over the screenshot because the capture is of the app,
+   which renders beneath it on a real device. */
+.island {
+  position: absolute;
+  z-index: 3;
+  top: calc(var(--bezel) + 11px * var(--island-scale));
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(125px * var(--island-scale));
+  height: calc(36px * var(--island-scale));
+  border-radius: calc(18px * var(--island-scale));
+  background: #000;
+  /* The app's UI is near-black too, so a plain black pill vanishes into it.
+     A hairline cutout rim and the camera lens below are what make the island
+     legible against dark app content without faking anything. */
+  box-shadow:
+    0 0 0 1.5px rgba(255, 255, 255, 0.09),
+    inset 0 1px 2px rgba(255, 255, 255, 0.05);
+}
+
+/* Front camera, sitting in the right of the island as it does on hardware. */
+.island::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: calc(11px * var(--island-scale));
+  transform: translateY(-50%);
+  width: calc(11px * var(--island-scale));
+  height: calc(11px * var(--island-scale));
+  border-radius: 50%;
+  background: radial-gradient(circle at 36% 32%, #3c4a68 0%, #131a2a 55%, #05070c 100%);
+  box-shadow: inset 0 0 2px rgba(140, 170, 220, 0.35);
+}
+
+/* Side buttons. Subtle, but without them the body reads as a slab. */
+.btn {
+  position: absolute;
+  width: 7px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #3d434c, #20242b 55%, #33383f);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+.btn.l {
+  left: -6px;
+  border-radius: 4px 0 0 4px;
+}
+.btn.r {
+  right: -6px;
+  border-radius: 0 4px 4px 0;
+}
+.btn.action {
+  top: 13.5%;
+  height: 3.6%;
+}
+.btn.volup {
+  top: 18.6%;
+  height: 6%;
+}
+.btn.voldn {
+  top: 26%;
+  height: 6%;
+}
+.btn.power {
+  top: 21%;
+  height: 8.4%;
+}

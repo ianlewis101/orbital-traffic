@@ -1,8 +1,20 @@
 # App Store screenshots
 
 Six upload-ready screenshots at 1320×2868 — the App Store's 6.9" display size
-— in `composed/`, built from real captures of the live app in `raw/`, by the
-scripts in `tooling/`.
+— built from real captures of the live app in `raw/`, by the scripts in
+`tooling/`. Two presentation variants of the same six frames exist side by
+side so they can be compared:
+
+| Folder | Treatment | Built by |
+|---|---|---|
+| `composed/` | Full-bleed — the app screen runs to the canvas edges, no phone | `render.mjs` |
+| `composed-device/` | The same frames inside a realistic iPhone mockup | `render-device.mjs` |
+
+Both read their shot list, copy and figures from `tooling/shots.mjs`, and both
+load `tooling/poster.css` for the background and type. Copy is defined once, in
+one file: a headline that had to be edited in two places would quietly drift
+between the variants, which is the one thing a side-by-side comparison must not
+have. The only intended difference between the two outputs is the framing.
 
 Nothing here is wired into a build. It's a kit you re-run when the listing
 needs re-cutting.
@@ -59,8 +71,10 @@ the rhythm if it ever reads as repetitive.
 
 ## Design
 
-Full bleed, no device mockup. A phone frame on a gradient would have made a
-dark, precise app look like a template.
+### Full-bleed (`composed/`)
+
+No device mockup. A phone frame on a gradient would have made a dark, precise
+app look like a template.
 
 The poster background is the app's own: `--bg` `#07080f`, the `#fx-scan` corner
 glows and the `#fx-vignette` radial, re-created at poster scale in
@@ -75,13 +89,40 @@ The corner ticks are the `#bezel` motif. Worth knowing: the app itself retired
 that element in the Aurora pass (`#bezel{display:none}`), so this is a
 deliberate revival for the poster frame, not a live element.
 
+### Device-framed (`composed-device/`)
+
+Identical background, copy and type; the app screen sits in an iPhone instead
+of bleeding to the edges. Proportions in `tooling/device.css` are derived from
+real 6.9" hardware rather than eyeballed — 4% bezel, screen corner radius at
+12.5% of screen width, body radius = screen radius + bezel so the curves stay
+concentric, and a 125×36pt Dynamic Island 11pt below the top of the screen.
+Everything scales off one `--device-w`.
+
+Two things needed solving that only show up against this app:
+
+- **The Dynamic Island vanished.** A black pill on a near-black UI is invisible,
+  which is realistic and useless. It reads now via a hairline cutout rim and the
+  front-camera lens, both of which are on the real hardware.
+- **The drop shadow does almost nothing** on a `#07080f` background. Separation
+  comes mostly from the rim light along the titanium band; the shadow still
+  earns its place by darkening the `#fx-scan` glows behind the phone, which is
+  what stops it reading as a flat sticker.
+
+The capture is shown **whole** here, not cropped the way the full-bleed variant
+crops it — a device mockup that hid part of the screen would not be showing a
+phone. The cost is scale: the app lands at about 64% of its full-bleed size, so
+at App Store search-result width (~150px) the device version's UI detail turns
+to texture while the full-bleed version's is still legible. That trade-off is
+the substance of the comparison.
+
 ## Re-cutting
 
 ```bash
 npm run build
 npm run preview -w @orbital-traffic/web -- --port 4173 --strictPort
 node exports/app-store-screenshots/tooling/capture.mjs   # -> raw/ + raw/facts.json
-node exports/app-store-screenshots/tooling/render.mjs    # -> composed/
+node exports/app-store-screenshots/tooling/render.mjs         # -> composed/
+node exports/app-store-screenshots/tooling/render-device.mjs  # -> composed-device/
 ```
 
 `capture.mjs` needs `playwright` importable (install to a scratch dir and

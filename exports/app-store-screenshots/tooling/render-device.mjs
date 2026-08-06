@@ -1,18 +1,20 @@
 /**
- * Compose the full-bleed variant of the App Store screenshots.
+ * Compose the device-framed variant of the App Store screenshots.
  *
- *   node exports/app-store-screenshots/tooling/render.mjs
+ *   node exports/app-store-screenshots/tooling/render-device.mjs
  *
- * Reads ../raw/*.png and ../raw/facts.json, writes ../composed/*.png at
- * 1320x2868 — the App Store's 6.9" display size. Shot list and copy come from
- * shots.mjs, shared with render-device.mjs.
+ * Same captures, same copy, same background and type as render.mjs — the only
+ * difference is that each app screen sits inside an iPhone mockup instead of
+ * bleeding to the canvas edges. Writes ../composed-device/*.png at 1320x2868.
  *
- * Design: full bleed, no device mockup. The poster background is the app's own
- * near-black with its #fx-scan glows and #fx-vignette re-created at poster
- * scale, so the capture never reads as a rectangle pasted onto a marketing
- * board. Type, colour and the accent hairline come from apps/web/src/styles/
- * app.css. The corner ticks are the #bezel motif, which the app itself retired
- * in the Aurora pass — kept here purely as a frame cue.
+ * The two variants exist to be compared, so this deliberately shares shots.mjs
+ * (copy) and poster.css (background, type, corner ticks) with the full-bleed
+ * renderer and adds only device.css on top. Anything that differs between the
+ * two outputs is therefore the framing itself, not drift.
+ *
+ * Note the capture is shown WHOLE here, not cropped the way the full-bleed
+ * variant crops it: a device mockup that hid part of the screen would not be
+ * showing a phone.
  */
 import { chromium } from "playwright";
 import { writeFile, mkdir } from "node:fs/promises";
@@ -21,23 +23,22 @@ import { fileURLToPath } from "node:url";
 import { SHOTS, RAW, loadFill } from "./shots.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const OUT = resolve(HERE, "../composed");
+const OUT = resolve(HERE, "../composed-device");
 
 const { fill } = await loadFill();
 
-function shotStyle(s) {
-  return [
-    `top:${s.shotTop}px`,
-    `background-image:url('${RAW}/${s.img}')`,
-    `background-size:1320px 2868px`,
-    `background-position:0 -${s.cropY}px`,
-  ].join(";");
-}
-
 const html = (s) => `<link rel="stylesheet" href="${HERE}/poster.css">
+<link rel="stylesheet" href="${HERE}/device.css">
 <div class="poster">
   <div class="scan"></div>
-  <div class="shot" style="${shotStyle(s)}"></div>
+  <div class="device">
+    <div class="screen" style="background-image:url('${RAW}/${s.img}')"></div>
+    <div class="island"></div>
+    <span class="btn l action"></span>
+    <span class="btn l volup"></span>
+    <span class="btn l voldn"></span>
+    <span class="btn r power"></span>
+  </div>
   <div class="vig"></div>
   <div class="grain"></div>
   <div class="ticks"><span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span></div>
@@ -57,8 +58,8 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1320, height: 2868 } });
 
 for (const s of SHOTS) {
-  await writeFile(`${HERE}/.page.html`, html(s));
-  await page.goto(`file://${HERE}/.page.html`);
+  await writeFile(`${HERE}/.page-device.html`, html(s));
+  await page.goto(`file://${HERE}/.page-device.html`);
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${OUT}/${s.file}` });
