@@ -56,6 +56,8 @@ const ICONS = {
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16.2"/><circle cx="12" cy="7.6" r="0.9" fill="currentColor" stroke="none"/></svg>',
   changelog:
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="13" y2="18"/></svg>',
+  support:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.4 9.3a2.7 2.7 0 0 1 5.2 1c0 1.9-2.6 2.1-2.6 3.7"/><circle cx="12" cy="16.3" r="0.9" fill="currentColor" stroke="none"/></svg>',
   issue:
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="7.5" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.9" fill="currentColor" stroke="none"/></svg>',
 };
@@ -618,6 +620,7 @@ function buildAbout() {
   links.className = "set-links";
   links.append(
     linkChip(`${GITHUB}/blob/main/CHANGELOG.md`, "changelog", "What's new"),
+    linkChip("/support.html", "support", "Get Support"),
     linkChip(`${GITHUB}/issues/new`, "issue", "Report an issue"),
     linkChip("/privacy.html", "privacy", "Privacy")
   );
