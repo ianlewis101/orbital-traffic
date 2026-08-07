@@ -4,6 +4,7 @@ import { vehicleFamily, CREW_SEATS_BY_FAMILY } from "@orbital-traffic/catalog";
 import { renderCapsuleStatus } from "./capsule-status.js";
 import { esc } from "../util/html.js";
 import { formatRelativeTime } from "../util/relative-time.js";
+import { setInfoFreshness } from "./info-attr.js";
 
 function initials(name) {
   const p = name.trim().split(/\s+/);
@@ -147,12 +148,14 @@ export async function fetchAndRenderCrew(s) {
     if (family) return renderCapsuleStatus(s, el);
     el.style.display = "none";
     el.innerHTML = "";
+    setInfoFreshness(null);
     return;
   }
   const showToday = ISS_TODAY_IDS.has(s.id);
   const craft = isISS ? "ISS" : "Tiangong";
   el.style.display = "block";
   el.innerHTML = `<div class="crew-block"><div style="padding:14px;text-align:center;font-size:9.5px;color:var(--ink-faint);letter-spacing:0.1em">Fetching crew…</div></div>`;
+  setInfoFreshness(null); // clear any stale note from the previous selection while this fetch is in flight
   // fetch crew from worker
   let crew = [];
   let crewFetchFailed = false;
@@ -174,6 +177,7 @@ export async function fetchAndRenderCrew(s) {
     crewFetchFailed = true;
   }
   if (state.selected !== s) return; // selection changed while this was in flight
+  setInfoFreshness(!crewFetchFailed && fetchedAt ? `Crew data as of ${formatRelativeTime(new Date(fetchedAt))}` : null);
 
   // Plausibility stopgap (see CREW_SEATS_BY_FAMILY's doc comment in
   // classify.js), added 2026-07-20 when Open Notify was found serving a
@@ -273,11 +277,7 @@ export async function fetchAndRenderCrew(s) {
         <div class="crew-count-wrap"><div class="crew-count">${
           // eslint-disable-next-line orbital/no-unescaped-innerhtml -- count is crew.length (a number) or the literal "?" fallback
           count
-        }</div><div class="crew-count-lbl">ABOARD</div>${
-          !crewFetchFailed && fetchedAt
-            ? `<div class="crew-count-lbl">as of ${formatRelativeTime(new Date(fetchedAt))}</div>`
-            : ""
-        }</div>
+        }</div><div class="crew-count-lbl">ABOARD</div></div>
       </div>
       <div class="crew-avs">${
         // eslint-disable-next-line orbital/no-unescaped-innerhtml -- avHTML is assembled from esc()-escaped crew data in the map() loop above
