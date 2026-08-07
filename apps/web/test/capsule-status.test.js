@@ -13,8 +13,13 @@ function stubEl() {
   return { style: {}, innerHTML: "" };
 }
 
+// Stands in for #info-fresh, which renderCapsuleStatus() writes the footer
+// freshness note to via setInfoFreshness() — same stand-in approach as
+// crew.test.js's #info-crew stub, since these tests assert on el.innerHTML
+// only and don't need a real DOM.
 beforeEach(() => {
   vi.stubGlobal("fetch", vi.fn());
+  vi.stubGlobal("document", { querySelector: () => stubEl() });
 });
 afterEach(() => {
   vi.unstubAllGlobals();
