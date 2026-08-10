@@ -14,7 +14,6 @@
   "asteroid_apollo": { "path": "/photos/asteroid_apollo.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
   "asteroid_phaethon": { "path": "/photos/asteroid_phaethon.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
   "asteroid_toutatis": { "path": "/photos/asteroid_toutatis.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
-  "asteroid_florence": { "path": "/photos/asteroid_florence.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
 
   "station_generic": { "pool": [
     { "path": "/photos/station_generic.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
@@ -30,13 +29,10 @@
   ] },
   "geo_generic": { "pool": [
     { "path": "/photos/geo_generic.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
-    { "path": "/photos/geo_generic_2.jpg", "credit": "NASA (GOES-U)" },
-    { "path": "/photos/geo_generic_3.jpg", "credit": "NASA (TDRS)" },
-    { "path": "/photos/geo_generic_4.jpg", "credit": "NASA (GOES-U)" }
+    { "path": "/photos/geo_generic_2.jpg", "credit": "NASA (GOES-U)" }
   ] },
   "science_generic": { "pool": [
     { "path": "/photos/science_generic.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
-    { "path": "/photos/science_generic_2.jpg", "credit": "NASA (Landsat 9)" },
     { "path": "/photos/science_generic_3.jpg", "credit": "NASA (Terra)" },
     { "path": "/photos/science_generic_4.jpg", "credit": "NASA (TESS)" }
   ] },
