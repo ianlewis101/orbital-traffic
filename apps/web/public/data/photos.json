@@ -14,6 +14,7 @@
   "asteroid_apollo": { "path": "/photos/asteroid_apollo.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
   "asteroid_phaethon": { "path": "/photos/asteroid_phaethon.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
   "asteroid_toutatis": { "path": "/photos/asteroid_toutatis.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
+  "asteroid_florence": { "path": "/photos/asteroid_florence.jpg", "credit": "NASA/JPL, Center for Near-Earth Object Studies (Arecibo/Goldstone radar composite, Florence flyby, Sept 2017)" },
 
   "station_generic": { "pool": [
     { "path": "/photos/station_generic.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
@@ -29,10 +30,13 @@
   ] },
   "geo_generic": { "pool": [
     { "path": "/photos/geo_generic.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
-    { "path": "/photos/geo_generic_2.jpg", "credit": "NASA (GOES-U)" }
+    { "path": "/photos/geo_generic_2.jpg", "credit": "NASA (GOES-U)" },
+    { "path": "/photos/geo_generic_3.jpg", "credit": "NASA (STS-61B, RCA Satcom K-2 deployment, 1985)" },
+    { "path": "/photos/geo_generic_4.jpg", "credit": "NASA (STS-41-D, Syncom IV-2 deployment, 1984)" }
   ] },
   "science_generic": { "pool": [
     { "path": "/photos/science_generic.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
+    { "path": "/photos/science_generic_2.jpg", "credit": "NASA / Denny Henry (PACE spacecraft, Goddard Space Flight Center, 2023)" },
     { "path": "/photos/science_generic_3.jpg", "credit": "NASA (Terra)" },
     { "path": "/photos/science_generic_4.jpg", "credit": "NASA (TESS)" }
   ] },
