@@ -107,8 +107,19 @@ describe("isDebrisName / correctDebrisCat", () => {
     expect(isDebrisName("PROGRESS-MS 32")).toBe(false);
   });
 
-  it("never overrides hand-curated hero objects", () => {
-    expect(correctDebrisCat("SL-16 R/B (COOL PICK)", "cool")).toBe("cool");
+  it("passes a non-debris name through with its category unchanged", () => {
+    expect(correctDebrisCat("ISS (ZARYA)", "stations")).toBe("stations");
+  });
+
+  // The "cool" category (user-facing label "COOL SHIT") was removed outright
+  // during the App Store submission audit: nothing in the pipeline ever
+  // assigned it, so it rendered nowhere, but it sat one hand-curated object
+  // away from putting that label in the on-screen Orbit Classes legend. It
+  // used to have an escape hatch here that spared a hero object from the
+  // debris demotion. With the category gone, a debris-shaped name demotes
+  // unconditionally — that is the intended consequence, not a regression.
+  it("demotes a debris-shaped name regardless of the category it arrives with", () => {
+    expect(correctDebrisCat("SL-16 R/B (COOL PICK)", "science")).toBe("debris");
   });
 });
 

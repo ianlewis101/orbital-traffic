@@ -1,47 +1,40 @@
 {
-  "iss": { "path": "/photos/iss.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
-  "hubble": { "path": "/photos/hubble.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
-  "jwst": { "path": "/photos/jwst.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
-  "dragon": { "path": "/photos/dragon.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
-  "soyuz": { "path": "/photos/soyuz.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
+  "iss": { "path": "/photos/iss.jpg", "credit": "NASA (STS-132 flyaround, 2010)" },
+  "hubble": { "path": "/photos/hubble.jpg", "credit": "NASA (STS-82, flyaround after servicing, 1997)" },
+  "jwst": { "path": "/photos/jwst.jpg", "credit": "NASA/GSFC (Webb primary mirror reveal, 2016)" },
+  "dragon": { "path": "/photos/dragon.jpg", "credit": "NASA (Dragon Endurance approaching the ISS, Crew-7, 2023)" },
+  "soyuz": { "path": "/photos/soyuz.jpg", "credit": "NASA (Soyuz MS-28 docked to the ISS, 2025)" },
   "progress": { "path": "/photos/progress.jpg", "credit": "NASA (ISS Expedition 14)" },
-  "cygnus": { "path": "/photos/cygnus.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
+  "cygnus": { "path": "/photos/cygnus.jpg", "credit": "NASA (Cygnus XL approaching the ISS, 2025)" },
   "starliner": { "path": "/photos/starliner.jpg", "credit": "NASA (Starliner CFT, 2024)" },
   "shenzhou": { "path": "/photos/shenzhou.jpg", "credit": "Shujianyang, CC BY-SA 4.0 (Shenzhou-1 capsule, China Science and Technology Museum)" },
-  "tianzhou": { "path": "/photos/tianzhou.jpg", "credit": "Shujianyang, CC BY-SA 4.0 (rendering \u2014 no on-orbit photos are publicly released)" },
+  "tianzhou": { "path": "/photos/tianzhou.jpg", "credit": "Shujianyang, CC BY-SA 4.0 (rendering — no on-orbit photos are publicly released)" },
 
-  "asteroid_geographos": { "path": "/photos/asteroid_geographos.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
-  "asteroid_apollo": { "path": "/photos/asteroid_apollo.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
-  "asteroid_phaethon": { "path": "/photos/asteroid_phaethon.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
-  "asteroid_toutatis": { "path": "/photos/asteroid_toutatis.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
+  "asteroid_phaethon": { "path": "/photos/asteroid_phaethon.jpg", "credit": "Arecibo Observatory/NASA/NSF (radar imagery of Phaethon, 2017)" },
+  "asteroid_toutatis": { "path": "/photos/asteroid_toutatis.jpg", "credit": "NASA/JPL-Caltech (radar imagery of Toutatis, 2012)" },
   "asteroid_florence": { "path": "/photos/asteroid_florence.jpg", "credit": "NASA/JPL, Center for Near-Earth Object Studies (Arecibo/Goldstone radar composite, Florence flyby, Sept 2017)" },
 
   "station_generic": { "pool": [
-    { "path": "/photos/station_generic.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
     { "path": "/photos/station_generic_2.jpg", "credit": "NASA (STS-88, Unity/Zarya docked)" },
     { "path": "/photos/station_generic_3.jpg", "credit": "NASA (ISS Expedition 3 EVA)" },
     { "path": "/photos/station_generic_4.jpg", "credit": "China Manned Space Engineering Office, CC BY 4.0" }
   ] },
   "navigation_generic": { "pool": [
-    { "path": "/photos/navigation_generic.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
     { "path": "/photos/navigation_generic_2.jpg", "credit": "U.S. Air Force, public domain" },
     { "path": "/photos/navigation_generic_3.jpg", "credit": "Science Museum Group, CC BY 4.0 (scale model)" },
     { "path": "/photos/navigation_generic_4.jpg", "credit": "Vitaly V. Kuzmin, CC BY-SA 4.0 (GLONASS-M)" }
   ] },
   "geo_generic": { "pool": [
-    { "path": "/photos/geo_generic.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
     { "path": "/photos/geo_generic_2.jpg", "credit": "NASA (GOES-U)" },
     { "path": "/photos/geo_generic_3.jpg", "credit": "NASA (STS-61B, RCA Satcom K-2 deployment, 1985)" },
     { "path": "/photos/geo_generic_4.jpg", "credit": "NASA (STS-41-D, Syncom IV-2 deployment, 1984)" }
   ] },
   "science_generic": { "pool": [
-    { "path": "/photos/science_generic.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
     { "path": "/photos/science_generic_2.jpg", "credit": "NASA / Denny Henry (PACE spacecraft, Goddard Space Flight Center, 2023)" },
     { "path": "/photos/science_generic_3.jpg", "credit": "NASA (Terra)" },
     { "path": "/photos/science_generic_4.jpg", "credit": "NASA (TESS)" }
   ] },
   "satellite_generic": { "pool": [
-    { "path": "/photos/satellite_generic.jpg", "credit": "Source unconfirmed \u2014 pre-existing image" },
     { "path": "/photos/satellite_generic_2.jpg", "credit": "NASA (NanoRacks CubeSat deployment)" },
     { "path": "/photos/satellite_generic_3.jpg", "credit": "NASA/JPL-Caltech (GRACE-FO)" },
     { "path": "/photos/satellite_generic_4.jpg", "credit": "NASA (NanoRacks CubeSat deployment)" }
