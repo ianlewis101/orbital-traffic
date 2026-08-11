@@ -131,3 +131,60 @@ describe("LEMUR-2-HUBBLE guard — the deliberate space-bounded exception", () =
     expect(classify(hst)).toBe("telescope");
   });
 });
+
+describe('"HUBBLE 6"/"HUBBLE 7" — real catalog objects that are not the telescope', () => {
+  // Two objects in the real catalog are literally named "HUBBLE 6" and
+  // "HUBBLE 7" (both cat:"other"). The space-bounded / HUBBLE | HST / pattern
+  // in photoKey correctly missed the LEMUR-2-HUBBLE cubesats above but DID
+  // match these, so they were shown an unmistakable photo of the actual
+  // Hubble Space Telescope. photoKey now matches on NORAD 20580 alone.
+  const impostors = [
+    sat("HUBBLE 6", { id: "56213", cat: "other" }),
+    sat("HUBBLE 7", { id: "56214", cat: "other" }),
+  ];
+
+  it("does not give them the Hubble photo", () => {
+    for (const s of impostors) expect(photoKey(s)).not.toBe("hubble");
+  });
+
+  it("falls them through to the generic science pool instead", () => {
+    // They still classify as "telescope" in describe.js — that pattern is the
+    // one CLAUDE.md's exception protects and is deliberately left alone — so
+    // they land on science_generic. Wrong-ish, but no longer claiming to be
+    // Hubble itself, which was the actual bug.
+    for (const s of impostors) expect(photoKey(s)).toBe("science_generic");
+  });
+
+  it("keeps matching the real Hubble by ID even with an unrelated name", () => {
+    expect(photoKey(sat("SOMETHING ELSE", { id: "20580" }))).toBe("hubble");
+  });
+});
+
+describe("ISS module photos — ZVEZDA / UNITY / DESTINY / POISK", () => {
+  // Permanent ISS modules that were missing from describe.js's station
+  // pattern, so they fell to the "generic" bucket and drew a NanoRacks
+  // CubeSat photo despite carrying cat:"stations". Names are the real
+  // catalog forms.
+  const modules = [
+    sat("ISS (ZVEZDA)", { id: "26400", cat: "stations" }),
+    sat("ISS (UNITY)", { id: "25575", cat: "stations" }),
+    sat("ISS (DESTINY)", { id: "26700", cat: "stations" }),
+    sat("POISK", { id: "36086", cat: "stations" }),
+  ];
+
+  it("classifies them as stations", () => {
+    for (const s of modules) expect(classify(s)).toBe("station");
+  });
+
+  it("gives them the station photo pool, not the generic satellite pool", () => {
+    for (const s of modules) expect(photoKey(s)).toBe("station_generic");
+  });
+
+  it("does not sweep in the unrelated catalog object named HUNITY", () => {
+    // \bUNITY\b must not match inside "HUNITY" — there is no word boundary
+    // between H and U. This is the false-positive the \b bounds guard against.
+    const hunity = sat("HUNITY", { id: "53807", cat: "other" });
+    expect(classify(hunity)).not.toBe("station");
+    expect(photoKey(hunity)).not.toBe("station_generic");
+  });
+});

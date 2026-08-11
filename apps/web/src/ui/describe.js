@@ -18,7 +18,19 @@ export function classify(s) {
   if (t === "DEB" || t === "R/B" || isDebrisName(s.name)) return "debris";
   if (/ OBJECT | TBA | UNIDENTIFIED | UNKNOWN /.test(n)) return "unknown";
   if (s.cat === "classified") return "classified";
-  if (id === "25544" || /\bZARYA\b|\bTIANHE\b|\bTIANGONG\b|\bWENTIAN\b|\bMENGTIAN\b/.test(vn))
+  // ZVEZDA/UNITY/DESTINY/POISK are permanent ISS modules that were missing
+  // here, so they fell through to the "generic" bucket and drew a NanoRacks
+  // CubeSat photo from figures.js's satellite_generic pool despite carrying
+  // cat:"stations". Each matches exactly one object in the real catalog, all
+  // already cat:"stations" — checked rather than assumed, since \bUNITY\b and
+  // \bDESTINY\b are ordinary enough words to be a false-positive risk. (The
+  // catalog's "HUNITY" does not match: there is no word boundary inside it.)
+  if (
+    id === "25544" ||
+    /\bZARYA\b|\bZVEZDA\b|\bUNITY\b|\bDESTINY\b|\bPOISK\b|\bTIANHE\b|\bTIANGONG\b|\bWENTIAN\b|\bMENGTIAN\b/.test(
+      vn
+    )
+  )
     return "station";
   if (
     /\bSOYUZ\b|\bPROGRESS\b|\bDRAGON\b|\bCYGNUS\b|\bSHENZHOU\b|\bTIANZHOU\b|\bSTARLINER\b|\bENDEAVOUR\b|\bENDURANCE\b|\bRESILIENCE\b|\bFREEDOM\b/.test(
