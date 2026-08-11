@@ -13,12 +13,21 @@ export function photoKey(s) {
     vn = normalizeVehicleName(s.name),
     id = s.id;
   if (id === "25544" || /\bZARYA\b/.test(vn)) return "iss";
-  // DELIBERATELY space-bounded — do not "fix" this one to use vn. Spire's
-  // "LEMUR-2-HUBBLE-4"/"-5" cubesats are commemoratively named, not the
-  // telescope, and a hyphen-aware pattern matches them. The real Hubble is
-  // caught by its NORAD ID above. Same rationale as describe.js's telescope
-  // pattern — see CLAUDE.md.
-  if (id === "20580" || / HUBBLE | HST /.test(n)) return "hubble";
+  // NORAD ID only — deliberately no name fallback. This used to also match
+  // / HUBBLE | HST /, which is space-bounded so it correctly missed Spire's
+  // commemoratively-named "LEMUR-2-HUBBLE-4"/"-5" cubesats, but still matched
+  // the two real catalog objects literally named "HUBBLE 6" and "HUBBLE 7" —
+  // neither of which is the telescope. They were being shown an unmistakable
+  // photo of the actual Hubble Space Telescope. Since 20580 is the only object
+  // that should ever get this photo, matching by ID alone is both narrower and
+  // simpler than any name pattern.
+  //
+  // Note this is NOT the pattern CLAUDE.md's exception protects: that one is
+  // describe.js's telescope classifier, which is left untouched. HUBBLE 6/7
+  // still classify as "telescope" there and so land on the science_generic
+  // pool — no longer claiming to be Hubble itself, which is the bug being
+  // fixed here.
+  if (id === "20580") return "hubble";
   if (/\bWEBB\b|\bJWST\b/.test(vn)) return "jwst";
   if (/\bDRAGON\b|\bENDEAVOUR\b|\bENDURANCE\b|\bRESILIENCE\b|\bFREEDOM\b/.test(vn)) return "dragon";
   if (/\bSOYUZ\b/.test(vn)) return "soyuz";
@@ -96,7 +105,8 @@ export function svgFor(s) {
   let stars = "";
   for (let i = 0; i < 14; i++)
     stars += `<circle cx="${(Math.random() * 240) | 0}" cy="${(Math.random() * 130) | 0}" r="${(Math.random() * 0.8 + 0.3).toFixed(1)}" fill="rgba(200,220,255,${(Math.random() * 0.45 + 0.2).toFixed(2)})"/>`;
-  const wrap = (i) => `<svg viewBox="0 0 240 130" xmlns="http://www.w3.org/2000/svg">${defs}${stars}${i}</svg>`;
+  const wrap = (i) =>
+    `<svg viewBox="0 0 240 130" xmlns="http://www.w3.org/2000/svg">${defs}${stars}${i}</svg>`;
   const wing = (x, y, w, h) => {
     const cols = Math.max(3, Math.round(w / 11));
     let g = "";
@@ -197,7 +207,8 @@ export function svgFor(s) {
   }
   const ant =
     c === "geo" || c === "weather"
-      ? `<line x1="120" y1="78" x2="120" y2="88" stroke="${st}" stroke-width="2"/>` + dish(120, 95, 15)
+      ? `<line x1="120" y1="78" x2="120" y2="88" stroke="${st}" stroke-width="2"/>` +
+        dish(120, 95, 15)
       : `<line x1="120" y1="76" x2="120" y2="92" stroke="${st}" stroke-width="2"/><rect x="111" y="90" width="18" height="5" rx="1" fill="${acc}"/>`;
   return wrap(
     wing(10, 44, 62, 30) +
