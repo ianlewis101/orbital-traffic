@@ -17,7 +17,6 @@ export function classify(s) {
     t = s.objType || "";
   if (t === "DEB" || t === "R/B" || isDebrisName(s.name)) return "debris";
   if (/ OBJECT | TBA | UNIDENTIFIED | UNKNOWN /.test(n)) return "unknown";
-  if (s.cat === "cool") return "telescope"; // hero objects — described individually
   if (s.cat === "classified") return "classified";
   if (id === "25544" || /\bZARYA\b|\bTIANHE\b|\bTIANGONG\b|\bWENTIAN\b|\bMENGTIAN\b/.test(vn))
     return "station";

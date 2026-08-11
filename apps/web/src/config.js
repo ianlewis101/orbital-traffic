@@ -17,7 +17,6 @@ export const CATS = {
   science: { label: "Science", color: 0xff8fb0, px: 4 },
   classified: { label: "CLASSIFIED", color: 0x8b0000, px: 4 },
   hazardous: { label: "Hazardous NEOs", color: 0xff4422, px: 5 },
-  cool: { label: "COOL SHIT", color: 0xa78bfa, px: 4 },
   other: { label: "Other", color: 0xc3cede, px: 4 },
   debris: { label: "DEBRIS", color: 0x7a8899, px: 4 },
 };

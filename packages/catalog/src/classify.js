@@ -24,7 +24,6 @@ export const CATEGORY_IDS = [
   "classified",
   "debris",
   "hazardous",
-  "cool",
 ];
 const CATEGORY_SET = new Set(CATEGORY_IDS);
 
@@ -233,7 +232,6 @@ export function isDebrisName(name) {
 }
 
 export function correctDebrisCat(name, cat) {
-  if (cat === "cool") return cat; // never override hand-curated hero objects
   return isDebrisName(name) ? "debris" : cat;
 }
 

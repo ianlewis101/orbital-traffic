@@ -333,12 +333,19 @@ Monorepo (npm workspaces):
   auto-increment via github.run_number in the workflow — never
   hardcode a build number anywhere in this pipeline.
 
-- 14 object categories (packages/catalog/src/classify.js's
+- 13 object categories (packages/catalog/src/classify.js's
   CATEGORY_IDS, mirrored in apps/web/src/config.js's CATS):
   stations, capsules, navigation, geostationary, starlink,
   oneweb, kuiper, communications, science, other, classified,
-  debris, hazardous, cool — each with its own color/size defined
-  in config.js. OneWeb and Kuiper are each their own category:
+  debris, hazardous — each with its own color/size defined
+  in config.js. A 14th, "cool" (user-facing label "COOL SHIT"),
+  was removed outright during the 2026-08-11 App Store audit:
+  nothing in the pipeline ever assigned it, so it rendered
+  nowhere, but it sat one hand-curated object away from putting
+  that label in the on-screen legend and invalidating a
+  no-profanity age rating. Do not reintroduce it — a category
+  needs an assignment path, not just an enum entry.
+  OneWeb and Kuiper are each their own category:
   groups.js tags GROUP=oneweb records "oneweb" directly, with
   correctStarlinkCat() in classify.js rescuing by name any
   record still tagged "starlink" (see Known Bugs); Kuiper gets a
