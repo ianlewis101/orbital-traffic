@@ -1,5 +1,5 @@
 {
-  "updated": "2026-08-12T08:11:32.569Z",
+  "updated": "2026-08-12T09:56:22.776Z",
   "capsules": {
     "66664": {
       "name": "SOYUZ-MS 28",
@@ -19,7 +19,7 @@
       "phase": "docked",
       "stationKey": "iss",
       "since": "2026-07-03T10:34:14.509Z",
-      "distanceKm": 0,
+      "distanceKm": 0.3,
       "altitudeKm": 426.1,
       "inclinationDeg": 51.632,
       "l1": "1 67796U 26031A   26223.85882083  .00003962  00000+0  78925-4 0  9998",
@@ -35,8 +35,8 @@
       "distanceKm": 0,
       "altitudeKm": 426.1,
       "inclinationDeg": 51.632,
-      "l1": "1 68319U 26058A   26223.85882083  .00003962  00000+0  78925-4 0  9999",
-      "l2": "2 68319  51.6321  24.5691 0007498  37.4058 322.7451 15.49415511580259"
+      "l1": "1 68319U 26058A   26224.11681231  .00003399  00000+0  68868-4 0  9990",
+      "l2": "2 68319  51.6322  23.2919 0007501  38.2000 321.9519 15.49416382580646"
     },
     "68689": {
       "name": "CYGNUS NG-24",
@@ -45,7 +45,7 @@
       "phase": "docked",
       "stationKey": "iss",
       "since": "2026-07-10T20:18:26.588Z",
-      "distanceKm": 0,
+      "distanceKm": 0.3,
       "altitudeKm": 426.1,
       "inclinationDeg": 51.632,
       "l1": "1 68689U 26079A   26223.85882083  .00003962  00000+0  78925-4 0  9992",
@@ -58,7 +58,7 @@
       "phase": "docked",
       "stationKey": "iss",
       "since": "2026-07-10T20:18:26.588Z",
-      "distanceKm": 0,
+      "distanceKm": 0.3,
       "altitudeKm": 426.1,
       "inclinationDeg": 51.632,
       "l1": "1 68837U 26093A   26223.85882083  .00003962  00000+0  78925-4 0  9993",
@@ -71,7 +71,7 @@
       "phase": "docked",
       "stationKey": "css",
       "since": "2026-07-10T20:18:26.588Z",
-      "distanceKm": 0,
+      "distanceKm": 0.1,
       "altitudeKm": 400.1,
       "inclinationDeg": 41.471,
       "l1": "1 69049U 26102A   26223.76910550  .00000041  00000+0  46707-5 0  9990",
@@ -84,7 +84,7 @@
       "phase": "docked",
       "stationKey": "css",
       "since": "2026-07-03T10:34:14.509Z",
-      "distanceKm": 0,
+      "distanceKm": 0.1,
       "altitudeKm": 400.1,
       "inclinationDeg": 41.471,
       "l1": "1 69180U 26113A   26223.76910550  .00000041  00000+0  46707-5 0  9998",
@@ -97,7 +97,7 @@
       "phase": "docked",
       "stationKey": "iss",
       "since": "2026-07-31T15:15:00.483Z",
-      "distanceKm": 0,
+      "distanceKm": 0.3,
       "altitudeKm": 426.1,
       "inclinationDeg": 51.632,
       "l1": "1 A0057U 26162A   26223.85882083  .00003962  00000+0  78925-4 0  9990",
