@@ -38,7 +38,11 @@ export function classify(s) {
     )
   )
     return "capsule";
-  if (/\bSTARLINK\b|\bONEWEB\b/.test(vn)) return "starlink";
+  // Flat-panel broadband constellation bus (Starlink/OneWeb/Kuiper all share
+  // the same basic shape) — this type name drives figures.js's artwork, not
+  // the operator, so Kuiper belongs here rather than in the generic bucket
+  // where it was drawing a random cubesat photo from satellite_generic.
+  if (/\bSTARLINK\b|\bONEWEB\b|\bKUIPER\b/.test(vn)) return "starlink";
   if (
     id === "20580" ||
     / HUBBLE | HST | KEPLER | SPITZER | TESS | WEBB | JWST | CHANDRA | CXO | FERMI | FGRST | GLAST /.test(
@@ -50,7 +54,7 @@ export function classify(s) {
   if (WEATHER_NAME_RE.test(n)) return "weather";
   if (EO_NAME_RE.test(n)) return "eo";
   if (s.cat === "geostationary") return "geo";
-  if (s.cat === "starlink") return "starlink";
+  if (s.cat === "starlink" || s.cat === "oneweb" || s.cat === "kuiper") return "starlink";
   if (s.cat === "science") return "telescope"; // science satellites without specific name match
   return "generic";
 }
@@ -135,11 +139,19 @@ export function describe(s) {
     return "Aqua — NASA's water-cycle satellite, launched 2002. Measures precipitation, evaporation, ocean temperatures, sea ice, and water vapour to understand how water moves through the Earth system.";
   if (/DSCOVR/.test(n))
     return "DSCOVR — the Deep Space Climate Observatory, sitting at the Sun-Earth L1 point 1 million miles away. Monitors the solar wind 15–60 minutes before it hits Earth and returns the iconic 'EPIC' daily images of the full sunlit Earth.";
-  // --- Starlink / OneWeb ---
-  if (n.includes("STARLINK"))
-    return "One of SpaceX's Starlink broadband satellites — part of a constellation now numbering over 6,000 spacecraft, the largest active satellite fleet ever assembled.";
-  if (n.includes("ONEWEB"))
-    return "A OneWeb satellite — part of a 648-satellite constellation delivering global broadband internet, particularly to remote and polar regions.";
+  // --- broadband constellations ---
+  // These three cover roughly two-thirds of everything the app tracks, so the
+  // per-object descriptions.json will never reach them — one universal write-up
+  // per constellation is the description for every member. OneWeb is checked
+  // first: its records can still arrive tagged cat:"starlink" from bundled data
+  // that predates the groups.js fix (see CLAUDE.md), and a mis-tagged OneWeb
+  // must not be handed the Starlink text.
+  if (n.includes("ONEWEB") || s.cat === "oneweb")
+    return "A OneWeb satellite — part of a 648-satellite constellation delivering global broadband internet, particularly to remote and polar regions. OneWeb flies far higher than its rivals, at around 750 miles up, so it needs a fraction of the spacecraft to cover the same ground. The company went bankrupt in 2020, was rescued by the UK government and Bharti Global, and has since merged with Eutelsat.";
+  if (n.includes("STARLINK") || s.cat === "starlink")
+    return "One of SpaceX's Starlink broadband satellites — a flat-panel spacecraft about the size of a dining table, flying a few hundred miles up and beaming internet down to dishes on the ground. Over 10,000 have reached orbit since 2019, making Starlink by far the largest satellite constellation ever assembled. A freshly launched batch stays bunched together for a few nights, crossing the sky as the famous 'string of pearls' before the satellites raise themselves into their working shells and spread out.";
+  if (n.includes("KUIPER") || s.cat === "kuiper")
+    return "One of Amazon's Kuiper broadband satellites — the constellation built to take on Starlink, relaying internet from roughly 390 miles up to terminals on the ground. Two prototypes flew in 2023 and full deployment began in April 2025; the licensed design calls for 3,236 satellites, with a US regulatory deadline to have half of them flying by mid-2026. Amazon booked the largest commercial launch campaign in history to get them there — Atlas V, Vulcan, New Glenn and Ariane 6, plus a handful of Falcon 9s bought from the very rival it is chasing.";
   // --- Soyuz / Dragon / Cygnus ---
   if (/SOYUZ/.test(n))
     return "A Soyuz spacecraft — Russia's workhorse crew vehicle, in continuous service since 1967. Each one flies a crew to and from the ISS before being deorbited.";
