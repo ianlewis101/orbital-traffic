@@ -57,9 +57,10 @@
       <p class="kicker">LIVE 3D SATELLITE TRACKER</p>
       <h1>See what's above you.<br><span class="accent">Right now.</span></h1>
       <p class="lead">18,000+ satellites, stations and spacecraft — tracked live on a real-time 3D globe, computed entirely on your device.</p>
+      <div class="badge-soon"><span class="dot"></span>Coming soon to the App Store</div>
       <div class="cta-row">
         <!-- TODO(ian): swap in the real TestFlight/App Store link before this ships -->
-        <a class="btn btn-primary" href="REPLACE_WITH_APP_LINK">Get the App</a>
+        <a class="btn btn-primary" href="REPLACE_WITH_APP_LINK">Become One of the First Users</a>
         <a class="btn btn-ghost" href="/">Open Web App</a>
       </div>
       <p class="hero-note">Free &middot; No account &middot; No ads &middot; Nothing ever leaves your device</p>
@@ -71,8 +72,36 @@
     </div>
   </section>
 
+  <section class="ticker-strip" aria-label="Currently tracking">
+    <p class="ticker-lbl">Currently tracking</p>
+    <div class="ticker-mask">
+      <div class="ticker-track" id="ticker-track"></div>
+    </div>
+  </section>
+
   <section class="cats-strip" aria-label="Tracked object categories">
     <div class="cats-track" id="cats-track"></div>
+  </section>
+
+  <section class="how-it-works">
+    <h2 class="section-title">How it works</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <h3>Open the globe</h3>
+        <p>18,000+ live positions load instantly — no login, no setup, no waiting.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <h3>Tap anything</h3>
+        <p>Select any object for its full story, or use What's Overhead to see what's actually above you right now.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <h3>Track it, save it, share it</h3>
+        <p>Follow it live, save it to your list, or generate a shareable card to show what you found.</p>
+      </div>
+    </div>
   </section>
 
   <section class="spotlight">
@@ -86,36 +115,55 @@
     </div>
   </section>
 
+  <section class="showcase">
+    <h2 class="section-title">Every object has a story</h2>
+    <p class="showcase-lead">Real screenshots. Real orbital data. Tap anything and this is what you get.</p>
+    <div class="showcase-grid">
+      <figure class="showcase-card">
+        <img src="/screenshots/object-card-hst.png" alt="Orbital Traffic's info card for the Hubble Space Telescope, showing its curated description and live telemetry" loading="lazy">
+        <figcaption>
+          <h3>Thousands of Objects, Explained</h3>
+          <p>Hand-written profiles on 1,700+ notable objects — who built it, why it's up there — plus live telemetry on everything.</p>
+        </figcaption>
+      </figure>
+      <figure class="showcase-card">
+        <img src="/screenshots/object-card-dragon.png" alt="Orbital Traffic's info card for Crew Dragon 12, showing it docked to the ISS with live telemetry" loading="lazy">
+        <figcaption>
+          <h3>Follow the Fleet</h3>
+          <p>Watch crewed capsules and cargo freighters — Dragon, Soyuz, Progress and Cygnus — from launch through docking to landing.</p>
+        </figcaption>
+      </figure>
+      <figure class="showcase-card">
+        <img src="/screenshots/object-card-florence.png" alt="Orbital Traffic's info card for near-Earth asteroid 3122 Florence, showing its radar image and orbital elements" loading="lazy">
+        <figcaption>
+          <h3>Asteroids Up Close</h3>
+          <p>Dozens of near-Earth asteroids on their real heliocentric orbits — sizes, close-approach dates, the works.</p>
+        </figcaption>
+      </figure>
+    </div>
+  </section>
+
   <section class="features">
     <h2 class="section-title">Everything else in orbit</h2>
     <div class="feature-grid">
-      <article class="feature-card">
-        <img src="/photos/hubble.jpg" alt="" loading="lazy">
-        <h3>Thousands of Objects, Explained</h3>
-        <p>Hand-written profiles on 1,700+ notable objects — who built it, why it's up there — plus live telemetry on everything.</p>
-      </article>
-      <article class="feature-card">
-        <img src="/photos/dragon.jpg" alt="" loading="lazy">
-        <h3>Follow the Fleet</h3>
-        <p>Watch crewed capsules and cargo freighters — Dragon, Soyuz, Progress and Cygnus — from launch through docking to landing.</p>
-      </article>
-      <article class="feature-card">
-        <img src="/photos/asteroid_florence.jpg" alt="" loading="lazy">
-        <h3>Asteroids Up Close</h3>
-        <p>Dozens of near-Earth asteroids plotted on their real heliocentric orbits, with close-approach dates and sizes.</p>
-      </article>
-      <article class="feature-card">
-        <img src="/photos/station_generic_2.jpg" alt="" loading="lazy">
-        <h3>Time Machine</h3>
-        <p>Scrub forward and backward through orbital history and watch the whole catalog move.</p>
+      <article class="feature-card feature-card-icon">
+        <div class="feature-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17a9 9 0 0 1 18 0"/><path d="M12 3v2"/><path d="M4.6 7.6 6 9"/><path d="M19.4 7.6 18 9"/><circle cx="12" cy="17" r="1.6"/></svg>
+        </div>
+        <h3>What's Overhead</h3>
+        <p>Not everything overhead is interesting. What's Overhead filters 18,000+ objects down to the handful actually worth looking up for.</p>
       </article>
       <article class="feature-card feature-card-icon">
-        <div class="feature-icon">★</div>
+        <div class="feature-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l2.9 6.2 6.7.7-5 4.6 1.4 6.7L12 17.5l-6 3.2 1.4-6.7-5-4.6 6.7-.7L12 2.5z"/></svg>
+        </div>
         <h3>Save What Matters</h3>
         <p>Star your favorite objects or add them to a watchlist to check in on later.</p>
       </article>
       <article class="feature-card feature-card-icon">
-        <div class="feature-icon">↗</div>
+        <div class="feature-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>
+        </div>
         <h3>Share the Sky</h3>
         <p>Found something interesting in orbit? Generate a shareable card and show everyone what's flying overhead.</p>
       </article>
@@ -124,16 +172,43 @@
 
   <section class="stats">
     <div class="stat"><div class="stat-num" id="stat-objects">—</div><div class="stat-lbl">Tracked objects</div></div>
-    <div class="stat"><div class="stat-num">1,700+</div><div class="stat-lbl">Curated profiles</div></div>
+    <div class="stat"><div class="stat-num">300&times;</div><div class="stat-lbl">Time Machine speed</div></div>
     <div class="stat"><div class="stat-num">77</div><div class="stat-lbl">Near-Earth asteroids</div></div>
     <div class="stat"><div class="stat-num">13</div><div class="stat-lbl">Orbit classes</div></div>
   </section>
 
+  <section class="faq">
+    <h2 class="section-title">Questions</h2>
+    <div class="faq-list">
+      <details class="faq-item">
+        <summary>Is Orbital Traffic free?</summary>
+        <p>Completely free. No ads, no subscriptions, no account required.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Does it work without an internet connection?</summary>
+        <p>Yes — after the first load it works offline, and the catalog refreshes automatically the next time you're online.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Is my location ever sent anywhere?</summary>
+        <p>No. What's Overhead uses your location entirely on your device to work out what's above you — it's never transmitted or stored, by us or anyone else.</p>
+      </details>
+      <details class="faq-item">
+        <summary>What platforms does it run on?</summary>
+        <p>iOS is coming to the App Store — currently in testing. It also installs as a full app on Android and desktop straight from your browser, no app store required.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Where does the data come from?</summary>
+        <p>Real orbital data from CelesTrak, NASA/JPL, and Launch Library 2 — refreshed continuously, not simulated.</p>
+      </details>
+    </div>
+  </section>
+
   <section class="cta-band">
     <h2>Ready to see what's flying over you?</h2>
+    <div class="badge-soon"><span class="dot"></span>Coming soon to the App Store</div>
     <div class="cta-row">
       <!-- TODO(ian): swap in the real TestFlight/App Store link before this ships -->
-      <a class="btn btn-primary" href="REPLACE_WITH_APP_LINK">Get the App</a>
+      <a class="btn btn-primary" href="REPLACE_WITH_APP_LINK">Become One of the First Users</a>
       <a class="btn btn-ghost" href="/">Or use it on the web</a>
     </div>
   </section>
