@@ -32,6 +32,15 @@ export default defineConfig({
     target: "es2020",
     sourcemap: true,
     rollupOptions: {
+      // Two-page build: the app itself, plus the marketing landing page.
+      // welcome.html needs to go through Vite (not sit in public/ like
+      // privacy.html/support.html) so it picks up __OBJECT_COUNT__ the same
+      // way index.html does, instead of becoming a new hand-written count
+      // surface (see CLAUDE.md's OBJECT COUNT convention).
+      input: {
+        main: fileURLToPath(new URL("./index.html", import.meta.url)),
+        welcome: fileURLToPath(new URL("./welcome.html", import.meta.url)),
+      },
       output: {
         manualChunks: {
           three: ["three"],
