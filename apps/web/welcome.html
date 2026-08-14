@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orbital Traffic — see what's above you, right now</title>
+<meta name="description" content="Track every satellite, station and spacecraft orbiting Earth in real time. 18,000+ objects on a live 3D globe, computed entirely on your device.">
+<meta name="theme-color" content="#5eead4">
+
+<!-- Favicon -->
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+
+<!-- Open Graph / Social -->
+<meta property="og:title" content="Orbital Traffic — see what's above you, right now">
+<meta property="og:description" content="Track every satellite, station and spacecraft orbiting Earth in real time. 18,000+ objects on a live 3D globe, computed entirely on your device.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://orbitaltraffic.app/welcome.html">
+<meta property="og:image" content="https://orbitaltraffic.app/screenshots/screenshot-desktop.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://orbitaltraffic.app/welcome.html">
+</head>
+<body>
+
+<div id="lp-bg" aria-hidden="true"><canvas id="lp-stars"></canvas></div>
+
+<header class="lp-nav">
+  <div class="lp-brand">
+    <svg class="mark" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+      <defs><linearGradient id="navMarkGrad" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="60" y2="60"><stop offset="0%" stop-color="#eef1f8"/><stop offset="45%" stop-color="#5eead4"/><stop offset="100%" stop-color="#a78bfa"/></linearGradient></defs>
+      <g transform="rotate(-22 32 32)">
+        <rect x="6.5" y="25.5" width="17" height="9" rx="1.4" fill="url(#navMarkGrad)"/>
+        <rect x="40.5" y="25.5" width="17" height="9" rx="1.4" fill="url(#navMarkGrad)"/>
+        <g stroke="#0b1020" stroke-opacity=".3" stroke-width=".7">
+          <path d="M6.5 30h17M40.5 30h17"/>
+          <path d="M12.2 26.2v7.6M17.8 26.2v7.6M46.2 26.2v7.6M51.8 26.2v7.6"/>
+        </g>
+        <rect x="23.2" y="29.35" width="3.2" height="1.1" rx=".55" fill="#cbd5e1"/>
+        <rect x="37.6" y="29.35" width="3.2" height="1.1" rx=".55" fill="#cbd5e1"/>
+        <rect x="31.55" y="35" width=".9" height="3.6" rx=".45" fill="#cbd5e1"/>
+        <rect x="29.4" y="38.2" width="5.2" height="1.7" rx=".75" fill="#f5c168"/>
+        <rect x="26" y="24.2" width="12" height="10.8" rx="1.8" fill="#eef1f8"/>
+        <path d="M26 29.3h12v3.9a1.8 1.8 0 0 1-1.8 1.8H27.8a1.8 1.8 0 0 1-1.8-1.8Z" fill="#c3ccd8"/>
+        <rect x="27.9" y="26.1" width="4.2" height="2.3" rx=".5" fill="#0b1020"/>
+      </g>
+    </svg>
+    <span class="wm">Orbital&nbsp;<em>Traffic</em></span>
+  </div>
+  <a class="lp-nav-link" href="/">Open Web App →</a>
+</header>
+
+<main>
+
+  <section class="hero">
+    <div class="hero-copy">
+      <p class="kicker">LIVE 3D SATELLITE TRACKER</p>
+      <h1>See what's above you.<br><span class="accent">Right now.</span></h1>
+      <p class="lead">18,000+ satellites, stations and spacecraft — tracked live on a real-time 3D globe, computed entirely on your device.</p>
+      <div class="cta-row">
+        <!-- TODO(ian): swap in the real TestFlight/App Store link before this ships -->
+        <a class="btn btn-primary" href="REPLACE_WITH_APP_LINK">Get the App</a>
+        <a class="btn btn-ghost" href="/">Open Web App</a>
+      </div>
+      <p class="hero-note">Free &middot; No account &middot; No ads &middot; Nothing ever leaves your device</p>
+    </div>
+    <div class="hero-visual">
+      <div class="phone-frame">
+        <img src="/screenshots/screenshot-mobile.png" alt="Orbital Traffic showing the ISS overhead on a live 3D globe" width="1290" height="2796" loading="eager">
+      </div>
+    </div>
+  </section>
+
+  <section class="cats-strip" aria-label="Tracked object categories">
+    <div class="cats-track" id="cats-track"></div>
+  </section>
+
+  <section class="spotlight">
+    <div class="spotlight-media">
+      <img src="/photos/iss.jpg" alt="The International Space Station" loading="lazy">
+    </div>
+    <div class="spotlight-copy">
+      <p class="kicker">THE FEATURE PEOPLE OPEN THE APP FOR</p>
+      <h2>What's&nbsp;Overhead</h2>
+      <p>Tap once to see the notable objects passing high above you right now — no guessing, no simulation, just real orbital mechanics computed on your device.</p>
+    </div>
+  </section>
+
+  <section class="features">
+    <h2 class="section-title">Everything else in orbit</h2>
+    <div class="feature-grid">
+      <article class="feature-card">
+        <img src="/photos/hubble.jpg" alt="" loading="lazy">
+        <h3>Thousands of Objects, Explained</h3>
+        <p>Hand-written profiles on 1,700+ notable objects — who built it, why it's up there — plus live telemetry on everything.</p>
+      </article>
+      <article class="feature-card">
+        <img src="/photos/dragon.jpg" alt="" loading="lazy">
+        <h3>Follow the Fleet</h3>
+        <p>Watch crewed capsules and cargo freighters — Dragon, Soyuz, Progress and Cygnus — from launch through docking to landing.</p>
+      </article>
+      <article class="feature-card">
+        <img src="/photos/asteroid_florence.jpg" alt="" loading="lazy">
+        <h3>Asteroids Up Close</h3>
+        <p>Dozens of near-Earth asteroids plotted on their real heliocentric orbits, with close-approach dates and sizes.</p>
+      </article>
+      <article class="feature-card">
+        <img src="/photos/station_generic_2.jpg" alt="" loading="lazy">
+        <h3>Time Machine</h3>
+        <p>Scrub forward and backward through orbital history and watch the whole catalog move.</p>
+      </article>
+      <article class="feature-card feature-card-icon">
+        <div class="feature-icon">★</div>
+        <h3>Save What Matters</h3>
+        <p>Star your favorite objects or add them to a watchlist to check in on later.</p>
+      </article>
+      <article class="feature-card feature-card-icon">
+        <div class="feature-icon">↗</div>
+        <h3>Share the Sky</h3>
+        <p>Found something interesting in orbit? Generate a shareable card and show everyone what's flying overhead.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="stats">
+    <div class="stat"><div class="stat-num" id="stat-objects">—</div><div class="stat-lbl">Tracked objects</div></div>
+    <div class="stat"><div class="stat-num">1,700+</div><div class="stat-lbl">Curated profiles</div></div>
+    <div class="stat"><div class="stat-num">77</div><div class="stat-lbl">Near-Earth asteroids</div></div>
+    <div class="stat"><div class="stat-num">13</div><div class="stat-lbl">Orbit classes</div></div>
+  </section>
+
+  <section class="cta-band">
+    <h2>Ready to see what's flying over you?</h2>
+    <div class="cta-row">
+      <!-- TODO(ian): swap in the real TestFlight/App Store link before this ships -->
+      <a class="btn btn-primary" href="REPLACE_WITH_APP_LINK">Get the App</a>
+      <a class="btn btn-ghost" href="/">Or use it on the web</a>
+    </div>
+  </section>
+
+</main>
+
+<footer class="lp-foot">
+  Orbital Traffic&trade; &middot; <a href="/privacy.html">Privacy</a> &middot; <a href="/support.html">Support</a>
+</footer>
+
+<script type="module" src="/src/welcome.js"></script>
+</body>
+</html>
