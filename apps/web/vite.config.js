@@ -11,8 +11,38 @@ import { fileURLToPath } from "node:url";
 // Pages deploy") ever adds one, it must keep apps/web/public/data/** in scope
 // or this count silently goes stale again.
 const satellitesPath = fileURLToPath(new URL("./public/data/satellites.json", import.meta.url));
-const satelliteCount = JSON.parse(readFileSync(satellitesPath, "utf8")).length;
+const satellites = JSON.parse(readFileSync(satellitesPath, "utf8"));
+const satelliteCount = satellites.length;
 const objectCount = `${(Math.floor(satelliteCount / 1000) * 1000).toLocaleString("en-US")}+`;
+
+// welcome.html's "currently tracking" ticker: real, recognizable names pulled
+// from the same bundled catalog rather than hand-typed, so it can never show
+// an object that isn't actually in the data. Each pattern is tried against
+// real names and silently skipped if it doesn't hit (see CLAUDE.md's warning
+// on classify.js name patterns — an unverified pattern can match zero real
+// objects) rather than hand-guessing which of these currently fly.
+const TICKER_PATTERNS = [
+  /\bZARYA\b/, // ISS
+  /^HST$/, // Hubble Space Telescope
+  /\bTIANHE\b/, // Chinese station core module
+  /\bDRAGON\b/,
+  /\bSOYUZ\b/,
+  /\bPROGRESS\b/,
+  /\bCYGNUS\b/,
+  /\bSHENZHOU\b/,
+  /\bTIANZHOU\b/,
+  /\bSTARLINK\b/,
+  /\bGPS\b/,
+  /\bGALILEO\b/,
+  /\bIRIDIUM\b/,
+  /\bNOAA\b/,
+  /\bLANDSAT\b/,
+  /^TERRA$/,
+  /\bGOES\b/,
+];
+const tickerNames = TICKER_PATTERNS.map((re) => satellites.find((s) => re.test(s.name))?.name).filter(
+  Boolean,
+);
 
 // App version for Settings > About, read from this workspace's package.json so
 // there is exactly one place to bump it. Note this is the *web* version and is
@@ -27,6 +57,7 @@ export default defineConfig({
   define: {
     __OBJECT_COUNT__: JSON.stringify(objectCount),
     __APP_VERSION__: JSON.stringify(appVersion),
+    __TICKER_NAMES__: JSON.stringify(tickerNames),
   },
   build: {
     target: "es2020",

@@ -1,9 +1,24 @@
 import "./styles/welcome.css";
 import { CATS, catColorHex } from "./config.js";
+import { esc } from "./util/html.js";
 
 // __OBJECT_COUNT__ is injected at build time from the real catalog (see vite.config.js)
 const statObjects = document.getElementById("stat-objects");
 if (statObjects) statObjects.textContent = __OBJECT_COUNT__;
+
+// __TICKER_NAMES__ is a build-time list of real, recognizable catalog names
+// (see vite.config.js) — duplicated once so the CSS scroll animation can loop
+// seamlessly from -50% back to 0. Names come from CelesTrak, so they're
+// escaped like any other semi-trusted external text.
+const tickerTrack = document.getElementById("ticker-track");
+if (tickerTrack && __TICKER_NAMES__.length) {
+  const items = __TICKER_NAMES__.map((n) => `<span class="ticker-item">${esc(n)}</span>`).join(
+    '<span class="ticker-sep">&middot;</span>',
+  );
+  tickerTrack.innerHTML = items + '<span class="ticker-sep">&middot;</span>' + items;
+} else if (tickerTrack) {
+  tickerTrack.closest(".ticker-strip")?.remove();
+}
 
 const catsTrack = document.getElementById("cats-track");
 if (catsTrack) {

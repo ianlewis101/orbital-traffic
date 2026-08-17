@@ -28,6 +28,7 @@ export default [
         // Build-time constants injected by apps/web/vite.config.js's `define`.
         __OBJECT_COUNT__: "readonly",
         __APP_VERSION__: "readonly",
+        __TICKER_NAMES__: "readonly",
       },
     },
   },
