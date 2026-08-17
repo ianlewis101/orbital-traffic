@@ -107,12 +107,14 @@ export function describe(s) {
     return "The International Space Station — humanity's permanent foothold in space. 109 metres wide, six rooms, six crew. Has been continuously occupied since November 2000.";
   if (s.id === "49044")
     return "Russia's Nauka laboratory module — the largest Russian contribution to the ISS. Launched in July 2021 after a 14-year delay, it docked autonomously and provides additional research facilities, a European robotic arm, and a second toilet for the Russian segment.";
-  if (s.id === "27386")
+  // Unity/Node 1. Keyed to 25575, its real catalog ID — this description was
+  // previously keyed to 27386, which is ENVISAT, so an ESA Earth-observation
+  // satellite was describing itself as an ISS module (fixed 2026-08-17).
+  // The former Node 2 and Node 3 descriptions were removed outright rather
+  // than re-keyed: Harmony and Tranquility were Shuttle-delivered and have no
+  // catalog entry of their own, so there is no object for them to attach to.
+  if (s.id === "25575")
     return "Node 1 — the first US-built ISS module, launched December 1998. Unity connects the Russian and American segments and has six docking ports.";
-  if (s.id === "28654")
-    return "Node 2 — the primary docking hub for visiting spacecraft including Dragon and HTV. Launched October 2007, it connects the US, European and Japanese lab modules.";
-  if (s.id === "37224")
-    return "Node 3 — houses the life support systems that recycle air and water for the crew. Also home to the Cupola — the seven-window observatory with the best view in the solar system.";
   if (/CSS|TIANHE|TIANGONG|WENTIAN|MENGTIAN/.test(n))
     return "China's Tiangong space station — completed in 2022 and permanently crewed. At roughly one-fifth the size of the ISS, it is the world's second active crewed station.";
   if (s.id === "20580" || /HUBBLE|HST/.test(n))

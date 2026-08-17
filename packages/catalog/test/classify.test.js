@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   categorize,
+  STATION_CORE_IDS,
   correctStationCat,
   correctStarlinkCat,
   correctDebrisCat,
@@ -53,6 +54,57 @@ describe("STATION_CORE_IDS completeness (audit, fixed 2026-07-16)", () => {
     expect(categorize("25575", "ISS (UNITY)", "stations")).toBe("stations");
     expect(categorize("26400", "ISS (ZVEZDA)", "other")).toBe("stations");
     expect(categorize("26700", "ISS (DESTINY)", "other")).toBe("stations");
+  });
+});
+
+/**
+ * STATION_CORE_IDS is an allowlist, so a wrong ID in it does not fail loudly —
+ * it silently promotes an unrelated satellite to "stations", which is visible
+ * by default and carries station-specific UI (crew card, "Today aboard").
+ *
+ * Four bogus IDs sat in this set for months and shipped to production: 27386
+ * (ENVISAT), 28654 (NOAA 18), 37224 (O/OREOS — a 3U cubesat that was live in
+ * production rendering as a space station) and 37820 (Tiangong-1, decayed
+ * 2018). They were apparently mistaken guesses at Unity/Harmony/Tranquility.
+ *
+ * These are pinned by NORAD ID rather than by count so that adding a genuinely
+ * new module (a future CSS expansion, say) doesn't fail the suite, while
+ * re-adding any of the four known-bad IDs does.
+ */
+describe("STATION_CORE_IDS correctness (pre-submission audit, 2026-08-17)", () => {
+  it("contains no non-station objects that were previously allowlisted by mistake", () => {
+    for (const [id, what] of [
+      ["27386", "ENVISAT"],
+      ["28654", "NOAA 18"],
+      ["37224", "O/OREOS (USA 219)"],
+      ["37820", "TIANGONG-1 (decayed 2018)"],
+    ]) {
+      expect(STATION_CORE_IDS.has(id), `${id} (${what}) is not a station module`).toBe(false);
+    }
+  });
+
+  it("does not promote O/OREOS to stations from either entry point", () => {
+    // Arrives tagged "stations" from CelesTrak's GROUP=stations dump, which is
+    // exactly how it reached production as a station.
+    expect(categorize("37224", "O/OREOS (USA 219)", "stations")).not.toBe("stations");
+    expect(categorize("37224", "O/OREOS (USA 219)", "other")).not.toBe("stations");
+  });
+
+  it("still resolves every real module it is supposed to", () => {
+    for (const [id, name] of [
+      ["25544", "ISS (ZARYA)"],
+      ["49044", "ISS (NAUKA)"],
+      ["36086", "POISK"],
+      ["25575", "ISS (UNITY)"],
+      ["26400", "ISS (ZVEZDA)"],
+      ["26700", "ISS (DESTINY)"],
+      ["48274", "CSS (TIANHE)"],
+      ["53239", "CSS (WENTIAN)"],
+      ["54216", "CSS (MENGTIAN)"],
+    ]) {
+      expect(categorize(id, name, "stations"), `${name} (${id})`).toBe("stations");
+      expect(categorize(id, name, "other"), `${name} (${id}) via other`).toBe("stations");
+    }
   });
 });
 
