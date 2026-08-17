@@ -36,21 +36,32 @@ const CATEGORY_SET = new Set(CATEGORY_IDS);
  * else demotes to "other".
  */
 export const STATION_CORE_IDS = new Set([
-  "25544",
-  "49044",
-  "27386",
-  "28654",
-  "37224",
-  "37820",
-  "36086", // ISS modules
+  // ISS modules. Every ID here has been resolved against SATCAT and confirmed
+  // to be a permanent structural module — see the removal note below for why
+  // that verification is not optional.
+  "25544", // ISS (Zarya)
+  "49044", // ISS (Nauka)
+  "36086", // Poisk
   // 25575/26400/26700 added 2026-07-16 — found hidden under "other" during
   // PR #93's verification; see docs/audit-status.md.
   "25575", // ISS (Unity)
   "26400", // ISS (Zvezda)
   "26700", // ISS (Destiny)
-  "48274",
-  "53239",
-  "54216", // CSS Tiangong modules
+  // CSS Tiangong modules
+  "48274", // CSS (Tianhe)
+  "53239", // CSS (Wentian)
+  "54216", // CSS (Mengtian)
+  // REMOVED 2026-08-17 (pre-submission audit) — 27386, 28654, 37224 and 37820
+  // were in this set for months but are not station modules at all. Resolved
+  // against SATCAT: 27386 = ENVISAT (ESA Earth-observation, derelict since
+  // 2012), 28654 = NOAA 18 (weather satellite), 37224 = O/OREOS (USA 219)
+  // (a NASA 3U cubesat), 37820 = TIANGONG-1 (decayed 2018-04-02). They appear
+  // to be mistaken guesses at the IDs for Unity/Harmony/Tranquility. O/OREOS
+  // was live in production rendering as a space station because of this.
+  // Harmony (Node 2) and Tranquility (Node 3) have no catalog entry of their
+  // own to substitute — they were Shuttle-delivered and are tracked as part of
+  // ISS (25544) — so there is nothing to add back in their place. Do not
+  // re-add an ID here without resolving it through /satcat first.
 ]);
 
 export const CREW_VEHICLE_RE = /\bCREW\b/;

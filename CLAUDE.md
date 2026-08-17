@@ -324,14 +324,16 @@ Monorepo (npm workspaces):
   to App Store Connect via the "iOS Build & Upload" GitHub
   Actions workflow (.github/workflows/ios-build.yml, manually
   triggered via workflow_dispatch with an "upload" toggle) — no
-  local Xcode/Mac needed to cut a build. Currently in internal
-  TestFlight testing. Every fresh upload lands in "Missing
-  Compliance" status in App Store Connect until someone manually
-  answers the export-compliance question (Manage → No, standard
-  HTTPS only) — this blocks testers from seeing the new build
-  silently, with no error, until answered. Build numbers
-  auto-increment via github.run_number in the workflow — never
-  hardcode a build number anywhere in this pipeline.
+  local Xcode/Mac needed to cut a build. Preparing the first
+  public App Store submission (was internal TestFlight testing).
+  Uploads used to land in "Missing Compliance" in App Store
+  Connect and silently never reach testers until someone answered
+  the export-compliance question by hand; that is resolved —
+  `ITSAppUsesNonExemptEncryption` is set to `false` directly in
+  Info.plist, so the question is no longer asked. If a build ever
+  shows "Missing Compliance" again, check that key first. Build
+  numbers auto-increment via github.run_number in the workflow —
+  never hardcode a build number anywhere in this pipeline.
 
 - 13 object categories (packages/catalog/src/classify.js's
   CATEGORY_IDS, mirrored in apps/web/src/config.js's CATS):

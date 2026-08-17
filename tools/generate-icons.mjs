@@ -7,6 +7,7 @@
  * Outputs:
  *   apps/web/public/icons/*.png                    PWA + favicon + apple-touch
  *   apps/web/ios/.../AppIcon.appiconset/*.png      iOS app icon (1024x1024)
+ *   apps/web/ios/.../Splash.imageset/*.png         iOS launch screen (2732x2732)
  *
  * The 1024x1024 iOS icon doubles as the App Store Connect marketing icon.
  *
@@ -37,6 +38,19 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SOURCE = join(ROOT, "tools/assets/app-icon.svg");
 const WEB_ICONS = join(ROOT, "apps/web/public/icons");
 const IOS_ICONS = join(ROOT, "apps/web/ios/App/App/Assets.xcassets/AppIcon.appiconset");
+const IOS_SPLASH = join(ROOT, "apps/web/ios/App/App/Assets.xcassets/Splash.imageset");
+
+/**
+ * The app's own background colour (--bg in app.css). The launch image uses it
+ * verbatim so the handoff from the launch screen to the first painted frame is
+ * invisible — the previous splash was Capacitor's stock white placeholder,
+ * which flashed bright before the near-black UI appeared.
+ */
+const APP_BG = "#07080f";
+
+/** iOS launch image. One square, reused at all three scale slots. */
+const SPLASH_SIZE = 2732;
+const SPLASH_FILES = ["splash-2732x2732.png", "splash-2732x2732-1.png", "splash-2732x2732-2.png"];
 
 /** Sizes referenced by manifest.json, index.html and the service worker. */
 const WEB_SIZES = [16, 32, 48, 72, 96, 120, 128, 144, 152, 167, 180, 192, 256, 512];
@@ -57,6 +71,24 @@ const ALIASES = [
  */
 const CRAFT_STANDARD = "rotate(-22 512 512) translate(512 512) scale(1.04) translate(-512 -512)";
 const CRAFT_MASKABLE = "rotate(-22 512 512) translate(512 512) scale(0.78) translate(-512 -512)";
+
+/**
+ * The launch image is a SQUARE that iOS scales with `scaleAspectFill` to cover
+ * whatever aspect the device has, so on a phone most of it is cropped away
+ * horizontally. Covering a 1320x2868 iPhone 16 Pro Max with a square means
+ * scaling to the device's height, leaving only the middle ~46% of the square's
+ * width on screen (1320/2868). The craft therefore has to sit inside a much
+ * tighter safe zone than even the maskable icon's — at the standard 1.04 it
+ * spans ~87% of the canvas width and would be sliced through both solar arrays.
+ *
+ * 0.46 keeps the full spacecraft inside the narrowest shipping aspect with room
+ * to spare; assertSplashSafeZone() below measures the rendered pixels and fails
+ * the build if that ever stops being true.
+ */
+const CRAFT_SPLASH = "rotate(-22 512 512) translate(512 512) scale(0.46) translate(-512 -512)";
+
+/** Narrowest current iPhone aspect (iPhone 16 Pro Max, 1320x2868). */
+const NARROWEST_ASPECT = 1320 / 2868;
 
 async function loadPlaywright() {
   const require = createRequire(import.meta.url);
@@ -88,6 +120,111 @@ function withCraftTransform(svg, transform) {
     );
   }
   return out;
+}
+
+/**
+ * Swap the icon's teal-to-purple gradient canvas for the app's flat background.
+ * The icon art is designed to be seen as a small rounded square; stretched over
+ * a full phone screen that gradient reads as a completely different brand, and
+ * it would still be a visible jump to the near-black UI. The craft's existing
+ * glow is kept and recentred so the spacecraft doesn't look pasted onto a void.
+ */
+function withSplashBackground(svg) {
+  const start = svg.indexOf("<!-- ============ CANVAS ============ -->");
+  const end = svg.indexOf("<!-- ============ SPACECRAFT ============ -->");
+  if (start === -1 || end === -1) {
+    throw new Error(
+      "Could not find the CANVAS/SPACECRAFT section markers in app-icon.svg — " +
+        "the splash background swap keys off those comments."
+    );
+  }
+  const replacement =
+    `<!-- Launch-screen canvas: flat app background, no gradient -->\n` +
+    `  <rect width="1024" height="1024" fill="${APP_BG}"/>\n` +
+    `  <ellipse cx="512" cy="512" rx="330" ry="330" fill="url(#craftGlow)"/>\n\n  `;
+  return svg.slice(0, start) + replacement + svg.slice(end);
+}
+
+/**
+ * Decode a PNG's pixels far enough to find which columns are not background.
+ * Small and dependency-free on purpose — this script already avoids pulling in
+ * an image library, and it only ever runs by hand.
+ */
+function nonBackgroundColumns(buf, bg) {
+  const width = buf.readUInt32BE(16);
+  const height = buf.readUInt32BE(20);
+  let idat = Buffer.alloc(0);
+  let off = 8;
+  while (off + 8 <= buf.length) {
+    const len = buf.readUInt32BE(off);
+    const type = buf.subarray(off + 4, off + 8).toString("latin1");
+    if (type === "IDAT") idat = Buffer.concat([idat, buf.subarray(off + 8, off + 8 + len)]);
+    off += 12 + len;
+    if (type === "IEND") break;
+  }
+  const raw = zlib.inflateSync(idat);
+  const bpp = 3; // colour type 2, 8-bit — already asserted before this runs
+  const stride = width * bpp;
+  let prev = Buffer.alloc(stride);
+  let pos = 0;
+  let minX = width;
+  let maxX = -1;
+  for (let y = 0; y < height; y++) {
+    const filter = raw[pos++];
+    const line = Buffer.from(raw.subarray(pos, pos + stride));
+    pos += stride;
+    for (let x = 0; x < stride; x++) {
+      const a = x >= bpp ? line[x - bpp] : 0;
+      const b = prev[x];
+      const c = x >= bpp ? prev[x - bpp] : 0;
+      if (filter === 1) line[x] = (line[x] + a) & 255;
+      else if (filter === 2) line[x] = (line[x] + b) & 255;
+      else if (filter === 3) line[x] = (line[x] + ((a + b) >> 1)) & 255;
+      else if (filter === 4) {
+        const p = a + b - c;
+        const pa = Math.abs(p - a);
+        const pb = Math.abs(p - b);
+        const pc = Math.abs(p - c);
+        line[x] = (line[x] + (pa <= pb && pa <= pc ? a : pb <= pc ? b : c)) & 255;
+      }
+    }
+    for (let x = 0; x < width; x++) {
+      const dr = Math.abs(line[x * 3] - bg[0]);
+      const dg = Math.abs(line[x * 3 + 1] - bg[1]);
+      const db = Math.abs(line[x * 3 + 2] - bg[2]);
+      // The glow is a soft ramp off the background, so only count pixels that
+      // are clearly structure rather than halo.
+      if (dr + dg + db > 60) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+      }
+    }
+    prev = line;
+  }
+  return { width, minX, maxX };
+}
+
+/**
+ * Fail the build if the spacecraft would be clipped by the launch screen's
+ * aspect-fill crop on the narrowest device we ship to. This is the check that
+ * makes the 0.46 scale above a verified number rather than a guess.
+ */
+function assertSplashSafeZone(buf) {
+  const bg = [0x07, 0x08, 0x0f];
+  const { width, minX, maxX } = nonBackgroundColumns(buf, bg);
+  if (maxX < 0) throw new Error("splash: rendered no spacecraft at all");
+  const visible = width * NARROWEST_ASPECT;
+  const half = visible / 2;
+  const left = width / 2 - half;
+  const right = width / 2 + half;
+  if (minX < left || maxX > right) {
+    throw new Error(
+      `splash: spacecraft spans x=${minX}..${maxX}, outside the ` +
+        `${Math.round(left)}..${Math.round(right)} strip visible on a ` +
+        `${NARROWEST_ASPECT.toFixed(3)} aspect screen — reduce CRAFT_SPLASH's scale`
+    );
+  }
+  return { minX, maxX, left: Math.round(left), right: Math.round(right) };
 }
 
 /**
@@ -168,7 +305,7 @@ async function main() {
   const browser = await chromium.launch({ args: ["--force-color-profile=srgb"] });
   const written = [];
 
-  const render = async (markup, size, outPath) => {
+  const render = async (markup, size, outPath, backing = "#1a2b45") => {
     const page = await browser.newPage({
       viewport: { width: size, height: size },
       deviceScaleFactor: 1,
@@ -176,7 +313,7 @@ async function main() {
     // The backing colour matches the artwork so any rounding at the edge blends
     // in rather than showing a seam.
     await page.setContent(
-      `<style>html,body{margin:0;padding:0;background:#1a2b45}` +
+      `<style>html,body{margin:0;padding:0;background:${backing}}` +
         `svg{display:block;width:${size}px;height:${size}px}</style>${markup}`,
       { waitUntil: "load" }
     );
@@ -212,7 +349,24 @@ async function main() {
   // iOS app icon — also the App Store Connect marketing icon
   await render(standard, 1024, join(IOS_ICONS, "AppIcon-512@2x.png"));
 
+  // iOS launch screen. Rendered once, then written to all three scale slots the
+  // imageset declares (Capacitor's stock layout — the three files were always
+  // byte-identical copies of one another).
+  const splashSvg = withSplashBackground(withCraftTransform(svg, CRAFT_SPLASH));
+  const splash = await render(splashSvg, SPLASH_SIZE, join(IOS_SPLASH, SPLASH_FILES[0]), APP_BG);
+  const zone = assertSplashSafeZone(splash);
+  for (const name of SPLASH_FILES.slice(1)) {
+    await writeFile(join(IOS_SPLASH, name), splash);
+    written.push([relative(ROOT, join(IOS_SPLASH, name)), SPLASH_SIZE, splash.length]);
+  }
+
   await browser.close();
+
+  console.log(
+    `\nsplash safe zone: craft spans x=${zone.minX}..${zone.maxX}, ` +
+      `inside the ${zone.left}..${zone.right} strip visible at the narrowest ` +
+      `shipping aspect.`
+  );
 
   for (const [path, size, bytes] of written) {
     console.log(

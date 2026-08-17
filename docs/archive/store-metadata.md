@@ -91,10 +91,13 @@ These are deliberate. Re-check them before loosening any claim (Guideline
   Dragon are *uncrewed*. `classify.js` splits `CREW_VEHICLE_PATTERNS` from
   `CARGO_VEHICLE_PATTERNS` and `/capsules` tags each vehicle `kind:"crew"` or
   `kind:"cargo"`. Never describe Cygnus or Progress as crewed.
-- **"1,700+ notable objects"** — `descriptions.json` currently curates 1,791
-  of 18,981 objects. Do not claim *every* object is explained: uncurated
-  `other`-category objects get a deliberate "not curated" veil over the detail
-  panel, which a reviewer can see.
+- **"1,700+ notable objects"** — `descriptions.json` curates 2,190 of 18,997
+  objects as of 2026-08-17 (it was 1,791 when this copy was written, so the
+  claim is now conservative rather than wrong — safe to leave, and safe to
+  raise to "2,100+" if the listing is being edited anyway). Do not claim
+  *every* object is explained: uncurated `other`-category objects get a
+  deliberate "not curated" veil over the detail panel, which a reviewer can
+  see.
 - **"the notable objects passing high above you"** — What's Overhead is
   curated by design, not exhaustive: `MIN_OVERHEAD_ELEVATION_DEG` is 40° and
   `OVERHEAD_EXCLUDED_CATS` drops `other` and `debris`. Avoid "exactly which

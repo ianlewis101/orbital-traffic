@@ -27,7 +27,9 @@ const profileCache = new Map();
  */
 export function formatDuration(iso) {
   if (typeof iso !== "string") return null;
-  const m = /^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:[\d.]+S)?)?$/.exec(iso);
+  const m = /^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:[\d.]+S)?)?$/.exec(
+    iso
+  );
   if (!m) return null;
   const [, y, mo, d, h, min] = m.map((v) => (v == null ? v : Number(v)));
   // Years/months are folded into an approximate day count only when LL2
@@ -66,7 +68,9 @@ function renderProfile(p) {
   const inSpace = formatDuration(p.timeInSpace);
   if (inSpace) stats.push(stat(inSpace, "in space"));
   const links = [
-    p.wiki ? `<a href="${esc(p.wiki)}" target="_blank" rel="noopener noreferrer">Wikipedia</a>` : "",
+    p.wiki
+      ? `<a href="${esc(p.wiki)}" target="_blank" rel="noopener noreferrer">Wikipedia</a>`
+      : "",
     p.twitter ? `<a href="${esc(p.twitter)}" target="_blank" rel="noopener noreferrer">X</a>` : "",
     p.instagram
       ? `<a href="${esc(p.instagram)}" target="_blank" rel="noopener noreferrer">Instagram</a>`
@@ -134,7 +138,20 @@ function wireCrewAvatars(root) {
 // "Today aboard" is sourced from iss-today.json via the worker's /today
 // endpoint — it's ISS-specific, so only ISS modules should show it. Other
 // stations (e.g. Tiangong) still show live crew, just not this feed.
-const ISS_TODAY_IDS = new Set(["25544", "49044", "27386", "28654", "37224", "37820"]);
+// NOTE: only 25544 can actually reach this today — fetchAndRenderCrew() gates
+// on `s.id === "25544"` before this set is consulted (audit F23, still open).
+// The IDs are kept correct regardless: this set previously listed 27386, 28654,
+// 37224 and 37820, which are ENVISAT, NOAA 18, O/OREOS and the de-orbited
+// Tiangong-1 — so whenever F23 is fixed, those four would have started serving
+// "Today aboard the ISS" for unrelated satellites.
+const ISS_TODAY_IDS = new Set([
+  "25544", // ISS (Zarya)
+  "49044", // ISS (Nauka)
+  "25575", // ISS (Unity)
+  "26400", // ISS (Zvezda)
+  "26700", // ISS (Destiny)
+  "36086", // Poisk
+]);
 
 export async function fetchAndRenderCrew(s) {
   const el = $("#info-crew");
@@ -177,7 +194,11 @@ export async function fetchAndRenderCrew(s) {
     crewFetchFailed = true;
   }
   if (state.selected !== s) return; // selection changed while this was in flight
-  setInfoFreshness(!crewFetchFailed && fetchedAt ? `Crew data as of ${formatRelativeTime(new Date(fetchedAt))}` : null);
+  setInfoFreshness(
+    !crewFetchFailed && fetchedAt
+      ? `Crew data as of ${formatRelativeTime(new Date(fetchedAt))}`
+      : null
+  );
 
   // Plausibility stopgap (see CREW_SEATS_BY_FAMILY's doc comment in
   // classify.js), added 2026-07-20 when Open Notify was found serving a
@@ -231,8 +252,7 @@ export async function fetchAndRenderCrew(s) {
   if (state.selected !== s) return; // selection changed while this was in flight
   // Only render real activity data from a successful /today fetch. If it's
   // missing or empty, say so honestly rather than substituting fabricated content.
-  const activities =
-    todayData && Array.isArray(todayData.activities) ? todayData.activities : [];
+  const activities = todayData && Array.isArray(todayData.activities) ? todayData.activities : [];
   const hasToday = activities.length > 0;
   const todayItems = activities
     .map(
@@ -252,9 +272,7 @@ export async function fetchAndRenderCrew(s) {
     avHTML = crew
       .map((p, i) => {
         const init = initials(p.name || "??");
-        const isCmd = hasRoles
-          ? (p.role || "").toLowerCase().includes("commander")
-          : i === 0;
+        const isCmd = hasRoles ? (p.role || "").toLowerCase().includes("commander") : i === 0;
         // Only a person we can actually look up gets button affordances;
         // without an id there's nothing to expand, so it stays a plain div.
         const label = esc((p.name || "").split(" ").pop());
