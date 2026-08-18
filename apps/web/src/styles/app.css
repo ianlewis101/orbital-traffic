@@ -147,6 +147,18 @@
   .res .cd{width:6px;height:6px;flex:0 0 auto;box-shadow:0 0 6px currentColor}
   .res .nm{flex:1;font-size:12px;letter-spacing:0.04em;color:var(--ink)}
   .res .meta{font-size:10px;color:var(--ink-faint);letter-spacing:0.06em;font-variant-numeric:tabular-nums}
+  /* Empty-results state — deliberately not a .res: it is a status line, not a
+     pickable option, so it takes no hover/active treatment and no pointer. */
+  .res-empty{padding:11px 14px;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;
+    color:var(--ink-faint)}
+
+  /* Search icon is a real button (keyboard/AT route to the mobile search bar,
+     which is display:none until #search-wrap.expanded) — stripped back to look
+     exactly like the bare <svg> it replaced. */
+  #search-toggle{display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+    background:none;border:0;padding:0;margin:0;color:var(--ink-faint);cursor:pointer;
+    -webkit-tap-highlight-color:transparent}
+  #search-toggle svg{display:block}
 
   /* ---------- legend ---------- */
   #leftstack{position:fixed;left:24px;bottom:24px;width:214px;display:flex;flex-direction:column;gap:12px;animation:rise .8s both .2s}
@@ -262,7 +274,11 @@
   /* ---------- meta ---------- */
   #meta{bottom:14px;left:50%;transform:translateX(-50%);text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;animation:rise .8s both .34s;pointer-events:none}
   #attr{font-size:8.5px;letter-spacing:0.08em;color:var(--ink-faint);opacity:0.35}
-  #attr a{pointer-events:auto}
+  /* Hit area expanded to the 44pt minimum (the text itself is 33x9). Padding
+     grows the box; the matching negative margin keeps the rendered position
+     of the label identical, so this buys the tap target without moving the
+     attribution line or resizing its type. */
+  #attr a{pointer-events:auto;display:inline-block;padding:18px 12px;margin:-18px -12px}
   /* Desktop: #info's max-height (calc(100vh - 132px), see the "object card"
      rule below) leaves only ~4px of vertical clearance under the card
      before #meta's own box begins — and #meta paints after #info in DOM
@@ -644,14 +660,21 @@
        #search-wrap only because #search-wrap has a transform (containing block trick).
        Mobile sets transform:none, so #search must be pinned to the wrap explicitly via
        position:absolute + inset:0, or it sizes itself by content instead of by the wrap. */
-    #search-wrap{top:10px;left:10px;right:auto;transform:none;width:44px;height:44px;max-width:none;animation:none;
+    /* 46px, not 44: #search sits at inset:0 with a 1px border, so its content
+       box — and therefore the toggle button filling it — is 2px smaller than
+       the wrap. 46 makes the actual tappable button measure a true 44x44. */
+    #search-wrap{top:10px;left:10px;right:auto;transform:none;width:46px;height:46px;max-width:none;animation:none;
       transition:width .28s cubic-bezier(.22,.7,.2,1)}
     #search-wrap.expanded{width:calc(100vw - 220px);max-width:520px}
     #search{position:absolute;inset:0;padding:0;justify-content:center;border-radius:50%;overflow:hidden;
       touch-action:manipulation;-webkit-tap-highlight-color:transparent;
       transition:padding .22s ease,border-radius .22s ease}
     #search-wrap.expanded #search{padding:0 14px;justify-content:flex-start;border-radius:16px}
-    #search svg{cursor:pointer}
+    /* Collapsed, the toggle IS the 44x44 circle, so the whole control is the
+       tap target rather than just the 14px glyph. Expanded, it returns to
+       being the leading icon beside the input. */
+    #search-toggle{position:absolute;inset:0;width:100%;height:100%}
+    #search-wrap.expanded #search-toggle{position:static;width:auto;height:auto;min-width:24px}
     #search input,#search .slash{display:none}
     #search-wrap.expanded input{display:block}
     #search input{min-height:44px}
@@ -660,9 +683,15 @@
     /* Left stack — repositioned, no time machine */
     #leftstack{left:10px;bottom:10px;width:185px;gap:8px;animation:none}
     #time{display:none!important}
-    #legend .body{max-height:38vh;overflow-y:auto}
+    #legend .body{max-height:46vh;overflow-y:auto}
     #legend .hd{padding:5px 10px}
-    .cat{padding:3px 7px;gap:6px}
+    /* 44px minimum tap target (was 17px tall — well under the 44pt guidance
+       the FABs already meet). Type sizes below are unchanged, so the rows get
+       taller without the labels getting bigger; #legend .body is already a
+       capped overflow-y:auto scroller, which now does more of the work. Its
+       cap is raised a little to keep roughly the same number of classes in
+       view as before. */
+    .cat{padding:3px 7px;gap:6px;min-height:44px;box-sizing:border-box}
     #legend .nm{font-size:9px;letter-spacing:0.08em}
     #legend .ct{font-size:9px}
     #legend .sw{width:8px;height:8px;border-radius:2px;flex-shrink:0}
