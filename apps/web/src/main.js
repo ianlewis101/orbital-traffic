@@ -23,7 +23,7 @@ import { initPicking } from "./scene/picking.js";
 import { updateSelMarker } from "./scene/marker.js";
 import { refreshInfo, initInfoCard } from "./ui/info.js";
 import { rebuildLegend, initLegendToggle } from "./ui/legend.js";
-import { renderToday, initTodayToggle } from "./ui/today.js";
+import { renderToday, initTodayToggle, refreshTodayLiveFacts } from "./ui/today.js";
 import { initSearch } from "./ui/search.js";
 import { initShare } from "./ui/share.js";
 import { initOverhead } from "./ui/overhead.js";
@@ -172,6 +172,9 @@ async function boot() {
   rebuildLegend();
   updateCount();
   renderToday();
+  // Fills in the ISS headcount and re-renders; deliberately not awaited so
+  // boot never waits on the network for a Popular Objects detail.
+  refreshTodayLiveFacts();
   updateFreshnessLine();
   requestAnimationFrame(loop);
   setTimeout(() => {
