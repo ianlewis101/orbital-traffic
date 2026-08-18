@@ -69,9 +69,6 @@ Watch crewed capsules and cargo freighters — Dragon, Soyuz, Progress and Cygnu
 ASTEROIDS UP CLOSE
 Dozens of near-Earth asteroids plotted on their real heliocentric orbits, with close-approach dates and sizes.
 
-TIME MACHINE
-Scrub forward and backward through orbital history and watch the whole catalog move.
-
 SAVE WHAT MATTERS
 Star your favorite objects or add them to a watchlist to check in on later.
 
