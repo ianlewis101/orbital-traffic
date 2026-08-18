@@ -2,6 +2,7 @@ import { WORKER_BASE } from "../config.js";
 import { state } from "../state.js";
 import { esc } from "../util/html.js";
 import { formatRelativeTime } from "../util/relative-time.js";
+import { stalenessNote, CAPSULE_STALE_MS } from "../util/freshness.js";
 import { setInfoFreshness } from "./info-attr.js";
 
 const STATION_LABEL = { iss: "ISS", css: "Tiangong" };
@@ -48,7 +49,14 @@ export async function renderCapsuleStatus(s, el) {
     el.innerHTML = `<div class="crew-block"><div style="padding:14px;text-align:center;font-size:9.5px;color:var(--ink-faint);letter-spacing:0.1em">Status unavailable</div></div>`;
     return;
   }
-  setInfoFreshness(state.capsulesTime ? `Status as of ${formatRelativeTime(state.capsulesTime)}` : null);
+  // A phase that stopped being updated is worse than no phase at all — it
+  // reads as current. When update-capsule-status.yml has not run in a while,
+  // say so instead of quietly showing the age and hoping it's noticed.
+  const capsuleStale = stalenessNote(state.capsulesTime, CAPSULE_STALE_MS);
+  setInfoFreshness(
+    capsuleStale ??
+      (state.capsulesTime ? `Status as of ${formatRelativeTime(state.capsulesTime)}` : null)
+  );
 
   const stationLbl = status.stationKey
     ? esc(STATION_LABEL[status.stationKey] || status.stationKey)

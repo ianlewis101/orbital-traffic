@@ -396,6 +396,9 @@
   .crew-today-hd{background:rgba(179,155,255,0.07);padding:7px 13px;border-bottom:1px solid rgba(179,155,255,0.12);display:flex;justify-content:space-between;align-items:center}
   .crew-today-lbl{font-size:9px;letter-spacing:0.2em;color:#b39bff;text-transform:uppercase}
   .crew-today-dt{font-size:8px;color:var(--ink-faint);letter-spacing:0.06em}
+  /* Replaces the date when the log has stopped updating — this is the one
+     case where the header is a warning, not a caption. */
+  .crew-today-dt.stale{color:var(--warn,#e0a33a)}
   .crew-today-body{padding:9px 13px;display:flex;flex-direction:column;gap:7px}
   .crew-today-item{display:flex;gap:8px;align-items:flex-start}
   .crew-today-dot{width:6px;height:6px;border-radius:50%;background:#b39bff;margin-top:4px;flex-shrink:0}
