@@ -93,6 +93,9 @@ export function initSearch() {
     sWrap.classList.remove("expanded");
     hideResults();
     sIn.blur();
+    // Every other collapse route (outside tap, Escape, picking a result) ends
+    // here too, so the toggle's state is re-synced in one place.
+    syncToggle();
   }
 
   // Highlight result `i` (clamped into range), syncing aria-activedescendant,
@@ -122,13 +125,34 @@ export function initSearch() {
     if (isMobileSearch()) collapseSearch();
   }
 
-  // Mobile-only: tap the icon to slide the bar open/closed; tapping outside,
-  // Escape, or picking a result slides it back to the icon.
-  $("#search svg").onclick = () => {
-    if (!isMobileSearch()) return;
+  // The toggle is a real <button> rather than a bare <svg> with an onclick:
+  // below 768px the input is display:none until .expanded, and this control
+  // was the only way to open it — so keyboard and screen-reader users had no
+  // route to search at all on the mobile layout. A button gets focus, Enter
+  // and Space for free.
+  //
+  // aria-expanded is only meaningful while it acts as a disclosure (mobile);
+  // on desktop the input is always visible and the button just focuses it, so
+  // the attribute is removed rather than left asserting something false.
+  const sToggle = $("#search-toggle");
+
+  function syncToggle() {
+    if (isMobileSearch())
+      sToggle.setAttribute("aria-expanded", sWrap.classList.contains("expanded") ? "true" : "false");
+    else sToggle.removeAttribute("aria-expanded");
+  }
+  syncToggle();
+  window.addEventListener("resize", syncToggle);
+
+  sToggle.addEventListener("click", () => {
+    if (!isMobileSearch()) {
+      sIn.focus();
+      return;
+    }
     if (sWrap.classList.toggle("expanded")) sIn.focus();
     else collapseSearch();
-  };
+    syncToggle();
+  });
   document.addEventListener("click", (e) => {
     if (isMobileSearch() && sWrap.classList.contains("expanded") && !sWrap.contains(e.target))
       collapseSearch();
@@ -145,7 +169,17 @@ export function initSearch() {
     }
     hits = searchCatalog(state.sats.concat(neoSats), q);
     if (!hits.length) {
-      showResults(false);
+      // Previously this hid the panel outright, so a query matching nothing
+      // looked identical to a broken search — against a ~19,000-object
+      // catalog the user had no way to tell "not tracked" from "app failed".
+      // Rendered outside the listbox's option list (role="presentation") so
+      // it is announced as a status, not offered as a selectable result.
+      const el = document.createElement("div");
+      el.className = "res-empty";
+      el.setAttribute("role", "presentation");
+      el.textContent = "No matches found";
+      sRes.appendChild(el);
+      showResults(true);
       return;
     }
     hits.forEach((s, i) => {

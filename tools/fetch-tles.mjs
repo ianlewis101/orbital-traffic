@@ -8,7 +8,7 @@
  * Replaces the legacy Python script that regex-patched JSON into a
  * monolithic index.html — data is now a plain versioned asset.
  */
-import { writeFile, mkdir } from "node:fs/promises";
+import { writeFile, mkdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -43,24 +43,48 @@ export function countWideCatalogNumbers(records) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * How far the merged catalog may shrink against the last committed one
+ * before the run is treated as bad data. Day-to-day churn is a fraction of a
+ * percent — objects decay and launch a few dozen at a time against ~19,000 —
+ * so 5% is far above real movement and far below losing any single group
+ * (the smallest, oneweb, is ~3.4%; starlink alone is 57%).
+ */
+export const MAX_CATALOG_SHRINK = 0.05;
+
+/**
+ * Returns null — not [] — when the fetch itself failed, so main() can tell
+ * "upstream is down" apart from "this group is genuinely empty". Returning []
+ * for both is what let a single failed group silently vanish from the catalog
+ * while the run still reported success.
+ */
 async function fetchGroup(group, cat) {
   process.stdout.write(`  Fetching ${group}... `);
   try {
     const res = await fetch(CELESTRAK_BASE + group, { headers: FETCH_HEADERS });
     if (!res.ok) {
       console.log(`FAILED (HTTP ${res.status})`);
-      return [];
+      return null;
     }
     const recs = parseGp(await res.text(), cat);
     console.log(`${recs.length} objects`);
     return recs;
   } catch (e) {
     console.log(`FAILED (${e.message})`);
-    return [];
+    return null;
   }
 }
 
-async function main() {
+/** Length of the catalog already on disk, or null if there isn't one yet. */
+async function previousCatalogSize(path) {
+  try {
+    return JSON.parse(await readFile(path, "utf8")).length;
+  } catch {
+    return null;
+  }
+}
+
+export async function main() {
   const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
   console.log(`\n=== Orbital Traffic TLE refresh — ${stamp} UTC ===\n`);
   console.log("Fetching TLE data from CelesTrak:");
@@ -70,12 +94,53 @@ async function main() {
     perGroup.push(await fetchGroup(group, cat));
     await sleep(POLITE_DELAY_MS);
   }
+
+  // Per-group guard. Every group in GROUPS is populated upstream, so a failed
+  // fetch (null) or an empty 200 ([]) means this run is missing a whole slice
+  // of the catalog — not that the slice ceased to exist. Without this the run
+  // continued on whatever succeeded: losing just the starlink group drops 57%
+  // of the catalog while the total-empty check and the wide-ID canary both
+  // still pass, and the truncated catalog gets committed with a green run.
+  const bad = GROUPS.map(([group], i) => ({ group, recs: perGroup[i] })).filter(
+    ({ recs }) => !recs || !recs.length
+  );
+  if (bad.length) {
+    console.error(
+      `\n✗ ${bad.length} of ${GROUPS.length} CelesTrak groups came back unusable:\n` +
+        bad.map(({ group, recs }) => `    ${group}: ${recs === null ? "fetch failed" : "0 objects"}`).join("\n") +
+        `\n  Every group in GROUPS is populated upstream, so this is an upstream` +
+        `\n  or network problem, not a real catalog change. Refusing to write` +
+        `\n  ${OUT} from a partial fetch — the last good catalog stays in place.` +
+        `\n  Re-run the workflow once CelesTrak is healthy.`
+    );
+    process.exit(1);
+  }
+
   const merged = mergeRecords(perGroup);
   if (!merged.length) {
     console.error("\n✗ No satellites fetched — aborting to avoid wiping good data.");
     process.exit(1);
   }
   console.log(`\n  Total after merge: ${merged.length} objects`);
+
+  // Drift guard against this catalog's own recent size, so a truncated-but-
+  // non-empty payload (a group returning a partial page, say) is caught too.
+  const previous = await previousCatalogSize(OUT);
+  if (previous) {
+    const shrink = (previous - merged.length) / previous;
+    console.log(
+      `  Previous catalog: ${previous} objects (${shrink >= 0 ? "-" : "+"}${Math.abs(shrink * 100).toFixed(2)}%)`
+    );
+    if (shrink > MAX_CATALOG_SHRINK) {
+      console.error(
+        `\n✗ Catalog shrank ${(shrink * 100).toFixed(2)}% against the last good run` +
+          ` (${previous} → ${merged.length}), past the ${(MAX_CATALOG_SHRINK * 100).toFixed(0)}% limit.` +
+          `\n  Real churn is a fraction of a percent a day, so a drop this size means` +
+          `\n  a partial or malformed upstream payload. Refusing to write ${OUT}.`
+      );
+      process.exit(1);
+    }
+  }
 
   // Canary for a silent regression to FORMAT=tle. That format's fixed-width
   // satnum field cannot express a 6-digit catalog number, and CelesTrak's

@@ -1,6 +1,6 @@
 # Orbital Traffic 🛰️
 
-Real-time 3D satellite and near-Earth object tracker. 18,000+ tracked objects, 77 near-Earth asteroids, live crew data — all positions computed in your browser.
+Real-time 3D satellite and near-Earth object tracker. 19,000+ tracked objects, 77 near-Earth asteroids, live crew data — all positions computed in your browser.
 
 **Live at [orbitaltraffic.app](https://orbitaltraffic.app)** · Installable as a PWA on iOS, Android and desktop.
 
@@ -10,7 +10,6 @@ Real-time 3D satellite and near-Earth object tracker. 18,000+ tracked objects, 7
 
 - **3D Earth globe** with live positions for every catalogued satellite — Starlink, ISS, GPS/Galileo/GLONASS, geostationary, science, classified, debris
 - **77 near-Earth objects** with heliocentric orbit propagation
-- **Time Machine** — scrub forward/backward through orbital history at up to 300×
 - **Live telemetry** — altitude, speed, ground point, orbit class, sunlight state, region overflown
 - **ISS & Tiangong crew cards** — who's aboard right now, mission progress, and a daily "Today aboard" activity feed
 - **Curated descriptions** for 1,700+ notable objects, with NASA imagery

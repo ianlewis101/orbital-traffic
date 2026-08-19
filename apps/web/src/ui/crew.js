@@ -4,6 +4,7 @@ import { vehicleFamily, CREW_SEATS_BY_FAMILY } from "@orbital-traffic/catalog";
 import { renderCapsuleStatus } from "./capsule-status.js";
 import { esc } from "../util/html.js";
 import { formatRelativeTime } from "../util/relative-time.js";
+import { stalenessNote, ISS_TODAY_STALE_MS } from "../util/freshness.js";
 import { setInfoFreshness } from "./info-attr.js";
 
 function initials(name) {
@@ -261,6 +262,10 @@ export async function fetchAndRenderCrew(s) {
     )
     .join("");
   const todayDate = (todayData && todayData.updated) || "";
+  // A daily log that stopped updating still reads as "today" — the header
+  // shows its date, but a date alone doesn't tell a user it's months old.
+  // Only computed when there is something to label as stale.
+  const todayStale = showToday && todayDate ? stalenessNote(todayDate, ISS_TODAY_STALE_MS) : null;
   // avatars — use crew from API or show count only
   let avHTML = "";
   if (crew.length > 0) {
@@ -318,7 +323,11 @@ export async function fetchAndRenderCrew(s) {
       showToday
         ? `<div class="crew-today">
       <div class="crew-today-hd"><div class="crew-today-lbl">Today aboard</div>${
-        todayDate ? `<div class="crew-today-dt">${esc(todayDate)}</div>` : ""
+        todayStale
+          ? `<div class="crew-today-dt stale">${esc(todayStale)}</div>`
+          : todayDate
+            ? `<div class="crew-today-dt">${esc(todayDate)}</div>`
+            : ""
       }</div>
       <div class="crew-today-body">${
         hasToday
