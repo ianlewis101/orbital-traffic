@@ -260,9 +260,11 @@ describe("correctOtherCat", () => {
     expect(correctOtherCat("69320", "GUOWANG TEST OBJECT A", "other")).toBe("debris");
     // communications: one-off relay/messaging sats with no shared pattern
     expect(correctOtherCat("23439", "RADIO ROSTO (RS15)", "other")).toBe("communications");
-    expect(correctOtherCat("59072", "MARAFON-D GVM", "other")).toBe("communications");
     // classified: one-off military codename with no recognizable scheme
     expect(correctOtherCat("57757", "BB4", "other")).toBe("classified");
+    // MARAFON-D GVM (59072) moved to SCIENCE_IDS 2026-08-19 — see that set's
+    // comment. Not a communications satellite: an inert mass mockup.
+    expect(correctOtherCat("59072", "MARAFON-D GVM", "other")).toBe("science");
     // science: one-off tech demonstrators / national missions / calibration targets
     for (const id of [
       "01361",

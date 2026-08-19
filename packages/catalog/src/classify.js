@@ -363,11 +363,21 @@ export const SCIENCE_IDS = new Set([
   // no name pattern to rescue by, so without this ID it falls through to
   // "other" (hidden by default) despite being a genuinely notable object.
   "69792", // LINK
+  // 2026-08-19: MARAFON-D GVM (59072) — moved here from COMMS_IDS. It is not
+  // a communications satellite at all: it's an inert dimensional-mass mockup
+  // (GVM) launched in place of the real Marafon-D technology satellite,
+  // which was pulled from the manifest shortly before liftoff. Ian's
+  // decision, made with that fact in front of him — the object has no
+  // instruments, no power system and no ongoing mission, so this is not the
+  // same shape as SCIENCE_IDS's other inert entries (LAGEOS/STARLETTE/
+  // STELLA/AJISAI), whose entire orbital life IS an active geodesy role.
+  // MARAFON-D GVM's only function ended at deployment.
+  "59072", // MARAFON-D GVM
 ]);
 /** Cataloged fragments/sub-payloads with no name DEBRIS_NAME_RE can match. */
 export const DEBRIS_IDS = new Set(["51950", "69320"]);
 /** One-off comms/data-relay satellites with no shared constellation name (see COMMS_NAME_RE for those that do). */
-export const COMMS_IDS = new Set(["23439", "59072"]);
+export const COMMS_IDS = new Set(["23439"]);
 /** One-off military satellites identified by individual codename rather than a recognizable scheme (see CLASSIFIED_NAME_RE). */
 export const CLASSIFIED_IDS = new Set(["57757"]);
 
