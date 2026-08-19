@@ -84,15 +84,13 @@ export function freshnessText({
     return `Simulation · showing ${formatSimOffset(simOffsetMs)}`;
   }
   if (srcTime) {
-    return `Live positions · updated ${formatRelativeTime(srcTime)}`;
+    return `Live · updated ${formatRelativeTime(srcTime)}`;
   }
   const bootAge = formatRelativeTime(bootTime);
   if (syncFailed) {
-    return bootAge
-      ? `Cached elements from ${bootAge} · retrying automatically`
-      : "Cached elements shown · retrying automatically";
+    return bootAge ? `Cached · ${bootAge} · retrying` : "Cached · retrying";
   }
-  return bootAge ? `Live positions · catalog from ${bootAge}` : "Live positions · syncing…";
+  return bootAge ? `Live · catalog ${bootAge}` : "Live · syncing…";
 }
 
 /**

@@ -211,7 +211,17 @@
   .gbtn.on{color:#06122a;background:var(--amber);border-color:var(--amber);font-weight:700}
 
   /* ---------- specimen / object card ---------- */
-  #info{top:104px;right:24px;width:300px;overflow:hidden;display:none}
+  /* z-index:5 — #info and #meta are both children of .hud with no stacking
+     context of their own, so without this they paint in DOM order and #meta
+     (which comes after #info in index.html) renders on top of the open card
+     everywhere, not just near its footer — most visibly on mobile, where
+     #info becomes a full-width bottom sheet sitting exactly where #meta is
+     anchored (bottom:10px), so the "Privacy" text showed through the sheet
+     at any scroll position. Below #sel-marker(8)/#hint(10)/#mini-card(11)/
+     the openers(12)/#tip(13)/#overhead,#settings(15), so this doesn't
+     reorder anything else in the .hud stack — it only lifts #info above
+     #meta's implicit auto(0) level. */
+  #info{top:104px;right:24px;width:300px;overflow:hidden;display:none;z-index:5}
   #info.show{display:block;animation:slidein .32s cubic-bezier(.2,.7,.2,1)}
   /* mobile-only swipe-to-collapse handle + mini-card — hidden on desktop */
   #info-drag,#mini-card{display:none}
