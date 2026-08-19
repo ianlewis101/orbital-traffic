@@ -686,15 +686,27 @@
     /* Left stack — repositioned, no time machine */
     #leftstack{left:10px;bottom:10px;width:185px;gap:8px;animation:none}
     #time{display:none!important}
-    #legend .body{max-height:46vh;overflow-y:auto}
+    #legend .body{max-height:52vh;overflow-y:auto}
     #legend .hd{padding:5px 10px}
-    /* 44px minimum tap target (was 17px tall — well under the 44pt guidance
-       the FABs already meet). Type sizes below are unchanged, so the rows get
-       taller without the labels getting bigger; #legend .body is already a
-       capped overflow-y:auto scroller, which now does more of the work. Its
-       cap is raised a little to keep roughly the same number of classes in
-       view as before. */
-    .cat{padding:3px 7px;gap:6px;min-height:44px;box-sizing:border-box}
+    /* 36px minimum tap target (was 17px tall — well under the 44pt guidance
+       the FABs already meet). 44px was tried first and shipped in a TestFlight
+       build; on a real device it read as broken rather than accessible —
+       13 rows at 44px is 572px tall, leaving only 8 of 13 categories visible
+       before scrolling even with the enlarged 46vh cap below. 36px roughly
+       doubles the original row height (a real, meaningful improvement) without
+       tripling the list's total height, and still clears WCAG 2.5.8's actual
+       AA pass bar (24x24, the level App Store review and conformance actually
+       require) with plenty of margin — 44x44 is Apple's HIG figure and WCAG's
+       stricter AAA criterion (2.5.5), not the bar this needs to clear.
+       Type sizes below are unchanged, so the rows get taller without the
+       labels getting bigger; #legend .body is already a capped
+       overflow-y:auto scroller, which now does more of the work. Its cap is
+       raised to 52vh (13 rows x 36px = 468px, ~55vh on a 390x844pt phone) so
+       the full list fits without scrolling on most phones this app targets,
+       rather than merely "roughly as many as before" — #time is hidden on
+       this breakpoint, so Orbit Classes only shares the stack with Popular
+       Objects here and can afford the room. */
+    .cat{padding:4px 7px;gap:6px;min-height:36px;box-sizing:border-box}
     #legend .nm{font-size:9px;letter-spacing:0.08em}
     #legend .ct{font-size:9px}
     #legend .sw{width:8px;height:8px;border-radius:2px;flex-shrink:0}
