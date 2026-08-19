@@ -56,23 +56,33 @@ let infoTick = 0,
   neoFrame = 0,
   freshFrame = 0;
 
-// Plain-language "is this actually live" reassurance for casual visitors —
-// all wording decided by freshness.js; here we just gather live state and
-// paint it. Kept out of the propagation-throttled block below since it has
-// nothing to do with orbital positions, just its own cadence. Also refreshes
-// the clock-mode badge so paused/fast-forward drift keeps it honest even
-// between explicit rate/jump interactions.
+// The on-screen label is a static "Orbital elements ·" (see index.html) with
+// "LIVE" supplied entirely by the pulsing clock-mode badge next to it — no
+// more duplicated "LIVE"/"Live" text, and nothing long enough to wrap on
+// mobile. The real per-state detail (live-synced age, still on the boot
+// catalog, sync failed and retrying, or the globe time-shifted) still comes
+// from freshness.js — it just moves into this hover/long-press tooltip
+// instead of the always-visible text, so the honesty guarantee (never
+// implying the data is fresher than it is) still holds on inspection. Kept
+// out of the propagation-throttled block below since it has nothing to do
+// with orbital positions, just its own cadence. Also refreshes the
+// clock-mode badge so paused/fast-forward drift keeps it honest even between
+// explicit rate/jump interactions.
+const FRESHNESS_EXPLAINER =
+  "Positions are computed live in your browser from orbital elements that refresh periodically; the upstream catalog updates roughly every 2 hours.";
+
 function updateFreshnessLine() {
   const el = $("#freshness-line");
   if (!el) return;
   const now = Date.now();
-  el.textContent = freshnessText({
+  const status = freshnessText({
     simShifted: isTimeShifted({ rate: state.rate, simNow: state.simNow, now }),
     simOffsetMs: state.simNow - now,
     srcTime: state.srcTime,
     syncFailed: state.syncFailed,
     bootTime: state.bootCatalogTime,
   });
+  el.title = `${FRESHNESS_EXPLAINER} Status: ${status}.`;
   updateClockMode();
 }
 

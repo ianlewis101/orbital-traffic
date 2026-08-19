@@ -306,16 +306,17 @@
   @media (min-width:769px){
     #info.show ~ #meta{left:auto;right:348px;transform:none;width:auto}
   }
-  /* Freshness line now lives in the clock card (replacing the old "Simulation
-     Time" caption), so it inherits #clock .cap's small uppercase look. flex +
-     min-width:0 lets a long "updated N minutes ago" wrap to a second line
-     instead of widening the card; the 2-line clamp bounds the card's height so
-     even the longest state ("cached elements … retrying automatically") can't
-     grow tall enough to collide with the Globe Style card below it (see the
-     #clock max-width, which forces the wrap rather than a wider card).
-     pointer-events:auto surfaces the title tooltip on hover. */
-  #freshness-line{flex:1;min-width:0;line-height:1.4;pointer-events:auto;
-    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+  /* Freshness line lives in the clock card (replacing the old "Simulation
+     Time" caption), so it inherits #clock .cap's small uppercase look. Text
+     is now a fixed, short "Orbital elements ·" label — LIVE comes entirely
+     from the pulsing #clock-mode badge next to it, so this never needs to
+     wrap; ellipsis is just a defensive fallback for extremely narrow/zoomed
+     viewports rather than something normal layouts should ever hit. The real
+     per-state freshness detail (updated Xm ago / cached & retrying / etc.,
+     see freshness.js) lives in the title tooltip instead — pointer-events:auto
+     surfaces it on hover/long-press. */
+  #freshness-line{flex:1;min-width:0;pointer-events:auto;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
   /* ---------- hint ---------- */
   #hint{position:fixed;bottom:78px;left:50%;transform:translateX(-50%);z-index:10;font-family:var(--mono);font-size:10px;
