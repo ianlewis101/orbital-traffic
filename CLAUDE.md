@@ -414,6 +414,16 @@ they can't be templated:
     HTML entry points must contain zero literal figures, and
     welcome.html must still carry the token.
 
+    Also derived: the App Store screenshots in
+    `design/store-screenshots/`. `tools/store-screenshots/frames.mjs`
+    computes the object count (same rounding as vite.config.js),
+    the curated-profile count and the NEO count from the bundled
+    data at render time. A figure baked into a PNG cannot be
+    guarded by object-count-sync.test.js — a test can't read it
+    back out — so the only safe version of it is a derived one.
+    Never hand-type a figure into frames.mjs; re-run
+    `npm run store:render` instead (see that tool's README).
+
   - Hand-written — update ALL of these together whenever the
     rounded figure changes (found via full-repo grep for
     "11,000", "15,000", "18,000", "objects in orbit", "tracked
