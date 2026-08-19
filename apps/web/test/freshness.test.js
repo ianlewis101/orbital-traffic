@@ -93,34 +93,34 @@ describe("freshnessText", () => {
   });
 
   it("shows the live-synced age once a sync has succeeded", () => {
-    expect(freshnessText({ srcTime: ago(3 * MIN) })).toBe("Live positions · updated 3m ago");
-    expect(freshnessText({ srcTime: ago(0) })).toBe("Live positions · updated just now");
+    expect(freshnessText({ srcTime: ago(3 * MIN) })).toBe("Live · updated 3m ago");
+    expect(freshnessText({ srcTime: ago(0) })).toBe("Live · updated just now");
   });
 
   it("keeps showing the live age even if a later refresh failed (data on screen is still live)", () => {
     expect(freshnessText({ srcTime: ago(8 * MIN), syncFailed: true })).toBe(
-      "Live positions · updated 8m ago"
+      "Live · updated 8m ago"
     );
   });
 
   it("shows the bundled catalog's real age before the first sync, never a bare 'syncing…'", () => {
     expect(freshnessText({ srcTime: null, bootTime: ago(8 * HOUR) })).toBe(
-      "Live positions · catalog from 8h ago"
+      "Live · catalog 8h ago"
     );
   });
 
   it("says cached-and-retrying when the sync failed before any success", () => {
     expect(freshnessText({ srcTime: null, syncFailed: true, bootTime: ago(2 * HOUR) })).toBe(
-      "Cached elements from 2h ago · retrying automatically"
+      "Cached · 2h ago · retrying"
     );
   });
 
   it("still degrades gracefully when the bundled age is unavailable", () => {
     expect(freshnessText({ srcTime: null, syncFailed: true, bootTime: null })).toBe(
-      "Cached elements shown · retrying automatically"
+      "Cached · retrying"
     );
     expect(freshnessText({ srcTime: null, syncFailed: false, bootTime: null })).toBe(
-      "Live positions · syncing…"
+      "Live · syncing…"
     );
   });
 });
