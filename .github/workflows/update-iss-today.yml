@@ -44,6 +44,9 @@ jobs:
           git commit -m "chore: update ISS today log $(date -u +'%Y-%m-%d')"
 
           # Rebase onto whatever another scheduled job may have just pushed
+          # onto the branch this run is on ($GITHUB_REF_NAME — main for the
+          # scheduled runs; it was hardcoded to main, which made a manual
+          # dispatch from any other branch fail on an unrelated rebase)
           # (e.g. update-capsule-status.yml) and retry, instead of failing
           # outright on a losing push.
           #
@@ -53,7 +56,7 @@ jobs:
           # decides the exit status, or an explicit check has to replace it.
           pushed=false
           for i in 1 2 3 4 5; do
-            git pull --rebase origin main || break
+            git pull --rebase origin "$GITHUB_REF_NAME" || break
             if git push; then pushed=true; break; fi
           done
           if [ "$pushed" != true ]; then
