@@ -46,10 +46,20 @@ jobs:
           # Rebase onto whatever another scheduled job may have just pushed
           # (e.g. update-capsule-status.yml) and retry, instead of failing
           # outright on a losing push.
+          #
+          # `pushed` is not decoration: without it the trailing $GITHUB_OUTPUT
+          # write becomes the step's last command, so five failed pushes would
+          # exit 0 and report success. The loop has to be the last thing that
+          # decides the exit status, or an explicit check has to replace it.
+          pushed=false
           for i in 1 2 3 4 5; do
-            git pull --rebase origin main
-            git push && break
+            git pull --rebase origin main || break
+            if git push; then pushed=true; break; fi
           done
+          if [ "$pushed" != true ]; then
+            echo "Could not push after 5 attempts — not requesting a rebuild." >&2
+            exit 1
+          fi
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
       # See refresh-tle-data.yml's equivalent step for the full reasoning: a
