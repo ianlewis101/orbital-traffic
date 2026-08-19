@@ -306,7 +306,30 @@ Monorepo (npm workspaces):
 - GitHub Actions also handles daily TLE refresh
   (refresh-tle-data.yml), ISS Today data updates
   (update-iss-today.yml), and crew/cargo vehicle phase tracking
-  hourly (update-capsule-status.yml). The tracker reads
+  hourly (update-capsule-status.yml).
+
+  ALL THREE MUST KEEP THEIR "Rebuild and redeploy the site"
+  STEP. A push made with the default GITHUB_TOKEN does not
+  start any workflow — GitHub's recursion guard: "Events
+  triggered by the GITHUB_TOKEN will not create a new workflow
+  run." So none of these data commits ever reached
+  deploy-pages.yml, and the published site kept whatever bundled
+  catalog the last PR merge built. Measured 2026-08-19 across
+  120 deploy-pages runs (2026-07-07 → 2026-08-19): every
+  push-triggered deploy was a PR merge, not one was a data
+  commit. Each job therefore ends by dispatching
+  deploy-pages.yml explicitly (workflow_dispatch and
+  repository_dispatch are the two events GitHub exempts from
+  that rule), which is why each needs `actions: write` alongside
+  `contents: write`, and why no PAT or GitHub App token is
+  involved — deliberately, so there is no long-lived credential
+  with write access to main to leak, rotate, or silently expire.
+  `--ref main` is hardcoded on purpose: a manual dispatch of a
+  data workflow from a feature branch must never publish that
+  branch. Removing either the step or `actions: write` silently
+  reintroduces the stale-site bug with no error anywhere.
+
+  The tracker reads
   CelesTrak's stations + last-30-days groups, CATNR-re-verifies
   any previously-tracked vehicle missing from both before
   letting it land, treats elsets older than STALE_TLE_DAYS (7)

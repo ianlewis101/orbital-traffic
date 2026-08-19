@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # commits the updated satellites.json
+      actions: write # dispatches deploy-pages.yml — see the rebuild step below
 
     steps:
       - name: Checkout repository
@@ -29,9 +30,41 @@ jobs:
         run: node tools/fetch-tles.mjs
 
       - name: Commit updated catalog (if changed)
+        id: commit
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add apps/web/public/data/satellites.json
-          git diff --cached --quiet || git commit -m "chore: refresh TLE data $(date -u +'%Y-%m-%d %H:%M UTC')"
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Catalog unchanged — nothing to commit."
+            exit 0
+          fi
+          git commit -m "chore: refresh TLE data $(date -u +'%Y-%m-%d %H:%M UTC')"
           git push
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      # This push cannot start the Pages deploy on its own. Per GitHub's docs,
+      # "Events triggered by the GITHUB_TOKEN will not create a new workflow
+      # run" — the recursion guard — so deploy-pages.yml never saw the daily
+      # data commit, and the published site kept whatever bundled catalog the
+      # last PR merge happened to build. Measured before this fix: 120
+      # deploy-pages runs between 2026-07-07 and 2026-08-19, every single
+      # push-triggered one a PR merge, not one a data commit.
+      #
+      # workflow_dispatch is one of the two events GitHub exempts from that
+      # rule ("workflow_dispatch and repository_dispatch events always create
+      # workflow runs"), so asking for the run explicitly is enough. That is
+      # why this needs no personal access token and no GitHub App: the job's
+      # own ephemeral GITHUB_TOKEN plus `actions: write` does it, with nothing
+      # long-lived to leak, rotate, or silently expire.
+      #
+      # --ref main is deliberately hardcoded rather than ${{ github.ref_name }}:
+      # the scheduled run only ever happens on main, and pinning it means a
+      # manual dispatch of this workflow from a feature branch can never
+      # publish that branch to production.
+      - name: Rebuild and redeploy the site with the new data
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run deploy-pages.yml --ref main
