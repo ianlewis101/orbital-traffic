@@ -5,11 +5,17 @@ import { fileURLToPath } from "node:url";
 // Splash-screen object count, derived from the real bundled catalog instead of
 // hand-written — see the "Object count" Conventions entry in CLAUDE.md for the
 // other surfaces that still have to be updated by hand when this figure moves.
-// This only stays fresh because deploy-pages.yml has no `paths` filter, so the
-// daily TLE-refresh commit (which touches apps/web/public/data/satellites.json)
-// triggers a full rebuild. If finding F19 ("every data commit triggers a full
-// Pages deploy") ever adds one, it must keep apps/web/public/data/** in scope
-// or this count silently goes stale again.
+// Staying fresh depends on the daily data commit actually rebuilding the site.
+// It did not, for the whole life of this comment: a push made with
+// GITHUB_TOKEN starts no workflow, so refresh-tle-data.yml's commit never
+// reached deploy-pages.yml and the published figure was whatever the last PR
+// merge built. The data workflows now dispatch deploy-pages.yml explicitly
+// (workflow_dispatch is exempt from that rule) — see the "Rebuild and redeploy"
+// step in each of the three.
+//
+// Two things still have to hold, or this count silently goes stale again:
+// deploy-pages.yml must keep no `paths` filter (or keep
+// apps/web/public/data/** in scope), and those dispatch steps must stay.
 const satellitesPath = fileURLToPath(new URL("./public/data/satellites.json", import.meta.url));
 const satellites = JSON.parse(readFileSync(satellitesPath, "utf8"));
 const satelliteCount = satellites.length;
