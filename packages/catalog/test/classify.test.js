@@ -148,6 +148,33 @@ describe("isDebrisName / correctDebrisCat", () => {
     expect(isDebrisName("ARIANE 5 R/B")).toBe(true);
   });
 
+  /**
+   * SATCAT gives 348 rocket bodies a parenthesised suffix ("DELTA 1 R/B(2)",
+   * "TITAN 3C R/B(1)", "H-1 R/B(MABES)"). The old space-padded " R/B " token
+   * could not match those, so the launcher-name tokens were the only thing
+   * catching them — which is why removing those tokens required this.
+   */
+  it("matches rocket bodies whose R/B carries a parenthesised suffix", () => {
+    expect(isDebrisName("DELTA 1 R/B(2)")).toBe(true);
+    expect(isDebrisName("TITAN 3C R/B(1)")).toBe(true);
+    expect(isDebrisName("IUS R/B(1)")).toBe(true);
+    expect(isDebrisName("H-1 R/B(MABES)")).toBe(true);
+    expect(isDebrisName("INMARSAT 2-F2 R/B(PAM-D)")).toBe(true);
+  });
+
+  /**
+   * Launcher names classify by who launched a thing, not what it is. All of
+   * these are OBJECT_TYPE=PAY in SATCAT — the six MERCURY ATLAS entries are
+   * crewed capsules — and every one was filed as debris before 2026-08-18.
+   */
+  it("does not call a payload debris just for sharing a launcher's name", () => {
+    expect(isDebrisName("MERCURY ATLAS 6")).toBe(false);
+    expect(isDebrisName("ATLAS AGENA D")).toBe(false);
+    expect(isDebrisName("ATLAS CENTAUR 2")).toBe(false);
+    expect(isDebrisName("DELTA 4 DEMO SPACECRAFT")).toBe(false);
+    expect(isDebrisName("NABEO-1 & KICK STAGE")).toBe(false);
+  });
+
   it("matches jettisoned station hardware", () => {
     expect(isDebrisName("ISS OBJECT PP (EP BATTERY)")).toBe(true);
     expect(isDebrisName("SZ-16 MODULE")).toBe(true);
@@ -333,9 +360,9 @@ describe("isDockedCrewVehicle", () => {
     expect(isDockedCrewVehicle("CST-100 (CALYPSO)")).toBe(true);
   });
 
-  it("matches named Dragon crew airframes without the CREW prefix", () => {
+  it("matches named Dragon crew airframes, but only with the DRAGON prefix", () => {
     expect(isDockedCrewVehicle("DRAGON ENDEAVOUR")).toBe(true);
-    expect(isDockedCrewVehicle("ENDURANCE")).toBe(true);
+    expect(isDockedCrewVehicle("DRAGON ENDURANCE")).toBe(true);
     expect(isDockedCrewVehicle("DRAGON GRACE")).toBe(true);
   });
 
@@ -343,6 +370,8 @@ describe("isDockedCrewVehicle", () => {
     expect(isDockedCrewVehicle("MENGZHOU-1")).toBe(true);
     expect(isDockedCrewVehicle("GAGANYAAN-1")).toBe(true);
     expect(isDockedCrewVehicle("ORION (ARTEMIS II)")).toBe(true);
+    expect(isDockedCrewVehicle("ORION")).toBe(true); // Artemis I, catalogued bare (54257)
+    expect(isDockedCrewVehicle("ORION EFT-1")).toBe(true);
   });
 
   it("never matches cargo or crew-lookalike names", () => {
@@ -350,6 +379,23 @@ describe("isDockedCrewVehicle", () => {
     expect(isDockedCrewVehicle("TIANZHOU-10")).toBe(false);
     expect(isDockedCrewVehicle("GRACE-FO 1")).toBe(false);
     expect(isDockedCrewVehicle("DRAGRACER 2 (AUGURY)")).toBe(false);
+  });
+
+  /**
+   * Every name below is a real SATCAT entry that the pre-2026-08-18 bare-word
+   * alternatives claimed as a crewed capsule. ORION 3 and both TELSTARs are
+   * still in orbit, so this was a live misidentification waiting on the
+   * catch-all groups, not a hypothetical one.
+   */
+  it("does not claim real objects that merely share a crew airframe's name", () => {
+    expect(isDockedCrewVehicle("HAKUTO-R M2 (RESILIENCE)")).toBe(false); // ispace lunar lander, 62717
+    expect(isDockedCrewVehicle("FREEDOM")).toBe(false); // Japanese payload, 41930
+    expect(isDockedCrewVehicle("GRACE-1")).toBe(false); // geodesy pair, 27391/27392
+    expect(isDockedCrewVehicle("NUSAT-20 (GRACE)")).toBe(false); // Argentine EO sat, 48921
+    expect(isDockedCrewVehicle("LEMUR-2-MIA-GRACE")).toBe(false); // Spire cubesat, 41998
+    expect(isDockedCrewVehicle("ORION 3")).toBe(false); // commercial comsat, 25727
+    expect(isDockedCrewVehicle("TELSTAR 11 (ORION 1)")).toBe(false); // 23413
+    expect(isDockedCrewVehicle("TELSTAR 12 (ORION 2)")).toBe(false); // 25949
   });
 });
 

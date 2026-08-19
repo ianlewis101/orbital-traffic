@@ -1,1 +1,24 @@
-[{"id":"25544","name":"ISS","reason":"9 humans living in space right now"},{"id":"20580","name":"HST","reason":"35 years old and still discovering the universe"},{"id":"43226","name":"GOES-17","reason":"Watching North America's weather right now"},{"id":"48274","name":"CSS (Tiangong)","reason":"China's permanent space station"},{"id":"27424","name":"Aqua","reason":"Tracking Earth's water cycle since 2002"}]
+[
+  {
+    "id": "25544",
+    "name": "ISS",
+    "live": "issCrew",
+    "template": "{n} humans living in space right now",
+    "reason": "Continuously crewed since November 2000"
+  },
+  {
+    "id": "20580",
+    "name": "HST",
+    "live": "yearsSince",
+    "since": "1990-04-24",
+    "template": "{n} years old and still discovering the universe",
+    "reason": "Still discovering the universe decades on"
+  },
+  {
+    "id": "43226",
+    "name": "GOES-17",
+    "reason": "Standby backup in NOAA's geostationary weather fleet"
+  },
+  { "id": "48274", "name": "CSS (Tiangong)", "reason": "China's permanent space station" },
+  { "id": "27424", "name": "Aqua", "reason": "Tracking Earth's water cycle since 2002" }
+]

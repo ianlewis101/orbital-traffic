@@ -88,25 +88,31 @@ export function normalizeVehicleName(name) {
  * dragon: deliberately not a bare DRAGON pattern — that also matches
  * uncrewed cargo Dragon ("DRAGON CRS-29"), which must never be tracked as
  * a crewed capsule (see CARGO_VEHICLE_PATTERNS' separate dragon-cargo entry
- * for that). CREW DRAGON (the generic bus name at launch) and the
- * individually-named reusable crew airframes are the only safe anchors.
- * GRACE excludes the GRACE-FO science pair ("GRACE FO 1" once normalized).
+ * for that). Every airframe name must carry its DRAGON prefix: the bare
+ * alternative was removed 2026-08-18 because those words belong to real,
+ * unrelated catalogued objects — RESILIENCE is ispace's HAKUTO-R M2 lunar
+ * lander (62717), FREEDOM is a 1998 Japanese payload (41930), and bare
+ * GRACE swept up GRACE-1/GRACE-2 and NUSAT-20 (GRACE) since the (?! FO)
+ * guard only ever excluded the GRACE-FO pair. ENDEAVOUR and ENDURANCE have
+ * never appeared in SATCAT in any form, so nothing is lost. CelesTrak names
+ * the real vehicles "CREW DRAGON n" anyway.
  * shenzhou: SHENZHOU only, never bare SZ-\d+ — jettisoned "SZ-nn MODULE"
  * hardware must keep falling through to the debris backstop.
- * mengzhou/gaganyaan/orion: upcoming crewed vehicles, inert until they
- * appear in the catalog.
+ * orion: Artemis's capsule is catalogued as bare "ORION" (54257) and
+ * "ORION EFT-1" (40329), while the unrelated commercial comsats are
+ * "ORION 3" and "TELSTAR 11/12 (ORION 1/2)" — so a trailing digit is
+ * exactly what separates them, and the pattern refuses it.
+ * mengzhou/gaganyaan: upcoming crewed vehicles, inert until they appear in
+ * the catalog.
  */
 export const CREW_VEHICLE_PATTERNS = [
-  [
-    "dragon",
-    /\bCREW DRAGON\b|\bDRAGON (?:ENDEAVOUR|ENDURANCE|RESILIENCE|FREEDOM|GRACE)\b|\b(?:ENDEAVOUR|ENDURANCE|RESILIENCE|FREEDOM)\b|\bGRACE\b(?! FO\b)/,
-  ],
+  ["dragon", /\bCREW DRAGON\b|\bDRAGON (?:ENDEAVOUR|ENDURANCE|RESILIENCE|FREEDOM|GRACE)\b/],
   ["soyuz", /\bSOYUZ MS\b/],
   ["starliner", /STARLINER|\bCST 100\b/],
   ["shenzhou", /SHENZHOU/],
   ["mengzhou", /MENGZHOU/],
   ["gaganyaan", /GAGANYAAN/],
-  ["orion", /\bORION\b/],
+  ["orion", /\bORION\b(?!\s*\d)/],
 ];
 
 export function isDockedCrewVehicle(name) {
@@ -218,9 +224,22 @@ export function correctStarlinkCat(name, cat) {
  * Feeds tag these inconsistently — some have dedicated debris groups,
  * others bury stragglers under "active" — so names are matched regardless
  * of which group a record arrived under.
+ *
+ * Launcher names (DELTA, ATLAS, TITAN) and the bare ROCKET/STAGE tokens
+ * were removed 2026-08-18: they classified by who launched a thing rather
+ * than what it is, so every payload sharing a launcher's name was filed as
+ * debris. In SATCAT that is the six crewed MERCURY ATLAS capsules, the
+ * ATLAS AGENA D payloads, and NABEO-1 & KICK STAGE — all OBJECT_TYPE=PAY.
+ *
+ * They looked load-bearing because 348 genuine rocket bodies are named
+ * "DELTA 1 R/B(2)" / "TITAN 3C R/B(1)", whose parenthesis defeated the
+ * space-padded " R/B " token, leaving the launcher name as the only thing
+ * catching them. Matching \bR\/B\b instead catches those directly, which is
+ * what makes dropping the launcher names safe — verified against the live
+ * catalog and the full 70,292-row SATCAT.
  */
 const DEBRIS_NAME_RE =
-  / DEB | DEBRIS | FRAGMENT | FRAG | R\/B | ROCKET BODY | ROCKET | STAGE | ARIANE | DELTA | ATLAS | TITAN /;
+  / DEB | DEBRIS | FRAGMENT | FRAG |\bR\/B\b| ROCKET BODY | ARIANE /;
 /**
  * Hardware released or jettisoned from a crewed station (cameras, experiment
  * housings, unidentified ISS-origin objects, Shenzhou orbital modules left

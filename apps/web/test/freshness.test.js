@@ -4,7 +4,10 @@ import {
   formatSimOffset,
   isTimeShifted,
   shouldSyncOnVisible,
+  stalenessNote,
   SIM_SHIFT_THRESHOLD_MS,
+  CAPSULE_STALE_MS,
+  ISS_TODAY_STALE_MS,
 } from "../src/util/freshness.js";
 
 function ago(ms) {
@@ -118,6 +121,57 @@ describe("freshnessText", () => {
     );
     expect(freshnessText({ srcTime: null, syncFailed: false, bootTime: null })).toBe(
       "Live positions · syncing…"
+    );
+  });
+});
+
+/**
+ * capsule-status.json and iss-today.json both carry an `updated` timestamp
+ * that nothing compared against a limit. If either scheduled job silently
+ * stopped, the app would present months-old capsule phases and activity logs
+ * as current — the date was shown, but a date alone doesn't read as a warning.
+ */
+describe("stalenessNote", () => {
+  const NOW = Date.parse("2026-08-18T12:00:00Z");
+  const agoMs = (ms) => new Date(NOW - ms).toISOString();
+  const HOURS = 3600000;
+
+  it("says nothing at all while the data is fresh", () => {
+    expect(stalenessNote(agoMs(1 * HOURS), CAPSULE_STALE_MS, NOW)).toBeNull();
+    expect(stalenessNote(agoMs(5 * HOURS), CAPSULE_STALE_MS, NOW)).toBeNull();
+  });
+
+  it("tolerates a few missed runs before warning", () => {
+    // The capsule job runs hourly; 6 misses is the limit, so 6h is still fine.
+    expect(stalenessNote(agoMs(6 * HOURS), CAPSULE_STALE_MS, NOW)).toBeNull();
+    expect(stalenessNote(agoMs(7 * HOURS), CAPSULE_STALE_MS, NOW)).toBe(
+      "Not updated in 7h — may be out of date"
+    );
+  });
+
+  it("switches to days once the gap is large", () => {
+    expect(stalenessNote(agoMs(60 * 24 * HOURS), ISS_TODAY_STALE_MS, NOW)).toBe(
+      "Not updated in 60d — may be out of date"
+    );
+  });
+
+  it("applies the ISS Today threshold in days, not hours", () => {
+    expect(stalenessNote(agoMs(2 * 24 * HOURS), ISS_TODAY_STALE_MS, NOW)).toBeNull();
+    expect(stalenessNote(agoMs(4 * 24 * HOURS), ISS_TODAY_STALE_MS, NOW)).toBe(
+      "Not updated in 4d — may be out of date"
+    );
+  });
+
+  it("treats an unknown age as stale, never as fresh", () => {
+    // Not knowing how old data is, is not evidence that it is current.
+    for (const bad of [null, undefined, "", "not a date", NaN]) {
+      expect(stalenessNote(bad, CAPSULE_STALE_MS, NOW)).toBe("Age unknown — may be out of date");
+    }
+  });
+
+  it("accepts a Date as well as an ISO string", () => {
+    expect(stalenessNote(new Date(NOW - 30 * HOURS), CAPSULE_STALE_MS, NOW)).toBe(
+      "Not updated in 30h — may be out of date"
     );
   });
 });

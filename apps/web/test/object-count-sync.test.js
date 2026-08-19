@@ -41,6 +41,21 @@ const THOUSANDS_RE = /(?<![\d,])\d{2},000/g;
 
 const SURFACES = ["README.md", "apps/web/public/manifest.json", "docs/archive/store-metadata.md"];
 
+/**
+ * HTML entry points must never hand-write the figure: index.html's splash
+ * gets it from __OBJECT_COUNT__ at runtime, and welcome.html's markup and
+ * <meta> tags get it substituted at build time from the {{OBJECT_COUNT}}
+ * token (see vite.config.js's transformIndexHtml plugin). Either way the
+ * correct number of literal figures in them is zero.
+ *
+ * welcome.html shipped five of them — it was added after the convention was
+ * written and landed in neither SURFACES nor CLAUDE.md's checklist, so
+ * nothing caught it. Asserting zero here is what makes that miss impossible
+ * on the next page too.
+ */
+const DERIVED_HTML = ["apps/web/welcome.html", "apps/web/index.html"];
+const OBJECT_COUNT_TOKEN = "{{OBJECT_COUNT}}";
+
 describe("object count stays in sync across hand-written surfaces", () => {
   it("derives a figure from the real bundled catalog", () => {
     expect(derivedCount()).toMatch(/^\d{2},000$/);
@@ -62,5 +77,30 @@ describe("object count stays in sync across hand-written surfaces", () => {
           `update every surface in CLAUDE.md's OBJECT COUNT checklist together`
       ).toBe(expected);
     }
+  });
+
+  it.each(DERIVED_HTML)("%s hand-writes no object count at all", (file) => {
+    const found = [...read(file).matchAll(THOUSANDS_RE)].map((m) => m[0]);
+    expect(
+      found,
+      `${file} hand-writes ${found.join(", ")} — HTML entry points must derive the ` +
+        `figure instead: use the ${OBJECT_COUNT_TOKEN} token (substituted at build ` +
+        `time by vite.config.js) or __OBJECT_COUNT__ from JS`
+    ).toEqual([]);
+  });
+
+  it("welcome.html still carries the token it derives the figure from", () => {
+    // Guards the other direction: deleting the token would make the test above
+    // pass while quietly dropping the figure from the page.
+    expect(read("apps/web/welcome.html")).toContain(OBJECT_COUNT_TOKEN);
+  });
+
+  it("the build substitutes the token rather than shipping it literally", () => {
+    // The token is only correct if something replaces it. Mirrors the plugin in
+    // vite.config.js so a rename there fails here instead of publishing
+    // "{{OBJECT_COUNT}} objects" to real visitors.
+    const rendered = read("apps/web/welcome.html").replaceAll(OBJECT_COUNT_TOKEN, derivedCount());
+    expect(rendered).not.toContain(OBJECT_COUNT_TOKEN);
+    expect(rendered).toContain(derivedCount());
   });
 });

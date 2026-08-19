@@ -31,6 +31,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Gate the deploy on the same checks ci.yml runs, the way
+      # deploy-worker.yml already gates on `npm test -w worker`. ci.yml runs on
+      # push to main too, but it is a separate workflow that this one never
+      # waited for — so a red test suite could (and would) still publish. The
+      # object-count guard is the concrete case: the daily TLE-refresh commit
+      # can cross a thousand boundary unattended, and without this the
+      # mismatch ships to production while CI turns red beside it.
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
       - name: Build web app
         run: npm run build
 

@@ -378,6 +378,19 @@ they can't be templated:
     `apps/web/public/data/**` in scope or this figure goes
     stale.
 
+    Also derived: any `{{OBJECT_COUNT}}` token in an HTML entry
+    point, substituted at build time by the
+    `objectCountHtmlPlugin` `transformIndexHtml` hook in
+    `apps/web/vite.config.js`. This is what `apps/web/welcome.html`
+    uses (5 mentions, including the `description` and
+    `og:description` meta tags). Use the token — never a
+    hand-typed figure — for any new markup or metadata, since
+    `__OBJECT_COUNT__` only reaches code Vite processes as JS
+    and cannot reach a `<meta>` tag.
+    `apps/web/test/object-count-sync.test.js` enforces this:
+    HTML entry points must contain zero literal figures, and
+    welcome.html must still carry the token.
+
   - Hand-written — update ALL of these together whenever the
     rounded figure changes (found via full-repo grep for
     "11,000", "15,000", "18,000", "objects in orbit", "tracked

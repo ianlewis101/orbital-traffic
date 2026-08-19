@@ -28,7 +28,7 @@ function setupDom() {
   document.body.innerHTML = `
     <div id="search-wrap">
       <div id="search">
-        <svg></svg>
+        <button type="button" id="search-toggle" aria-label="Search catalog"><svg></svg></button>
         <input id="search-in" type="text" role="combobox" aria-expanded="false"
                aria-controls="results" aria-autocomplete="list">
         <span class="slash"></span>

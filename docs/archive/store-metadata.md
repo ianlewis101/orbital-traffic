@@ -2,7 +2,7 @@
 
 **This file is the source text for App Store Connect submissions.** Keep it in
 sync with what is actually entered in App Store Connect — and note that the
-object count ("18,000+") appears here twice and is one of the hand-maintained
+object count ("19,000+") appears here twice and is one of the hand-maintained
 surfaces listed in CLAUDE.md's OBJECT COUNT convention.
 
 Last reviewed: 2026-08-11 (pre-submission audit).
@@ -37,7 +37,7 @@ Live Satellite & Space Tracker
 
 ## PROMOTIONAL TEXT (170 char max — 114)
 
-See what's above you right now. 18,000+ satellites, stations and spacecraft, tracked live on a real-time 3D globe.
+See what's above you right now. 19,000+ satellites, stations and spacecraft, tracked live on a real-time 3D globe.
 
 ## KEYWORDS (100 char max — 87)
 
@@ -55,7 +55,7 @@ subtitle words either — those are already indexed.
 
 Track every satellite, station and spacecraft orbiting Earth — in real time.
 
-Orbital Traffic shows the live positions of more than 18,000 tracked objects: the International Space Station, active missions, communications satellites, navigation constellations, debris, and near-Earth asteroids — all rendered on a real-time 3D globe powered by live orbital data.
+Orbital Traffic shows the live positions of more than 19,000 tracked objects: the International Space Station, active missions, communications satellites, navigation constellations, debris, and near-Earth asteroids — all rendered on a real-time 3D globe powered by live orbital data.
 
 WHAT'S OVERHEAD
 Tap once to see the notable objects passing high above you right now — no guessing, no simulation, just real orbital mechanics computed on your device.
@@ -68,9 +68,6 @@ Watch crewed capsules and cargo freighters — Dragon, Soyuz, Progress and Cygnu
 
 ASTEROIDS UP CLOSE
 Dozens of near-Earth asteroids plotted on their real heliocentric orbits, with close-approach dates and sizes.
-
-TIME MACHINE
-Scrub forward and backward through orbital history and watch the whole catalog move.
 
 SAVE WHAT MATTERS
 Star your favorite objects or add them to a watchlist to check in on later.
