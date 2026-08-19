@@ -1,6 +1,6 @@
 # Orbital Traffic 🛰️
 
-Real-time 3D satellite and near-Earth object tracker. 18,000+ tracked objects, 77 near-Earth asteroids, live crew data — all positions computed in your browser.
+Real-time 3D satellite and near-Earth object tracker. 19,000+ tracked objects, 77 near-Earth asteroids, live crew data — all positions computed in your browser.
 
 **Live at [orbitaltraffic.app](https://orbitaltraffic.app)** · Installable as a PWA on iOS, Android and desktop.
 
