@@ -47,6 +47,7 @@
 const SAFE_FUNCTIONS = new Set([
   "esc", // the HTML escaper itself
   "catColorHex", // category -> "#rrggbb" from the fixed CATS table (config.js)
+  "eventColorHex", // event type -> "#rrggbb" from the fixed EVENT_TYPES table (config.js)
   "agencyFlag", // agency string -> flag emoji from a fixed table (ui/info.js)
   "timeAgo", // -> "today" / "1 day" / "N days" (ui/capsule-status.js)
   "shortDate", // -> "Mon D" via toLocaleDateString (ui/capsule-status.js)

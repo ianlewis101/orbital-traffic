@@ -50,13 +50,16 @@ describe("fetchLive in-flight guard", () => {
     const p2 = fetchLive();
 
     // Same promise handed back, and only the first call's fetches were issued
-    // (one /capsules + one /tle). Without the guard the second call would
-    // have started a second sync and doubled this to four.
+    // (one /capsules + one /tle + one /events — the last from Today in
+    // Space's best-effort refresh, which rides along on every live sync).
+    // Without the guard the second call would have started a second sync
+    // and doubled this to six.
     expect(p2).toBe(p1);
-    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenCalledTimes(3);
     const urls = fetch.mock.calls.map((c) => c[0]);
     expect(urls.some((u) => u.endsWith("/tle"))).toBe(true);
     expect(urls.some((u) => u.endsWith("/capsules"))).toBe(true);
+    expect(urls.some((u) => u.endsWith("/events"))).toBe(true);
 
     // Drain the hung sync so the module-level guard resets and can't leak
     // into the sibling test regardless of run order.

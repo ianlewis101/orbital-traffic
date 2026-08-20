@@ -34,14 +34,36 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add apps/web/public/data/satellites.json
+          git add apps/web/public/data/satellites.json launch-reentry-log.json
           if git diff --cached --quiet; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "Catalog unchanged — nothing to commit."
             exit 0
           fi
           git commit -m "chore: refresh TLE data $(date -u +'%Y-%m-%d %H:%M UTC')"
-          git push
+
+          # Rebase onto whatever another scheduled job may have just pushed
+          # onto the branch this run is on ($GITHUB_REF_NAME — main for the
+          # scheduled runs) and retry, instead of failing outright on a
+          # losing push — same pattern as update-capsule-status.yml and
+          # update-iss-today.yml already use (see F13). This workflow didn't
+          # need it while it only ever touched satellites.json alone, but
+          # now shares launch-reentry-log.json's commit envelope with the
+          # same script, so it gets the same resilience its siblings have.
+          #
+          # `pushed` is not decoration: without it the trailing $GITHUB_OUTPUT
+          # write becomes the step's last command, so five failed pushes would
+          # exit 0 and report success. The loop has to be the last thing that
+          # decides the exit status, or an explicit check has to replace it.
+          pushed=false
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin "$GITHUB_REF_NAME" || break
+            if git push; then pushed=true; break; fi
+          done
+          if [ "$pushed" != true ]; then
+            echo "Could not push after 5 attempts — not requesting a rebuild." >&2
+            exit 1
+          fi
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
       # This push cannot start the Pages deploy on its own. Per GitHub's docs,

@@ -40,6 +40,31 @@ export function noradId(l1) {
   return /^[A-Z]/.test(raw) ? decodeAlpha5(raw) : raw;
 }
 
+/**
+ * TLE line 1's international designator (columns 10-17), trimmed — e.g.
+ * "98067A" for the ISS. Returns "" if l1 is too short to have the field.
+ * Read-side counterpart to fmtDesignator() below, which goes the other way
+ * (OBJECT_ID string → fixed-width TLE field) when synthesizing a line.
+ */
+export function intlDesignator(l1) {
+  if (typeof l1 !== "string" || l1.length < 17) return "";
+  return l1.slice(9, 17).trim();
+}
+
+/**
+ * The launch-batch portion of the international designator — year plus
+ * launch-of-year number, dropping the per-piece letter(s) — e.g. "98067"
+ * for both "98067A" and "98067B". A single launch commonly delivers many
+ * catalog objects at once (a Starlink batch is 20+), and they all share
+ * this prefix, which is what groups them into one "Today in Space" launch
+ * event instead of one row per payload.
+ */
+export function launchDesignator(l1) {
+  const full = intlDesignator(l1);
+  const m = /^(\d{5})/.exec(full);
+  return m ? m[1] : full;
+}
+
 const DAY_MS = 86400000;
 
 /** Two-digit TLE years pivot at 57 (Sputnik): 57-99 → 19xx, 00-56 → 20xx. */
