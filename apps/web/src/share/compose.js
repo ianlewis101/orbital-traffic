@@ -35,11 +35,10 @@ const LOGO = "Orbitron, ui-sans-serif, system-ui, sans-serif";
 export async function ensureFonts() {
   if (!document.fonts || !document.fonts.load) return;
   const specs = [
-    `800 66px ${SERIF}`,
-    `700 66px ${SERIF}`,
-    `600 40px ${MONO}`,
-    `500 30px ${MONO}`,
-    `500 22px ${MONO}`,
+    `700 69px ${SERIF}`, // object name — weight ported from #info .nm
+    `600 29px ${MONO}`, // category badge label — weight ported from #info .cat-tag
+    `400 47px ${MONO}`, // NORAD line + description — weight ported from #info .nid / .lead
+    `500 47px ${MONO}`, // stat values — weight ported from .stat .v
     `700 26px ${LOGO}`,
   ];
   try {
@@ -249,6 +248,47 @@ function drawSubjectMarker(ctx, subject, color) {
 }
 
 /**
+ * Info-section type tokens, ported from the object detail popup card's real
+ * CSS (apps/web/src/styles/app.css, `#info` rules) rather than approximated,
+ * so the share card's hierarchy matches the popup's rather than merely
+ * resembling it. Every px/em value below is commented with its exact source
+ * selector.
+ *
+ * POPUP_SCALE maps the popup's fixed desktop content column (#info is
+ * 300px wide with 15px padding each side = 270px content) onto the share
+ * card's content column (SHARE_W - PAD*2 = 936px), so the name/NORAD/
+ * description/stat sizes keep the same *relative* proportions the popup
+ * card itself uses — not sizes picked independently per element.
+ */
+const POPUP_SCALE = (SHARE_W - PAD * 2) / 270;
+const pop = (cssPx) => Math.round(cssPx * POPUP_SCALE);
+
+const CAT_FS = pop(8.5); // #info .cat-tag font-size
+const CAT_TRACK = CAT_FS * 0.2; // #info .cat-tag letter-spacing: 0.2em
+const CAT_GAP = pop(7); // #info .cat-tag gap: 7px (swatch → label)
+const CAT_SWATCH = pop(7); // #info .cat-tag .d: 7x7px square, no border-radius
+const CAT_MB = pop(9); // #info .cat-tag margin-bottom: 9px
+
+const NAME_FS_MAX = pop(20); // #info .nm font-size
+const NAME_FS_MIN = Math.round(NAME_FS_MAX * 0.52); // shrink floor for long names (popup wraps instead; card fits one line)
+const NAME_TRACK_EM = -0.02; // #info .nm letter-spacing (final cascade value)
+
+const NID_FS = pop(9.5); // #info .nid font-size
+const NID_TRACK = NID_FS * 0.1; // #info .nid letter-spacing: 0.1em
+const NID_MT = pop(6); // #info .nid margin-top: 6px
+
+const LEAD_FS = pop(11.5); // #info .lead font-size
+const LEAD_LH = Math.round(LEAD_FS * 1.68); // #info .lead line-height: 1.68
+const LEAD_GAP_TOP = pop(9 + 13); // .top bottom padding (9px) + .lead top padding (13px)
+
+const GRID_COL_GAP = pop(16); // #info .grid column-gap
+const STAT_K_FS = pop(8); // .stat .k font-size
+const STAT_K_TRACK = STAT_K_FS * 0.18; // .stat .k letter-spacing: 0.18em
+const STAT_V_FS = pop(13.5); // .stat .v font-size
+const STAT_V_SMALL_FS = pop(9); // .stat .v small font-size
+const STAT_V_MT = pop(3); // .stat .v margin-top: 3px (label → value)
+
+/**
  * Compose the finished card.
  *
  * `capture` is captureGlobe()'s return value; `model` is the plain text/stat
@@ -288,60 +328,97 @@ export function composeCard(capture, model) {
   ctx.textBaseline = "alphabetic";
 
   // --- bottom-anchored text block ---
-  const timestampY = SHARE_H - PAD;
-  const statValueY = timestampY - 62;
-  const statLabelY = statValueY - 42;
-  const descLastY = statLabelY - 74;
+  // Baseline-to-baseline gaps below approximate CSS block flow as
+  // prevDescent + cssGap + nextAscent, using standard sans-serif fractions
+  // for the parts no CSS rule specifies (canvas positions by baseline, CSS
+  // positions by box) — the cssGap term itself is the real ported value
+  // wherever the popup defines one (CAT_MB / NID_MT / LEAD_GAP_TOP /
+  // STAT_V_MT below).
+  const DESCENT_F = 0.25;
+  const ASCENT_F = 0.8;
+  const stackGap = (prevFontPx, cssGapPx, nextFontPx) =>
+    prevFontPx * DESCENT_F + cssGapPx + nextFontPx * ASCENT_F;
 
-  // Description (up to 3 lines, ellipsised).
-  ctx.font = `500 30px ${MONO}`;
+  const timestampY = SHARE_H - PAD; // footer position — unchanged
+
+  // Stats row → footer gap: the footer is unique to the share card (the
+  // popup has no equivalent), so this stays a tuned constant rather than a
+  // ported one — kept at the same relative breathing room as before.
+  const statValueY = timestampY - Math.round(stackGap(STAT_V_FS, 34, 22));
+  const statLabelY = statValueY - Math.round(stackGap(STAT_K_FS, STAT_V_MT, STAT_V_FS));
+  // Description → stats gap: likewise no popup equivalent (the popup
+  // interposes chips + a "Live Telemetry" label here, both dropped from the
+  // share card per spec) — tuned constant, scaled from the previous design.
+  const descLastY = statLabelY - Math.round(stackGap(LEAD_FS, 49, STAT_K_FS));
+
+  // Description — regular body-weight prose (up to 3 lines, ellipsised),
+  // matching #info .lead rather than the previously-used 500 weight.
+  ctx.font = `400 ${LEAD_FS}px ${MONO}`;
   ctx.fillStyle = INK_DIM;
   const descLines = wrapLines(model.description, maxW, (t) => ctx.measureText(t).width, 3);
   descLines.forEach((line, i) => {
-    ctx.fillText(line, PAD, descLastY - (descLines.length - 1 - i) * 42);
+    ctx.fillText(line, PAD, descLastY - (descLines.length - 1 - i) * LEAD_LH);
   });
 
-  const noradY = descLastY - descLines.length * 42 - 26;
+  const noradY =
+    descLastY - descLines.length * LEAD_LH - Math.round(NID_FS * DESCENT_F + LEAD_GAP_TOP);
 
-  // NORAD / international designator.
-  ctx.font = `500 22px ${MONO}`;
+  // NORAD / international designator — regular weight, matching #info .nid.
+  ctx.font = `400 ${NID_FS}px ${MONO}`;
   ctx.fillStyle = INK_FAINT;
-  drawTracked(ctx, model.norad, PAD, noradY, 1.4);
+  drawTracked(ctx, model.norad, PAD, noradY, NID_TRACK);
 
-  // Object name — shrinks to fit rather than wrapping.
-  const nameY = noradY - 44;
+  // Object name — shrinks to fit rather than wrapping (the popup card wraps
+  // onto a second line instead; the smaller share-card format has no room
+  // for that, so a single shrinking line is the closer fit).
   const nameSize = fitFontSize(
     (size) => {
-      ctx.font = `800 ${size}px ${SERIF}`;
+      ctx.font = `700 ${size}px ${SERIF}`;
       return ctx.measureText(model.name).width;
     },
     maxW,
-    66,
-    34
+    NAME_FS_MAX,
+    NAME_FS_MIN
   );
-  ctx.font = `800 ${nameSize}px ${SERIF}`;
+  const nameY = noradY - Math.round(nameSize * DESCENT_F + NID_MT + NID_FS * ASCENT_F);
+  ctx.font = `700 ${nameSize}px ${SERIF}`;
   ctx.fillStyle = INK;
-  ctx.fillText(model.name, PAD, nameY);
+  drawTracked(ctx, model.name, PAD, nameY, nameSize * NAME_TRACK_EM);
 
-  // Category chip.
-  const catY = nameY - nameSize - 14;
-  ctx.font = `600 22px ${MONO}`;
+  // Category badge — small colored square + uppercase label in ink-dim
+  // (only the swatch carries the category color; #info .cat-tag itself
+  // colors the label ink-dim, not the category color).
+  const catY = nameY - Math.round(CAT_FS * DESCENT_F + CAT_MB + nameSize * ASCENT_F);
+  ctx.save();
+  ctx.shadowColor = model.catColor;
+  // box-shadow: 0 0 7px currentColor — same 7px CSS value as the swatch's
+  // own width/height, so CAT_SWATCH (already scaled) doubles as the blur radius.
+  ctx.shadowBlur = CAT_SWATCH;
   ctx.fillStyle = model.catColor;
-  ctx.beginPath();
-  ctx.arc(PAD + 7, catY - 7, 7, 0, Math.PI * 2);
-  ctx.fill();
-  drawTracked(ctx, model.catLabel.toUpperCase(), PAD + 26, catY, 2.6);
+  ctx.fillRect(PAD, catY - CAT_SWATCH, CAT_SWATCH, CAT_SWATCH);
+  ctx.restore();
+  ctx.font = `600 ${CAT_FS}px ${MONO}`;
+  ctx.fillStyle = INK_DIM;
+  drawTracked(ctx, model.catLabel.toUpperCase(), PAD + CAT_SWATCH + CAT_GAP, catY, CAT_TRACK);
 
-  // --- stats row ---
-  const colW = maxW / 2;
+  // --- stats row: two-column grid, label above value, matching .stat .k/.v ---
+  const colW = (maxW - GRID_COL_GAP) / 2;
   model.stats.slice(0, 2).forEach((stat, i) => {
-    const x = PAD + i * colW;
-    ctx.font = `500 22px ${MONO}`;
+    const x = PAD + i * (colW + GRID_COL_GAP);
+    ctx.font = `500 ${STAT_K_FS}px ${MONO}`;
     ctx.fillStyle = INK_FAINT;
-    drawTracked(ctx, stat.label.toUpperCase(), x, statLabelY, 2.4);
-    ctx.font = `600 40px ${MONO}`;
+    drawTracked(ctx, stat.label.toUpperCase(), x, statLabelY, STAT_K_TRACK);
+    ctx.font = `500 ${STAT_V_FS}px ${MONO}`;
     ctx.fillStyle = INK;
     ctx.fillText(stat.value, x, statValueY);
+    if (stat.unit) {
+      // Ports .stat .v small — the unit rendered smaller/dimmer right after
+      // the number, e.g. popup's "408 <small>km up</small>".
+      const valueW = ctx.measureText(stat.value).width;
+      ctx.font = `400 ${STAT_V_SMALL_FS}px ${MONO}`;
+      ctx.fillStyle = INK_DIM;
+      ctx.fillText(" " + stat.unit, x + valueW, statValueY);
+    }
   });
 
   // --- footer ---

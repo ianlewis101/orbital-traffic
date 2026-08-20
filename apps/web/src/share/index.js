@@ -40,8 +40,12 @@ export function shareStats(sat, date) {
     speed = null;
   }
   return [
-    { label: "Altitude", value: `${toDistance(sp.alt)} ${distanceUnit()}` },
-    { label: "Speed", value: speed == null ? "—" : fmtSpeed(speed) },
+    // `unit` mirrors the popup card's <small>${distanceUnit()} up</small> —
+    // drawn smaller/dimmer after the number (see compose.js). Speed has no
+    // popup <small> split (fmtSpeed already returns one combined string), so
+    // it carries no unit field.
+    { label: "Altitude", value: toDistance(sp.alt), unit: `${distanceUnit()} up` },
+    { label: "Speed", value: speed == null ? "—" : fmtSpeed(speed), unit: null },
   ];
 }
 
