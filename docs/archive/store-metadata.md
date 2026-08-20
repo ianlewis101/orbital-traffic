@@ -92,9 +92,13 @@ These are deliberate. Re-check them before loosening any claim (Guideline
   objects as of 2026-08-17 (it was 1,791 when this copy was written, so the
   claim is now conservative rather than wrong — safe to leave, and safe to
   raise to "2,100+" if the listing is being edited anyway). Do not claim
-  *every* object is explained: uncurated `other`-category objects get a
-  deliberate "not curated" veil over the detail panel, which a reviewer can
-  see.
+  *every* object is explained: uncurated `other`-category objects fall back
+  to `describe.js`'s generic name-pattern/`classify()` text rather than a
+  per-object write-up. The frosted "Catalogued. Not curated." veil that used
+  to make this visible in the detail panel was removed 2026-08-20 — the
+  underlying gap (not every object has a curated description) is unchanged,
+  just no longer surfaced in the UI, so this copy still needs to stay
+  conservative on its own merits.
 - **"the notable objects passing high above you"** — What's Overhead is
   curated by design, not exhaustive: `MIN_OVERHEAD_ELEVATION_DEG` is 40° and
   `OVERHEAD_EXCLUDED_CATS` drops `other` and `debris`. Avoid "exactly which
