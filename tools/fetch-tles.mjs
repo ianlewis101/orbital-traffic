@@ -18,12 +18,15 @@ import {
   CELESTRAK_BASE,
   FETCH_HEADERS,
   noradId,
+  diffLaunchesReentries,
+  MAX_LAUNCH_REENTRY_EVENTS,
 } from "@orbital-traffic/catalog";
 
 const OUT = join(
   dirname(fileURLToPath(import.meta.url)),
   "../apps/web/public/data/satellites.json"
 );
+const LOG_OUT = join(dirname(fileURLToPath(import.meta.url)), "../launch-reentry-log.json");
 const POLITE_DELAY_MS = 1000; // between CelesTrak requests
 
 /**
@@ -75,12 +78,51 @@ async function fetchGroup(group, cat) {
   }
 }
 
-/** Length of the catalog already on disk, or null if there isn't one yet. */
-async function previousCatalogSize(path) {
+/**
+ * The catalog already on disk (before this run overwrites it), or null if
+ * there isn't one yet or it can't be read/parsed. This IS "yesterday's
+ * catalog" — actions/checkout already puts the last commit's satellites.json
+ * here before this script runs, so no git history lookup is needed to diff
+ * against it.
+ *
+ * A read/parse failure degrades to null rather than aborting the run:
+ * unlike launch-reentry-log.json below (an accumulating history log this
+ * script owns), satellites.json is a full snapshot re-derived from scratch
+ * every run, so losing the ability to diff against a bad previous copy for
+ * one day is a minor, self-healing gap, not a data-loss risk.
+ */
+export async function previousCatalog(path) {
   try {
-    return JSON.parse(await readFile(path, "utf8")).length;
+    const parsed = JSON.parse(await readFile(path, "utf8"));
+    return Array.isArray(parsed) ? parsed : null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * launch-reentry-log.json accumulates event history the same way
+ * capsule-status.json's `events` does, so — same reasoning as
+ * update-capsule-status.mjs's loadExisting() — a genuinely missing file
+ * (first run) is fine, but any other read/parse failure must abort rather
+ * than silently return "no history" and let the write below wipe it.
+ */
+export async function loadExistingLog(path = LOG_OUT) {
+  let raw;
+  try {
+    raw = await readFile(path, "utf8");
+  } catch (e) {
+    if (e.code === "ENOENT") return null;
+    console.error(`  Could not read ${path} (${e.code || e.message}).`);
+    console.error("  Refusing to proceed as if this were a first run — aborting.");
+    process.exit(1);
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error(`  ${path} exists but is not valid JSON (${e.message}).`);
+    console.error("  Refusing to proceed as if this were a first run — aborting.");
+    process.exit(1);
   }
 }
 
@@ -125,7 +167,10 @@ export async function main() {
 
   // Drift guard against this catalog's own recent size, so a truncated-but-
   // non-empty payload (a group returning a partial page, say) is caught too.
-  const previous = await previousCatalogSize(OUT);
+  // Read once, reused below for the launch/reentry diff too — it's the same
+  // "yesterday's catalog" either way.
+  const previousRecords = await previousCatalog(OUT);
+  const previous = previousRecords?.length;
   if (previous) {
     const shrink = (previous - merged.length) / previous;
     console.log(
@@ -165,6 +210,29 @@ export async function main() {
   await mkdir(dirname(OUT), { recursive: true });
   await writeFile(OUT, JSON.stringify(merged));
   console.log(`\n✓ Wrote ${OUT}`);
+
+  // Launch/reentry event log for "Today in Space". Skipped on a genuine
+  // first run or an unreadable previous catalog (previousRecords is null in
+  // both cases) — diffing against [] would report all ~19,000 objects as
+  // "launched today", which is wrong, not just noisy.
+  if (previousRecords) {
+    const newEvents = diffLaunchesReentries(previousRecords, merged, new Date().toISOString());
+    console.log(
+      `\n  Launch/reentry diff: ${newEvents.filter((e) => e.type === "launch").length} launch batch(es), ` +
+        `${newEvents.filter((e) => e.type === "reentry").length} reentry/decay event(s)`
+    );
+    const existingLog = await loadExistingLog();
+    const mergedEvents = [...(existingLog?.events || []), ...newEvents].slice(
+      -MAX_LAUNCH_REENTRY_EVENTS
+    );
+    await writeFile(
+      LOG_OUT,
+      JSON.stringify({ updated: new Date().toISOString(), events: mergedEvents }, null, 2) + "\n"
+    );
+    console.log(`✓ Wrote ${LOG_OUT}`);
+  } else {
+    console.log("\n  No previous catalog to diff against — skipping launch/reentry log this run.");
+  }
 }
 
 // Guarded so importing this module (e.g. from tests, to exercise

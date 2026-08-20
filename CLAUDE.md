@@ -294,14 +294,66 @@ Monorepo (npm workspaces):
   truth for categorize().
 
 - worker/ — Cloudflare Worker (worker/src/index.js), proxies
-  and edge-caches SIX endpoints: /tle, /crew, /today,
+  and edge-caches SEVEN endpoints: /tle, /crew, /today,
   /capsules, /satcat (per-object SATCAT metadata — launch date,
   owner, launch site), /astronaut (a trimmed projection of one
-  crew member's LL2 profile — photo, bio, flight/EVA stats).
+  crew member's LL2 profile — photo, bio, flight/EVA stats),
+  /events ("Today in Space" — see below).
   Deploy auto-runs on push to main touching worker/** or
   packages/catalog/** — see Critical Rule #1 and DEPLOY
   COMMANDS. Cache TTLs: /tle 20 min, /crew 1 hour, /today
-  5 min, /capsules 10 min, /satcat 7 days, /astronaut 24 hours.
+  5 min, /capsules 10 min, /satcat 7 days, /astronaut 24 hours,
+  /events 10 min.
+
+- "Today in Space" — a HUD card (collapsed by default, top of
+  the left stack, above Time Machine/Popular Objects) that
+  surfaces real, notable events without hand-curation: docking/
+  undocking/launched/landed capsule phase changes, new launches,
+  re-entries/decays, and crew roster changes. buildEvents() in
+  worker/src/index.js composes it at request time from THREE
+  independently-owned, committed-JSON sources — never one shared
+  file three cron jobs write to, which would reintroduce the
+  concurrent-commit collision class F13 fixed (docs/audit-status.md):
+    - Docking/undocking/launched/landed needs no new state — it's
+      capsule-status.json's own `events` log (advanceCapsuleLog()
+      in packages/catalog/src/capsules.js), already written by the
+      hourly update-capsule-status.yml.
+    - Launches/re-entries: fetch-tles.mjs (refresh-tle-data.yml,
+      daily) diffs the merged catalog's object IDs against
+      whatever satellites.json already held before this run
+      overwrites it (actions/checkout already puts "yesterday's"
+      file there — no git-history lookup needed) via
+      diffLaunchesReentries() in packages/catalog/src/events.js,
+      grouping same-launch objects by their shared TLE
+      international-designator prefix (launchDesignator() in
+      tle.js) so a 23-satellite batch is one event, not 23.
+      Capsule-tracked vehicles (cat:"capsules") are excluded from
+      this diff on both sides — their launch/landing is already
+      reported, with richer context, by the capsule log above;
+      without this exclusion a Dragon splashdown would double-
+      report as both "LANDED" (accurate) and "DEORBITED"
+      (actively wrong — it didn't burn up). Written to
+      launch-reentry-log.json (repo root, MAX_LAUNCH_REENTRY_EVENTS
+      cap), committed alongside satellites.json in the same commit.
+    - Crew changes: update-iss-today.mjs (update-iss-today.yml,
+      daily) best-effort-fetches the Worker's own public /crew
+      route (never LL2 directly — LL2_API_KEY is a Worker secret,
+      not available to GitHub Actions) and diffs via
+      diffCrewRoster() in events.js, persisting the roster +
+      crewEvents into iss-today.json alongside the existing NASA-
+      blog headlines. A failed crew fetch must never block the
+      headline write or be mistaken for "everyone left" — it
+      carries the previous roster forward and logs a warning.
+  buildEvents() time-windows the composed feed to 48 hours
+  (EVENTS_WINDOW_HOURS) and sorts newest-first; each source stays
+  count-capped on write rather than time-pruned, same shape as
+  /capsules already uses. Event-type colors reuse existing CATS
+  tokens (docking=capsules teal, launch=communications orange,
+  reentry=debris grey, crew=the violet capsule-status.js's
+  .crew-today-dot already used) rather than a new palette;
+  glyphs (⬡▲▼◆) follow the app's one existing icon-on-a-swatch
+  precedent (.cat.fav-only .sw::after{content:"★"}) rather than
+  introducing an SVG icon set.
 
 - GitHub Actions also handles daily TLE refresh
   (refresh-tle-data.yml), ISS Today data updates
@@ -672,6 +724,14 @@ Verify the Worker is returning data correctly:
   field ("crew"/"cargo") per tracked vehicle, and an "events"
   array of transitions. Active (non-landed) entries must carry
   "l1"/"l2" elset lines; landed entries must NOT.
+
+  curl https://orbital-traffic.ianlewis101.workers.dev/events
+  Check for an "events" array (each entry tagged "type":
+  "docking"/"launch"/"reentry"/"crew"), sorted newest-first and
+  windowed to "windowHours" (48). Composed at request time from
+  capsule-status.json, launch-reentry-log.json and iss-today.json
+  — an empty array is expected/healthy whenever nothing notable
+  happened in the last 48h, not a sign anything is broken.
 
 Web app deploy: automatic on merge to main via
   .github/workflows/deploy-pages.yml — no manual step needed.

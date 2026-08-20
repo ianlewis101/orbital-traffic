@@ -13,6 +13,7 @@
  *   GET /capsules  — crewed-capsule/cargo-vehicle phase (docked/free-flying/landed) + event log
  *   GET /satcat    — per-object SATCAT metadata (launch date, owner, launch site)
  *   GET /astronaut — one crew member's public profile (bio, photo, flight stats)
+ *   GET /events    — "Today in Space" feed: docking/undocking, launches, reentries, crew changes
  *
  * TLE parsing lives in @orbital-traffic/catalog (shared with the web
  * app). parseGp() runs the full categorize() pipeline on every record,
@@ -33,6 +34,15 @@ export const TLE_TTL = 20 * 60; // 20 minutes
 export const CREW_TTL = 60 * 60; // 1 hour
 export const TODAY_TTL = 5 * 60; // 5 minutes
 export const CAPSULES_TTL = 10 * 60; // 10 minutes — source refreshes every 4h, so this just bounds edge staleness
+export const EVENTS_TTL = 10 * 60; // 10 minutes — same spirit as /capsules; underlying sources refresh hourly/daily
+// "Today in Space" display window — events older than this are dropped by
+// buildEvents() itself rather than left for the client to filter, matching
+// how /capsules already relies on its own count cap (MAX_EVENTS) rather
+// than the client re-deriving a cutoff. 48h (not the spec's lower 24h
+// bound) because two of the three sources only refresh once a day —
+// a 24h window would let a fresh event go stale before most visitors
+// see it.
+export const EVENTS_WINDOW_HOURS = 48;
 
 // Launch Library 2 (LL2) — replaced Open Notify entirely 2026-07-21 after
 // Open Notify was found to be serving a crew roster ~18 months stale (see
@@ -91,6 +101,8 @@ const TODAY_URL =
   "https://raw.githubusercontent.com/ianlewis101/orbital-traffic/main/iss-today.json";
 const CAPSULES_URL =
   "https://raw.githubusercontent.com/ianlewis101/orbital-traffic/main/capsule-status.json";
+const LAUNCH_REENTRY_URL =
+  "https://raw.githubusercontent.com/ianlewis101/orbital-traffic/main/launch-reentry-log.json";
 
 async function fetchGroup([group, cat]) {
   try {
@@ -307,6 +319,77 @@ export async function buildCapsules() {
   return { updated: null, capsules: {}, events: [] };
 }
 
+/** One committed-JSON source's event array, degrading to [] on any failure — same shape as buildToday()/buildCapsules(). */
+async function fetchEventSource(url, ttl, pick) {
+  try {
+    const r = await fetch(url, { cf: { cacheTtl: ttl, cacheEverything: true } });
+    if (!r.ok) return [];
+    const data = await r.json();
+    const arr = pick(data);
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * "Today in Space" — composes the three independently-owned event sources
+ * into one feed, at request time, rather than any one of them being a
+ * shared file three different scheduled jobs write to. Each job (hourly
+ * capsule-status, daily satellites, daily iss-today) keeps committing only
+ * the single file it already owns; merging happens here instead, the same
+ * "committed JSON, no live upstream computation" shape buildToday() and
+ * buildCapsules() already use, just fed from three raw URLs instead of one.
+ * This sidesteps the concurrent-commit collision class F13 had to fix once
+ * (docs/audit-status.md) — no rebase-retry dance needed here, since no two
+ * of these jobs ever write to the same file.
+ *
+ * Docking/undocking/launched/landed already comes from capsule-status.json's
+ * own event log (advanceCapsuleLog() in @orbital-traffic/catalog) — no new
+ * source needed for that type. Launch/reentry and crew-change events come
+ * from launch-reentry-log.json and iss-today.json's crewEvents
+ * respectively, both written by tools/ scripts alongside data they already
+ * fetch (see CLAUDE.md).
+ */
+export async function buildEvents() {
+  const [capsuleEvents, launchReentryEvents, crewEvents] = await Promise.all([
+    fetchEventSource(CAPSULES_URL, CAPSULES_TTL, (d) => d.events),
+    fetchEventSource(LAUNCH_REENTRY_URL, EVENTS_TTL, (d) => d.events),
+    fetchEventSource(TODAY_URL, TODAY_TTL, (d) => d.crewEvents),
+  ]);
+
+  const docking = capsuleEvents.map((e) => ({
+    type: "docking",
+    subtype: e.event, // "launched" | "docked" | "undocked" | "landed"
+    at: e.at,
+    id: e.id,
+    name: e.name,
+    kind: e.kind,
+    family: e.family,
+    stationKey: e.stationKey,
+  }));
+  const launchReentry = launchReentryEvents.map((e) =>
+    e.type === "launch"
+      ? { type: "launch", at: e.at, ids: e.ids, count: e.count, name: e.name, cat: e.cat }
+      : { type: "reentry", at: e.at, id: e.id, name: e.name, cat: e.cat }
+  );
+  const crew = crewEvents.map((e) => ({
+    type: "crew",
+    at: e.at,
+    id: e.id,
+    name: e.name,
+    craft: e.craft,
+    direction: e.direction,
+  }));
+
+  const cutoffMs = Date.now() - EVENTS_WINDOW_HOURS * 60 * 60 * 1000;
+  const events = [...docking, ...launchReentry, ...crew]
+    .filter((e) => e.at && new Date(e.at).getTime() >= cutoffMs)
+    .sort((a, b) => new Date(b.at) - new Date(a.at));
+
+  return { generatedAt: new Date().toISOString(), windowHours: EVENTS_WINDOW_HOURS, events };
+}
+
 const SATCAT_URL = "https://celestrak.org/satcat/records.php?FORMAT=JSON&CATNR=";
 export const SATCAT_TTL = 7 * 24 * 60 * 60; // 7 days — launch date/owner/site are effectively permanent once catalogued
 
@@ -392,6 +475,7 @@ const ROUTES = {
     ),
   "/today": (ctx) => cached(ctx, "/today", TODAY_TTL, buildToday),
   "/capsules": (ctx) => cached(ctx, "/capsules", CAPSULES_TTL, buildCapsules),
+  "/events": (ctx) => cached(ctx, "/events", EVENTS_TTL, buildEvents),
   "/satcat": (ctx, request) => {
     const url = new URL(request.url);
     const catnr = url.searchParams.get("id");

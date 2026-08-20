@@ -24,6 +24,7 @@ import { updateSelMarker } from "./scene/marker.js";
 import { refreshInfo, initInfoCard } from "./ui/info.js";
 import { rebuildLegend, initLegendToggle } from "./ui/legend.js";
 import { renderToday, initTodayToggle, refreshTodayLiveFacts } from "./ui/today.js";
+import { initEventsToggle, refreshEvents } from "./ui/today-in-space.js";
 import { initSearch } from "./ui/search.js";
 import { initShare } from "./ui/share.js";
 import { initOverhead } from "./ui/overhead.js";
@@ -161,6 +162,7 @@ async function boot() {
   initInfoCard();
   initTimeMachine();
   initTodayToggle();
+  initEventsToggle();
   initLegendToggle();
   initSearch();
   initShare();
@@ -185,6 +187,8 @@ async function boot() {
   // Fills in the ISS headcount and re-renders; deliberately not awaited so
   // boot never waits on the network for a Popular Objects detail.
   refreshTodayLiveFacts();
+  // Same reasoning for Today in Space's initial fetch — never block boot.
+  refreshEvents();
   updateFreshnessLine();
   requestAnimationFrame(loop);
   setTimeout(() => {

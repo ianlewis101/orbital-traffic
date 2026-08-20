@@ -25,5 +25,25 @@ export function catColorHex(cat) {
   return "#" + (CATS[cat] || CATS.other).color.toString(16).padStart(6, "0");
 }
 
+// ---------- "Today in Space" event types ----------
+// Colors reuse existing CATS tokens rather than inventing a new palette:
+// docking/undocking/launched/landed vehicles ARE cat:"capsules"; a
+// re-entering/decaying object becomes cat:"debris" the same metaphor;
+// crew-change violet already matches capsule-status.js's .crew-today-dot.
+// Glyphs follow the app's one existing icon-on-a-swatch precedent
+// (.cat.fav-only .sw::after{content:"★"} in legend.js/app.css) rather
+// than introducing an SVG icon set — there isn't one anywhere else yet
+// (Design item #14, "standardize icons", is still unstarted).
+export const EVENT_TYPES = {
+  docking: { color: CATS.capsules.color, glyph: "⬡" },
+  launch: { color: CATS.communications.color, glyph: "▲" },
+  reentry: { color: CATS.debris.color, glyph: "▼" },
+  crew: { color: 0xb39bff, glyph: "◆" },
+};
+
+export function eventColorHex(type) {
+  return "#" + (EVENT_TYPES[type] || EVENT_TYPES.docking).color.toString(16).padStart(6, "0");
+}
+
 // ---------- live data endpoints ----------
 export const WORKER_BASE = "https://orbital-traffic.ianlewis101.workers.dev";

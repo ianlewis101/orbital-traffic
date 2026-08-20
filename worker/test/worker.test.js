@@ -477,6 +477,112 @@ describe("worker routes", () => {
     expect(await res.json()).toEqual({ updated: null, capsules: {}, events: [] });
   });
 
+  it("serves /events, composing all three sources and sorting newest-first", async () => {
+    const now = Date.now();
+    const recent = (hoursAgo) => new Date(now - hoursAgo * 3600 * 1000).toISOString();
+    fetch.mockImplementation((url) => {
+      if (url.includes("capsule-status.json")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              events: [
+                {
+                  id: "80001",
+                  name: "CREW DRAGON 12",
+                  kind: "crew",
+                  family: "dragon",
+                  stationKey: "iss",
+                  event: "docked",
+                  at: recent(2),
+                },
+              ],
+            })
+          )
+        );
+      }
+      if (url.includes("launch-reentry-log.json")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              events: [
+                {
+                  type: "launch",
+                  ids: ["60001", "60002"],
+                  count: 2,
+                  name: "STARLINK-31001",
+                  cat: "starlink",
+                  at: recent(5),
+                },
+                { type: "reentry", id: "70001", name: "COSMOS 2589", cat: "debris", at: recent(1) },
+              ],
+            })
+          )
+        );
+      }
+      if (url.includes("iss-today.json")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              crewEvents: [
+                { id: 5, name: "Anil Menon", craft: "ISS", direction: "arrived", at: recent(10) },
+              ],
+            })
+          )
+        );
+      }
+      return Promise.resolve(new Response("not found", { status: 404 }));
+    });
+
+    const res = await worker.fetch(new Request("https://x/events"), {}, ctx);
+    const body = await res.json();
+    expect(body.events).toHaveLength(4);
+    // newest (reentry, 1h ago) first, oldest (crew, 10h ago) last
+    expect(body.events.map((e) => e.type)).toEqual(["reentry", "docking", "launch", "crew"]);
+    expect(body.events[1]).toMatchObject({ type: "docking", subtype: "docked", id: "80001" });
+    expect(body.events[2]).toMatchObject({ type: "launch", count: 2, ids: ["60001", "60002"] });
+    expect(body.events[3]).toMatchObject({ type: "crew", direction: "arrived", name: "Anil Menon" });
+    expect(body.windowHours).toBe(48);
+  });
+
+  it("/events drops events older than the display window", async () => {
+    const tooOld = new Date(Date.now() - 72 * 3600 * 1000).toISOString();
+    fetch.mockImplementation((url) => {
+      if (url.includes("capsule-status.json")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              events: [{ id: "1", name: "X", event: "docked", at: tooOld }],
+            })
+          )
+        );
+      }
+      return Promise.resolve(new Response(JSON.stringify({ events: [], crewEvents: [] })));
+    });
+    const res = await worker.fetch(new Request("https://x/events"), {}, ctx);
+    expect((await res.json()).events).toEqual([]);
+  });
+
+  it("/events degrades one source to empty without failing the whole route", async () => {
+    const recentIso = new Date().toISOString();
+    fetch.mockImplementation((url) => {
+      if (url.includes("capsule-status.json")) return Promise.resolve(new Response("err", { status: 500 }));
+      if (url.includes("launch-reentry-log.json")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              events: [{ type: "reentry", id: "1", name: "X", cat: "debris", at: recentIso }],
+            })
+          )
+        );
+      }
+      return Promise.resolve(new Response(JSON.stringify({ crewEvents: [] })));
+    });
+    const res = await worker.fetch(new Request("https://x/events"), {}, ctx);
+    const body = await res.json();
+    expect(body.events).toHaveLength(1);
+    expect(body.events[0].type).toBe("reentry");
+  });
+
   it("400s /satcat with no id", async () => {
     const res = await worker.fetch(new Request("https://x/satcat"), {}, ctx);
     expect(res.status).toBe(400);

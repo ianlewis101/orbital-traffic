@@ -5,6 +5,7 @@ import { ingest, removeSats } from "./ingest.js";
 import { buildClouds } from "../scene/clouds.js";
 import { rebuildLegend } from "../ui/legend.js";
 import { renderToday } from "../ui/today.js";
+import { refreshEvents } from "../ui/today-in-space.js";
 import { updateCount, flash, toast } from "../ui/status.js";
 import { select } from "../ui/info.js";
 import { shouldSyncOnVisible } from "../util/freshness.js";
@@ -73,6 +74,13 @@ async function runLiveSync() {
   // Capsule phase data rides along with every live sync so de-orbited
   // capsules leave the globe and missing active ones get injected.
   const capsulesPromise = fetchCapsuleStatus();
+  // "Today in Space" rides along the same periodic + on-visibility cadence
+  // rather than its own scheduler — /events changes on an hourly/daily
+  // cadence at most, so this loop's ~15-minute interval is already frequent
+  // enough. Deliberately not awaited: refreshEvents() is self-contained and
+  // already swallows its own failures (same shape as refreshTodayLiveFacts()
+  // at boot), so it must never block or fail the satellite catalog sync.
+  refreshEvents();
   try {
     const res = await fetch(WORKER_BASE + "/tle", { cache: "no-store" });
     if (!res.ok) throw new Error("worker " + res.status);
