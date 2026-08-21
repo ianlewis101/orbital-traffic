@@ -1,8 +1,61 @@
 {
-  "updated": "2026-08-20",
+  "updated": "2026-08-21",
   "expedition": "Expedition 75",
   "activities": [
-    "Expedition 75 Cleans Up After Spacewalk, Keeps Up Microgravity Research",
-    "NASA, ESA Astronauts Wrap Up Station Spacewalk"
-  ]
+    "Spacewalk Preps Continue to Finish Antenna Installation Job Next Week",
+    "Expedition 75 Cleans Up After Spacewalk, Keeps Up Microgravity Research"
+  ],
+  "crew": [
+    {
+      "id": 573,
+      "name": "Jessica Meir",
+      "craft": "ISS"
+    },
+    {
+      "id": 713,
+      "name": "Anil Menon",
+      "craft": "ISS"
+    },
+    {
+      "id": 712,
+      "name": "Jack Hathaway",
+      "craft": "ISS"
+    },
+    {
+      "id": 747,
+      "name": "Sophie Adenot",
+      "craft": "ISS"
+    },
+    {
+      "id": 732,
+      "name": "Andrei Fedyaev",
+      "craft": "ISS"
+    },
+    {
+      "id": 649,
+      "name": "Anna Kikina",
+      "craft": "ISS"
+    },
+    {
+      "id": 650,
+      "name": "Pyotr Dubrov",
+      "craft": "ISS"
+    },
+    {
+      "id": 764,
+      "name": "Zhu Yangzhu",
+      "craft": "Tiangong"
+    },
+    {
+      "id": 917,
+      "name": "Lai Ka-ying",
+      "craft": "Tiangong"
+    },
+    {
+      "id": 916,
+      "name": "Zhang Zhiyuan",
+      "craft": "Tiangong"
+    }
+  ],
+  "crewEvents": []
 }
