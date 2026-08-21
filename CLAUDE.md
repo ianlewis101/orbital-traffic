@@ -466,6 +466,14 @@ they can't be templated:
     HTML entry points must contain zero literal figures, and
     welcome.html must still carry the token.
 
+    Also derived: `{{OBJECT_COUNT}}` in `design/social/content.js`
+    (the social/marketing layout kit — see design/social/README.md).
+    `tools/render-social.mjs` substitutes it at render time from
+    the same `satellites.json` length and the same rounding
+    expression, so exported post images never carry a stale
+    figure. Marketing copy in that file must always use the
+    token, never a typed number.
+
   - Hand-written — update ALL of these together whenever the
     rounded figure changes (found via full-repo grep for
     "11,000", "15,000", "18,000", "objects in orbit", "tracked

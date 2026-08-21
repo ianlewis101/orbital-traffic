@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Orbital Traffic — social kit</title>
+    <meta name="viewport" content="width=1200" />
+    <link rel="stylesheet" href="./social-kit.css" />
+    <style>
+      /* Preview-only chrome. Nothing here is exported — the renderer
+         screenshots .slide elements, so it cannot capture the page around
+         them. See social-kit.css section 6. */
+      .picker {
+        width: 1080px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 8px;
+      }
+      .picker a {
+        font-family: "Oxanium", system-ui, sans-serif;
+        font-size: 15px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        text-decoration: none;
+        color: #9aa2b8;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 999px;
+        padding: 9px 18px;
+      }
+      .picker a.on {
+        color: #07080f;
+        background: #5eead4;
+        border-color: #5eead4;
+      }
+    </style>
+  </head>
+  <body class="sheet">
+    <div class="sheet-head">
+      <h1 id="sheet-title">Social kit</h1>
+      <span id="sheet-meta"></span>
+    </div>
+    <nav class="picker" id="picker"></nav>
+    <main id="sheet"></main>
+
+    <script type="module">
+      import { POSTS, POST_IDS, DEFAULT_SIZE } from "./content.js";
+      import { buildSlide, ready, resolveObjectCount } from "./build.js";
+
+      const params = new URLSearchParams(location.search);
+      const postId = POSTS[params.get("post")] ? params.get("post") : POST_IDS[0];
+      const post = POSTS[postId];
+
+      const picker = document.getElementById("picker");
+      POST_IDS.forEach((id) => {
+        const a = document.createElement("a");
+        a.href = `?post=${id}`;
+        a.textContent = POSTS[id].title;
+        if (id === postId) a.className = "on";
+        picker.appendChild(a);
+      });
+
+      const ctx = { objectCount: await resolveObjectCount() };
+      const sheet = document.getElementById("sheet");
+
+      document.getElementById("sheet-title").textContent = post.title;
+      document.getElementById("sheet-meta").textContent =
+        `${post.kind} · ${post.size || DEFAULT_SIZE} · ${post.slides.length} image${
+          post.slides.length > 1 ? "s" : ""
+        }`;
+
+      post.slides.forEach((s, i) => {
+        const label = document.createElement("p");
+        label.className = "slide-label";
+        label.textContent = `${String(i + 1).padStart(2, "0")} — ${s.type}`;
+        sheet.appendChild(label);
+        sheet.appendChild(buildSlide(post, i, ctx));
+      });
+
+      await ready(sheet);
+      document.body.dataset.ready = "1";
+    </script>
+  </body>
+</html>

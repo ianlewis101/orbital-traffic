@@ -39,6 +39,12 @@ export default [
     rules: { "orbital/no-unescaped-innerhtml": "error" },
   },
   {
+    // design/social/ — the social layout kit. Browser ES modules, loaded by
+    // design/social/index.html and by tools/render-social.mjs's headless page.
+    files: ["design/**/*.js"],
+    languageOptions: { globals: { ...globals.browser } },
+  },
+  {
     files: ["apps/web/public/sw.js"],
     languageOptions: { globals: { ...globals.serviceworker } },
   },

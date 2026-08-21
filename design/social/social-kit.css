@@ -1,0 +1,717 @@
+/* ==========================================================================
+   Orbital Traffic — social layout kit
+   --------------------------------------------------------------------------
+   One frame, six archetypes. Every slide in a carousel and every standalone
+   post share the same rails, margins, backdrop and type scale, so a 5-image
+   carousel reads as one object and a single image still reads as "one of
+   these" on a feed.
+
+   TOKENS ARE NOT RE-INVENTED HERE. Colours, fonts and the wordmark gradient
+   are copied verbatim from apps/web/src/styles/app.css's :root; the category
+   swatch colours are imported live from apps/web/src/config.js by build.js
+   rather than pasted, so the legend slide can never drift from the app.
+   If a brand colour changes in app.css, change it here in the same commit.
+
+   Everything is expressed in px against a fixed 1080px artboard width, so a
+   value in this file is the value in the exported PNG. Only the artboard
+   HEIGHT changes between sizes (portrait / square / story) — the horizontal
+   grid is identical in all three, which is what keeps a post recognisable
+   after it has been re-cut for another placement.
+   ========================================================================== */
+
+/* Self-hosted from apps/web/public/fonts (SIL OFL 1.1 — see the OFL-*.txt
+   next to them). Each family is one variable file, so unlike app.css — which
+   pins discrete weights to mirror what Google Fonts served — the kit declares
+   a single face per family across the whole weight range it uses.
+   font-display:block, not swap: an export must never race a fallback face
+   into the PNG. tools/render-social.mjs additionally awaits document.fonts. */
+@font-face {
+  font-family: "Bricolage Grotesque";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: block;
+  src: url("../../apps/web/public/fonts/bricolage-grotesque-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Oxanium";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: block;
+  src: url("../../apps/web/public/fonts/oxanium-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Orbitron";
+  font-style: normal;
+  font-weight: 700 900;
+  font-display: block;
+  src: url("../../apps/web/public/fonts/orbitron-latin.woff2") format("woff2");
+}
+
+:root {
+  /* --- app.css :root, verbatim --- */
+  --bg: #07080f;
+  --ink: #eef1f8;
+  --ink-dim: #9aa2b8;
+  --ink-faint: #737a90;
+  --line: rgba(255, 255, 255, 0.12);
+  --line-bright: rgba(255, 255, 255, 0.3);
+  --accent: #5eead4; /* app.css --amber, "aurora teal" */
+  --violet: #a78bfa;
+  --signal: #7dd3fc;
+  --serif: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --mono: "Oxanium", ui-sans-serif, system-ui, sans-serif;
+  --logo: "Orbitron", ui-sans-serif, system-ui, sans-serif;
+  --wm-grad: linear-gradient(95deg, #eef1f8 12%, #5eead4 55%, #a78bfa 92%);
+}
+
+/* Same reset as app.css. box-sizing in particular is load-bearing here: the
+   artboard sets an exact width/height AND an outer margin as padding, so
+   under content-box every export comes out (size + 2 * margin) px — 1232x1502
+   instead of 1080x1350, silently off-aspect for every platform.
+   tools/render-social.mjs asserts the exported pixel size for this reason. */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   1. THE ARTBOARD
+   ========================================================================== */
+
+.slide {
+  /* Portrait 4:5 — the default. Widest-supported feed crop on Instagram,
+     LinkedIn and X, and the tallest one Instagram will not letterbox. */
+  --w: 1080px;
+  --h: 1350px;
+  --m: 76px; /* outer margin: nothing but the backdrop crosses it */
+  --safe-b: 0px; /* extra bottom keep-out for platform UI (story only) */
+  --rail-gap: 44px; /* rail hairline -> body */
+
+  position: relative;
+  width: var(--w);
+  height: var(--h);
+  padding: var(--m) var(--m) calc(var(--m) + var(--safe-b));
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-weight: 500;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.slide[data-size="square"] {
+  --h: 1080px;
+  --rail-gap: 34px;
+}
+
+.slide[data-size="story"] {
+  /* 9:16. The bottom keep-out is real estate Instagram/TikTok cover with
+     their own controls — the frame shrinks, the grid does not move. */
+  --h: 1920px;
+  --m: 88px;
+  --safe-b: 190px;
+  --rail-gap: 56px;
+}
+
+/* ==========================================================================
+   2. BACKDROP — starfield + the carousel's continuous orbit arc
+   Drawn by build.js into one SVG. The arc geometry is the app icon's ellipse
+   (design/brand/icon-master.svg: rotate(-24deg)) blown up past the artboard
+   edges, and the blip advances with --progress across the slides of a
+   carousel, so swiping reads as one continuous sweep rather than five
+   unrelated cards.
+   ========================================================================== */
+
+.slide .backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Vignette: lifts the centre a touch and sinks the corners so the rails and
+   corner ticks always sit on the darkest part of the frame. */
+.slide .backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 80% at 50% 42%, rgba(94, 234, 212, 0.07) 0%, transparent 62%),
+    radial-gradient(90% 70% at 82% 108%, rgba(167, 139, 250, 0.09) 0%, transparent 60%),
+    radial-gradient(140% 100% at 50% 50%, transparent 38%, rgba(4, 5, 11, 0.85) 100%);
+}
+
+.slide .backdrop svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Everything above the backdrop. */
+.slide > *:not(.backdrop) {
+  position: relative;
+  z-index: 1;
+}
+
+/* Corner ticks — the HUD reticle that marks the safe frame. Present on every
+   slide at identical coordinates: the single strongest cue that two images
+   belong to the same set. */
+.slide .ticks {
+  position: absolute;
+  inset: calc(var(--m) - 22px) calc(var(--m) - 22px) calc(var(--m) - 22px + var(--safe-b));
+  z-index: 1;
+  pointer-events: none;
+}
+.slide .ticks i {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border: 0 solid var(--line-bright);
+  opacity: 0.55;
+}
+.slide .ticks i:nth-child(1) {
+  top: 0;
+  left: 0;
+  border-top-width: 2px;
+  border-left-width: 2px;
+}
+.slide .ticks i:nth-child(2) {
+  top: 0;
+  right: 0;
+  border-top-width: 2px;
+  border-right-width: 2px;
+}
+.slide .ticks i:nth-child(3) {
+  bottom: 0;
+  left: 0;
+  border-bottom-width: 2px;
+  border-left-width: 2px;
+}
+.slide .ticks i:nth-child(4) {
+  bottom: 0;
+  right: 0;
+  border-bottom-width: 2px;
+  border-right-width: 2px;
+}
+
+/* ==========================================================================
+   3. RAILS — identical on every slide, carousel or single
+   ========================================================================== */
+
+.rail {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.rail-top {
+  padding-bottom: 30px;
+  margin-bottom: var(--rail-gap);
+  border-bottom: 1px solid var(--line);
+}
+
+.rail-bot {
+  padding-top: 28px;
+  margin-top: var(--rail-gap);
+  border-top: 1px solid var(--line);
+}
+
+/* --- wordmark lockup (top-left, always) --- */
+.lockup {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.lockup .mark {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+}
+.lockup .wm {
+  font-family: var(--logo);
+  font-weight: 800;
+  font-size: 33px;
+  line-height: 0.92;
+  letter-spacing: 0.01em;
+  background: var(--wm-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.lockup .wm em {
+  font-style: normal;
+}
+.lockup .wm .tm {
+  font-size: 0.34em;
+  font-weight: 600;
+  letter-spacing: 0;
+  vertical-align: super;
+  margin-left: 3px;
+  -webkit-text-fill-color: var(--ink-faint);
+  color: var(--ink-faint);
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  opacity: 0.8;
+}
+.lockup .wm-sub {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.38em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-top: 8px;
+  padding-left: 2px;
+}
+
+/* --- slide index, top-right (carousel only) --- */
+.index {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+.index b {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* --- bottom rail: url · dots · hint --- */
+.rail-bot .url {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.rail-bot .hint {
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+.rail-bot .hint.go {
+  color: var(--accent);
+}
+
+.dots {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.dots i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--line-bright);
+}
+.dots i.on {
+  background: var(--accent);
+  box-shadow: 0 0 14px rgba(94, 234, 212, 0.75);
+}
+
+/* ==========================================================================
+   4. SHARED TYPE + PARTS
+   Used by more than one archetype. Anything used by exactly one archetype
+   lives in section 5 with it.
+   ========================================================================== */
+
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.kicker::before {
+  content: "";
+  width: 46px;
+  height: 3px;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+h1.display,
+h2.display {
+  font-family: var(--serif);
+  font-weight: 800;
+  letter-spacing: -0.022em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+h1.display {
+  font-size: 96px;
+  line-height: 0.98;
+}
+h2.display {
+  font-size: 62px;
+  line-height: 1.03;
+}
+.slide[data-size="story"] h1.display {
+  font-size: 108px;
+}
+
+/* The one permitted colour accent inside a headline. */
+.display .hl {
+  background: var(--wm-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.lead {
+  font-size: 31px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0.004em;
+  color: var(--ink-dim);
+  max-width: 830px;
+  text-wrap: pretty;
+}
+
+.body-copy {
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--ink-dim);
+  max-width: 830px;
+  text-wrap: pretty;
+}
+
+.meta {
+  font-size: 21px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+}
+
+/* The archetype fills the body row; each one owns its own vertical rhythm. */
+.body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* ==========================================================================
+   5. ARCHETYPES
+   ========================================================================== */
+
+/* --- 5.1 cover ----------------------------------------------------------
+   Bottom-anchored. The headline sits on the bottom rail so the eye lands on
+   it first and the empty upper half carries the backdrop. Slide 1 of a
+   carousel, and the default for a single post. */
+.a-cover {
+  justify-content: flex-end;
+  gap: 34px;
+  padding-bottom: 8px;
+}
+.a-cover .lead {
+  margin-top: 4px;
+}
+
+/* --- 5.2 stat -----------------------------------------------------------
+   One number, big enough to be legible as a feed thumbnail. Orbitron because
+   it is the app's instrument face and has true tabular figures. */
+.a-stat {
+  justify-content: center;
+  gap: 30px;
+}
+.a-stat .figure {
+  font-family: var(--logo);
+  font-weight: 800;
+  font-size: 200px;
+  line-height: 0.86;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  background: var(--wm-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.a-stat .figure-label {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin-top: -6px;
+}
+
+/* Readout strip — up to three secondary numbers, HUD-style. */
+.readout {
+  display: flex;
+  gap: 0;
+  margin-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.readout div {
+  flex: 1;
+  padding: 26px 26px 0 0;
+}
+.readout div + div {
+  padding-left: 30px;
+  border-left: 1px solid var(--line);
+}
+.readout .v {
+  font-family: var(--logo);
+  font-weight: 700;
+  font-size: 46px;
+  line-height: 1;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.readout .k {
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-top: 12px;
+  line-height: 1.35;
+}
+
+/* --- 5.3 shot -----------------------------------------------------------
+   A real screenshot. The app's own background is --bg, the same value as the
+   artboard, so a card screenshot is deliberately shown WITHOUT a container:
+   it dissolves into the slide instead of sitting in a box. */
+.a-shot {
+  gap: 38px;
+}
+.a-shot .figure-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  position: relative;
+}
+.a-shot .figure-wrap::before {
+  /* Aurora bloom behind the screenshot — separates it from the backdrop
+     without drawing a frame around it. */
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 720px;
+  height: 720px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(94, 234, 212, 0.18) 0%, transparent 66%);
+}
+/* The screenshot is CROPPED, never shrunk to fit. Fitting a whole 600x1458
+   object card into the body row renders it ~270px wide — unreadable at feed
+   size, which is the entire point of showing a screenshot. Instead it is
+   pinned near 1:1 and the overflow is clipped, so the crop shows the part
+   that carries the story (photo, name, opening lines) at full legibility. */
+.a-shot .shot-clip {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 20px;
+}
+.a-shot .shot-clip img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* fit="card": an in-app panel. The app's background IS --bg, so the panel
+   needs no container — a bottom fade dissolves the crop into the artboard
+   instead of ending it on a hard cut. */
+.a-shot[data-fit="card"] .shot-clip {
+  width: 572px;
+  -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);
+}
+
+/* fit="device": a full-app screenshot, cropped into a phone silhouette. */
+.a-shot[data-fit="device"] .shot-clip {
+  width: 500px;
+  border-radius: 44px;
+  border: 2px solid var(--line-bright);
+  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.65);
+}
+.a-shot .caption {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* --- 5.4 list -----------------------------------------------------------
+   Three or four numbered points. Hairline-separated rows, never bullets. */
+.a-list {
+  justify-content: center;
+  gap: 40px;
+}
+.a-list .rows {
+  display: flex;
+  flex-direction: column;
+}
+.a-list .row {
+  display: grid;
+  grid-template-columns: 78px 1fr;
+  gap: 10px 24px;
+  padding: 30px 0;
+  border-top: 1px solid var(--line);
+}
+.a-list .row:last-child {
+  border-bottom: 1px solid var(--line);
+}
+.a-list .n {
+  font-family: var(--logo);
+  font-weight: 700;
+  font-size: 30px;
+  line-height: 1.2;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.a-list .t {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 36px;
+  line-height: 1.15;
+  letter-spacing: -0.012em;
+  color: var(--ink);
+}
+.a-list .d {
+  grid-column: 2;
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--ink-dim);
+  text-wrap: pretty;
+}
+
+/* --- 5.5 legend ---------------------------------------------------------
+   The app's own Orbit Classes legend, lifted onto a slide. Swatch colours
+   come from apps/web/src/config.js at build time — do not hardcode them. */
+.a-legend {
+  justify-content: center;
+  gap: 40px;
+}
+.a-legend .cats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 56px;
+}
+.a-legend .cat {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 17px 0;
+  border-bottom: 1px solid var(--line);
+}
+.a-legend .sw {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  /* currentColor is set per-row from the category token. */
+  background: currentColor;
+  box-shadow: 0 0 16px currentColor;
+}
+.a-legend .nm {
+  font-size: 25px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+/* --- 5.6 cta ------------------------------------------------------------
+   Closes a carousel; also stands alone as an announcement post. */
+.a-cta {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  gap: 36px;
+}
+.a-cta .mark-lg {
+  width: 110px;
+  height: 110px;
+}
+.a-cta h2.display {
+  font-size: 76px;
+}
+.a-cta .lead {
+  max-width: 760px;
+}
+.a-cta .pill {
+  margin-top: 6px;
+  padding: 22px 46px;
+  border: 2px solid var(--accent);
+  border-radius: 999px;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: rgba(94, 234, 212, 0.08);
+  box-shadow: 0 0 44px rgba(94, 234, 212, 0.16);
+}
+
+/* ==========================================================================
+   6. CONTACT SHEET (preview chrome — never exported)
+   tools/render-social.mjs screenshots each .slide element, so anything
+   outside .slide is preview-only by construction.
+   ========================================================================== */
+
+body.sheet {
+  margin: 0;
+  padding: 56px 40px 90px;
+  background: #101218;
+  font-family: var(--mono);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+body.sheet .sheet-head {
+  width: 1080px;
+  color: var(--ink-dim);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 18px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+body.sheet .sheet-head h1 {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 26px;
+  color: var(--ink);
+}
+body.sheet .sheet-head span {
+  font-size: 15px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+body.sheet .slide-label {
+  width: 1080px;
+  font-size: 14px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-top: 30px;
+}
+body.sheet .slide {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}

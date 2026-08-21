@@ -18,6 +18,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "icons:generate": "node tools/generate-icons.mjs",
+    "social:render": "node tools/render-social.mjs",
+    "social:preview": "node tools/render-social.mjs --serve",
     "data:tle": "node tools/fetch-tles.mjs",
     "data:iss-today": "node tools/update-iss-today.mjs",
     "data:capsule-status": "node tools/update-capsule-status.mjs"

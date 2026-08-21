@@ -4,6 +4,9 @@ node_modules/
 # Build output
 dist/
 
+# Exported social/marketing images — regenerate with `npm run social:render`
+design/social/out/
+
 # Worker
 .wrangler/
 .dev.vars
