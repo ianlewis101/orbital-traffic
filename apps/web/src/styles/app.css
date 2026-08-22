@@ -839,6 +839,57 @@
   ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:var(--line-bright)}
   ::-webkit-scrollbar-track{background:transparent}
 
+  /* ---------- short viewports (landscape phones) ----------
+     Both layout branches above assume a tall screen. Landscape iPhones are
+     375-440px tall, and three things break there — all of them measured on
+     the built app before landscape was enabled in Info.plist:
+
+       - #leftstack is bottom-anchored with no height cap, so its full
+         ~585px height runs off the TOP of the viewport. At 812x375
+         (iPhone X/XS/11 Pro/12-13 mini) the top 234px — Time Machine,
+         Today in Space, and the legend's own header — sat above y=0 with
+         no way to scroll to it.
+       - #hint's mobile offset (top:186px) was measured to clear the clock
+         in portrait; at 375px tall it lands dead centre over the globe.
+       - #brand's wordmark collides with the stack once the stack grows
+         past it.
+
+     Keyed on height, not `orientation:landscape`: the short axis is what
+     actually breaks these, and an orientation query would also catch a
+     landscape iPad (768px+ tall), where none of this applies. 520px clears
+     the tallest landscape phone (440px) and stays well under the shortest
+     landscape iPad (768px). */
+  @media (max-height:520px){
+    /* Cap the stack to the height that exists and scroll it, so no panel is
+       ever stranded off-screen no matter how many are expanded.
+
+       The stack is bottom-anchored, so the cap has to be
+       `100vh - (its own bottom offset) - (the clearance we want at the
+       top)`. The two branches sit at different bottom offsets (24px
+       desktop, 10px mobile), so the cap is written per-branch below rather
+       than as one figure — a single value lands 20px out on one of them,
+       which is exactly enough to push the top edge back off-screen. Both
+       resolve to 20px of clearance above the stack.
+
+       The dvh line is a progressive upgrade: browsers without it keep the
+       vh line, and inside the Capacitor webview the two are equal anyway
+       (no dynamic browser chrome). */
+    #leftstack{max-height:calc(100vh - 44px);max-height:calc(100dvh - 44px);
+      overflow-y:auto;overscroll-behavior:contain;padding-right:4px}
+    #leftstack>*{flex-shrink:0}
+    /* One scroll container, not two nested ones — the panels' own caps
+       would otherwise trap a touch scroll inside a ~142px window while the
+       stack around it also wanted to scroll. */
+    #legend .body,#today .body{max-height:none}
+    #brand{display:none}
+    #hint{top:auto;bottom:34px}
+  }
+  /* Mobile branch sits 14px lower (bottom:10px vs 24px), so its cap is
+     14px larger to land on the same 20px of top clearance. */
+  @media (max-height:520px) and (max-width:768px){
+    #leftstack{max-height:calc(100vh - 30px);max-height:calc(100dvh - 30px)}
+  }
+
   /* ---------- reduced motion ----------
      The Three.js globe is content, not decoration, so it keeps animating —
      this only tames the UI chrome: entrance slides/rises, the infinite
