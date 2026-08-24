@@ -1,5 +1,5 @@
 {
-  "updated": "2026-08-24T17:25:37.080Z",
+  "updated": "2026-08-24T18:31:37.162Z",
   "capsules": {
     "66664": {
       "name": "SOYUZ-MS 28",
@@ -84,7 +84,7 @@
       "phase": "docked",
       "stationKey": "css",
       "since": "2026-07-03T10:34:14.509Z",
-      "distanceKm": 0.1,
+      "distanceKm": 0.2,
       "altitudeKm": 399.3,
       "inclinationDeg": 41.468,
       "l1": "1 69180U 26113A   26236.13219887  .00015231  00000+0  19248-3 0  9993",
