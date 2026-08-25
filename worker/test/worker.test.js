@@ -3,9 +3,11 @@ import worker, {
   buildTLERecords,
   TLE_TTL,
   SATCAT_TTL,
+  SATCAT_FAIL_TTL,
   CREW_TTL,
   CREW_FAIL_TTL,
   ASTRONAUT_TTL,
+  ASTRONAUT_FAIL_TTL,
 } from "../src/index.js";
 import { GROUPS } from "@orbital-traffic/catalog";
 
@@ -440,6 +442,33 @@ describe("worker routes", () => {
     expect(await res.json()).toBeNull();
   });
 
+  it("negative-caches a null /astronaut result for ASTRONAUT_FAIL_TTL instead of the full ASTRONAUT_TTL", async () => {
+    // Before this fix, a transient LL2 hiccup on a real astronaut id got
+    // cached as `null` for the full 24h ASTRONAUT_TTL — indistinguishable
+    // from a confirmed-absent profile, and not correctable short of the TTL
+    // expiring. Mirrors the equivalent /crew test above.
+    const put = vi.fn();
+    vi.stubGlobal("caches", { default: { match: vi.fn().mockResolvedValue(undefined), put } });
+    fetch.mockResolvedValue(new Response("nope", { status: 429 }));
+    const res = await worker.fetch(new Request("https://x/astronaut?id=573"), {}, ctx);
+    expect(await res.json()).toBeNull();
+    expect(res.headers.get("Cache-Control")).toBe(`public, max-age=${ASTRONAUT_FAIL_TTL}`);
+    expect(put.mock.calls[0][1].headers.get("Cache-Control")).toBe(
+      `public, max-age=${ASTRONAUT_FAIL_TTL}`
+    );
+  });
+
+  it("caches a successful /astronaut build at the full ASTRONAUT_TTL", async () => {
+    const put = vi.fn();
+    vi.stubGlobal("caches", { default: { match: vi.fn().mockResolvedValue(undefined), put } });
+    fetch.mockResolvedValue(new Response(JSON.stringify({ id: 573, name: "Jessica Meir" })));
+    const res = await worker.fetch(new Request("https://x/astronaut?id=573"), {}, ctx);
+    expect(res.headers.get("Cache-Control")).toBe(`public, max-age=${ASTRONAUT_TTL}`);
+    expect(put.mock.calls[0][1].headers.get("Cache-Control")).toBe(
+      `public, max-age=${ASTRONAUT_TTL}`
+    );
+  });
+
   it("sends LL2 headers on /astronaut, including the key when LL2_API_KEY is set", async () => {
     fetch.mockResolvedValue(new Response(JSON.stringify({ id: 1, name: "Alice" })));
     await worker.fetch(new Request("https://x/astronaut?id=1"), { LL2_API_KEY: "secret" }, ctx);
@@ -588,6 +617,27 @@ describe("worker routes", () => {
     expect(res.status).toBe(400);
   });
 
+  it("rejects a non-numeric /satcat id without calling CelesTrak — closes the cache-key collision", async () => {
+    fetch.mockImplementation(() => {
+      throw new Error("should not fetch");
+    });
+    // A trailing space survives URL-decoding into the query param (id
+    // becomes "25544 ") while normalizing away elsewhere in the request
+    // pipeline — this is the exact shape that demonstrated a real
+    // cache-poisoning vulnerability against the live Worker: an attacker
+    // could pre-poison a real object's /satcat cache slot with a `null`
+    // response by requesting it once with a trailing space, since CelesTrak
+    // wouldn't match the padded catalog number. Numeric-only validation
+    // must reject it before any cache key is ever built or upstream fetch
+    // ever made.
+    let res = await worker.fetch(new Request("https://x/satcat?id=25544%20"), {}, ctx);
+    expect(res.status).toBe(400);
+    // Non-numeric junk generally, same protection /astronaut already has.
+    res = await worker.fetch(new Request("https://x/satcat?id=../launch"), {}, ctx);
+    expect(res.status).toBe(400);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it("serves a single SATCAT record on /satcat and degrades to null", async () => {
     fetch.mockResolvedValue(
       new Response(
@@ -622,6 +672,33 @@ describe("worker routes", () => {
     res = await worker.fetch(new Request("https://x/satcat?id=25544"), {}, ctx);
     expect(res.status).toBe(200);
     expect(await res.json()).toBeNull();
+  });
+
+  it("negative-caches a null /satcat result for SATCAT_FAIL_TTL instead of the full SATCAT_TTL", async () => {
+    // Before this fix, a transient CelesTrak hiccup on a real catalog number
+    // got cached as `null` for the full 7-day SATCAT_TTL — indistinguishable
+    // from a confirmed-nonexistent object, and not correctable short of the
+    // TTL expiring. This is what left the live ISS's /satcat poisoned.
+    const put = vi.fn();
+    vi.stubGlobal("caches", { default: { match: vi.fn().mockResolvedValue(undefined), put } });
+    fetch.mockResolvedValue(new Response("err", { status: 500 }));
+    const res = await worker.fetch(new Request("https://x/satcat?id=25544"), {}, ctx);
+    expect(await res.json()).toBeNull();
+    expect(res.headers.get("Cache-Control")).toBe(`public, max-age=${SATCAT_FAIL_TTL}`);
+    expect(put.mock.calls[0][1].headers.get("Cache-Control")).toBe(
+      `public, max-age=${SATCAT_FAIL_TTL}`
+    );
+  });
+
+  it("caches a successful /satcat build at the full SATCAT_TTL", async () => {
+    const put = vi.fn();
+    vi.stubGlobal("caches", { default: { match: vi.fn().mockResolvedValue(undefined), put } });
+    fetch.mockResolvedValue(
+      new Response(JSON.stringify([{ NORAD_CAT_ID: "25544", LAUNCH_DATE: "1998-11-20" }]))
+    );
+    const res = await worker.fetch(new Request("https://x/satcat?id=25544"), {}, ctx);
+    expect(res.headers.get("Cache-Control")).toBe(`public, max-age=${SATCAT_TTL}`);
+    expect(put.mock.calls[0][1].headers.get("Cache-Control")).toBe(`public, max-age=${SATCAT_TTL}`);
   });
 });
 

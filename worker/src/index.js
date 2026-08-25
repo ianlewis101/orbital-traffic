@@ -412,6 +412,15 @@ export async function fetchSatcat(catnr) {
   }
 }
 
+// A null fetchSatcat()/fetchAstronaut() result can mean "confirmed no
+// record" (permanent, fine to cache for the full TTL) or a transient
+// upstream hiccup (CelesTrak/LL2 error, timeout) — the two are
+// indistinguishable from here, so treat every null as short-lived rather
+// than risk caching a transient failure for the full SATCAT_TTL (7 days) /
+// ASTRONAUT_TTL (24h). Same rationale and value as CREW_FAIL_TTL.
+export const SATCAT_FAIL_TTL = 90;
+export const ASTRONAUT_FAIL_TTL = 90;
+
 function badRequest(message) {
   return new Response(JSON.stringify({ error: message }), {
     status: 400,
@@ -480,7 +489,20 @@ const ROUTES = {
     const url = new URL(request.url);
     const catnr = url.searchParams.get("id");
     if (!catnr) return badRequest("id query param is required");
-    return cached(ctx, `/satcat?id=${catnr}`, SATCAT_TTL, () => fetchSatcat(catnr));
+    // Numeric-only: NORAD catalog numbers are always digit strings (leading
+    // zeros included — see noradId() in @orbital-traffic/catalog), and
+    // requiring this is what stops an unvalidated id (e.g. one with a
+    // trailing space or other character the URL/cache-key machinery could
+    // normalize away) from colliding with a different, legitimate id's
+    // cache slot — the same reasoning /astronaut already applies below.
+    if (!/^\d+$/.test(catnr)) return badRequest("id must be numeric");
+    return cached(
+      ctx,
+      `/satcat?id=${catnr}`,
+      SATCAT_TTL,
+      () => fetchSatcat(catnr),
+      (d) => (d === null ? SATCAT_FAIL_TTL : SATCAT_TTL)
+    );
   },
   "/astronaut": (ctx, request, env) => {
     const url = new URL(request.url);
@@ -490,7 +512,13 @@ const ROUTES = {
     // an arbitrary caller from steering the upstream URL path or minting
     // unbounded distinct cache keys.
     if (!/^\d+$/.test(id)) return badRequest("id must be numeric");
-    return cached(ctx, `/astronaut?id=${id}`, ASTRONAUT_TTL, () => fetchAstronaut(id, env));
+    return cached(
+      ctx,
+      `/astronaut?id=${id}`,
+      ASTRONAUT_TTL,
+      () => fetchAstronaut(id, env),
+      (d) => (d === null ? ASTRONAUT_FAIL_TTL : ASTRONAUT_TTL)
+    );
   },
 };
 
