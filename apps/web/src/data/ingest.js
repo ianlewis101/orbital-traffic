@@ -1,5 +1,5 @@
 import * as satellite from "satellite.js";
-import { categorize, satrecAgeDays } from "@orbital-traffic/catalog";
+import { categorize, satrecAgeDays, noradId } from "@orbital-traffic/catalog";
 import { CATS } from "../config.js";
 import { state } from "../state.js";
 
@@ -53,7 +53,13 @@ export async function ingest(records, { prune = false } = {}) {
         continue;
       }
       if (!rec || rec.error) continue;
-      const id = String(rec.satnum);
+      // satellite.js's own satrec.satnum is the raw, undecoded TLE field
+      // (e.g. "A0057") — it doesn't know about Alpha-5. Every other consumer
+      // of this ID (capsule-status.json, SATCAT, descriptions.json) is keyed
+      // by noradId()'s decoded canonical form ("100057"), so deriving `id`
+      // from the raw satnum instead silently breaks every lookup for any
+      // object whose catalog number is >= 100000.
+      const id = noradId(r.l1);
       const cat = categorize(id, r.name, r.cat);
       const ex = state.byId.get(id);
       if (ex) {
