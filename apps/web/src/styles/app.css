@@ -442,6 +442,14 @@
   .chip i{width:5px;height:5px;border-radius:50%;background:var(--ink-faint);box-shadow:0 0 6px currentColor}
   .chip.lit{color:var(--amber);border-color:rgba(231,164,78,0.32)}.chip.lit i{background:var(--amber)}
   .chip.shad{color:var(--ink-faint)}.chip.shad i{background:var(--ink-faint)}
+  /* Structural gap above the chips row: it must never depend on whatever
+     happens to precede it (.lead's description text, or the optional
+     #info-crew block on stations) — without an explicit top padding here,
+     objects with no #info-crew block collide text straight into the first
+     chip on desktop widths (0-1px gap measured), while stations only looked
+     fine by accident because the crew block's own box height stood in for
+     real spacing. */
+  #info .chips{padding-top:13px;text-align:center}
   #info .tele-h{padding:14px 16px 0;color:var(--ink-faint)}
   #info .grid{padding:9px 16px 14px;grid-template-columns:1fr 1fr;gap:12px 16px}
 
