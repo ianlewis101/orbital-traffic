@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 /**
- * "Docked vehicles" section on a station's detail card: multiple docked
+ * "Docked capsules" section on a station's detail card: multiple docked
  * crew/cargo vehicles share their host station's own rendered position (see
  * the "7 vs 2 capsules" finding in docs/audit-status.md), so this is the
  * only way to reach one specific docked vehicle directly rather than
@@ -59,7 +59,7 @@ describe("docked vehicles section", () => {
     await fetchAndRenderCrew(ISS_HUB);
 
     const hd = el.querySelector(".crew-docked-hd");
-    expect(hd.textContent).toContain("Docked vehicles");
+    expect(hd.textContent).toContain("Docked capsules");
     expect(hd.textContent).toContain("2");
     expect(el.querySelectorAll(".crew-docked-row")).toHaveLength(2);
     expect([...el.querySelectorAll(".crew-docked-row .nm")].map((n) => n.textContent)).toEqual([

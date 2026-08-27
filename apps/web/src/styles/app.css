@@ -417,11 +417,13 @@
   .crew-today-item{display:flex;gap:8px;align-items:flex-start}
   .crew-today-dot{width:6px;height:6px;border-radius:50%;background:#b39bff;margin-top:4px;flex-shrink:0}
   .crew-today-txt{font-size:10.5px;color:var(--ink-dim);line-height:1.55}
-  /* Docked vehicles — collapsed-by-default, styled like the crew-today/
+  /* Docked capsules — collapsed-by-default, styled like the crew-today/
      crew-mission nested blocks above but accented with the capsules
      category's own teal (config.js CATS.capsules), since every row here
      is by definition a cat:"capsules" vehicle. Rows reuse .today-row/.sw
-     as-is (see #today/#events) rather than inventing new row styling. */
+     for layout/hover/dot, but their .nm gets a quieter treatment here than
+     #today/#events' rows — full-size bold uppercase names read too loud
+     packed this densely inside an already-busy detail card. */
   .crew-docked{border:1px solid rgba(45,212,191,0.2);border-radius:10px;overflow:hidden;margin-top:8px}
   .crew-docked-hd{width:100%;background:rgba(45,212,191,0.07);padding:7px 13px;border:none;
     display:flex;justify-content:space-between;align-items:center;cursor:pointer;
@@ -430,6 +432,11 @@
   .crew-docked-lbl{font-size:9px;letter-spacing:0.2em;color:#2dd4bf;text-transform:uppercase}
   .crew-docked-chev{font-size:9px;color:var(--ink-faint)}
   .crew-docked-body{padding:4px 6px;border-top:1px solid rgba(45,212,191,0.12)}
+  /* #info .nm (the object-title style, 20px/700/serif) otherwise wins here
+     on specificity alone (#info ID beats a class-only selector) regardless
+     of source order — match its specificity to actually override it. */
+  #info .crew-docked-row .nm{font-family:var(--mono);font-size:10px;font-weight:400;
+    letter-spacing:0.02em;color:var(--ink-dim)}
   .chip{display:inline-flex;align-items:center;gap:6px;font-size:10px;letter-spacing:0.09em;text-transform:uppercase;
     font-weight:500;padding:4px 9px;border:1px solid var(--line);color:var(--ink-dim);white-space:nowrap}
   .chip i{width:5px;height:5px;border-radius:50%;background:var(--ink-faint);box-shadow:0 0 6px currentColor}

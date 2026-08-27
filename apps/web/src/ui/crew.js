@@ -178,7 +178,7 @@ function dockedVehicles(stationKey) {
   return list;
 }
 
-/** Collapsed-by-default "Docked vehicles · N" block — "" (no block) when there's nothing docked yet. */
+/** Collapsed-by-default "Docked capsules · N" block — "" (no block) when there's nothing docked yet. */
 function dockedVehiclesHTML(vehicles) {
   if (!vehicles.length) return "";
   const rows = vehicles
@@ -193,7 +193,7 @@ function dockedVehiclesHTML(vehicles) {
   return `
     <div class="crew-docked">
       <button type="button" class="crew-docked-hd" aria-expanded="false">
-        <span class="crew-docked-lbl">Docked vehicles &middot; ${vehicles.length}</span>
+        <span class="crew-docked-lbl">Docked capsules &middot; ${vehicles.length}</span>
         <span class="crew-docked-chev">▸</span>
       </button>
       <div class="crew-docked-body" style="display:none">${rows}</div>
