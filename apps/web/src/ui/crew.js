@@ -1,7 +1,8 @@
-import { WORKER_BASE } from "../config.js";
+import { WORKER_BASE, catColorHex } from "../config.js";
 import { $, state } from "../state.js";
 import { vehicleFamily, CREW_SEATS_BY_FAMILY } from "@orbital-traffic/catalog";
 import { renderCapsuleStatus } from "./capsule-status.js";
+import { select } from "./info.js";
 import { esc } from "../util/html.js";
 import { formatRelativeTime } from "../util/relative-time.js";
 import { stalenessNote, ISS_TODAY_STALE_MS } from "../util/freshness.js";
@@ -154,6 +155,71 @@ const ISS_TODAY_IDS = new Set([
   "36086", // Poisk
 ]);
 
+/**
+ * Vehicles physically docked at this station right now, per
+ * capsule-status.json (state.capsulesData) — the same source the roster
+ * plausibility check above reads seat counts from. Docked crew and cargo
+ * vehicles alike render at their host station's own position (they share
+ * its TLE — see the "7 vs 2 capsules" investigation in docs/audit-status.md),
+ * so this is the only way to select one specific docked vehicle directly
+ * rather than whichever one happens to render on top on the globe. Each
+ * capsule-status entry is resolved to its live state.byId object; an entry
+ * with no match yet (a live sync hasn't injected it) is skipped rather than
+ * shown as a dead row. General across any station key, not ISS-specific.
+ */
+function dockedVehicles(stationKey) {
+  if (!state.capsulesData) return [];
+  const list = [];
+  for (const [id, c] of Object.entries(state.capsulesData)) {
+    if (c.phase !== "docked" || c.stationKey !== stationKey) continue;
+    const sat = state.byId.get(id);
+    if (sat) list.push(sat);
+  }
+  return list;
+}
+
+/** Collapsed-by-default "Docked vehicles · N" block — "" (no block) when there's nothing docked yet. */
+function dockedVehiclesHTML(vehicles) {
+  if (!vehicles.length) return "";
+  const rows = vehicles
+    .map((v) => {
+      const hex = catColorHex(v.cat);
+      return `<button type="button" class="today-row crew-docked-row" data-id="${esc(v.id)}">
+        <span class="sw" style="background:${hex};color:${hex}"></span>
+        <span class="info"><span class="nm">${esc(v.name)}</span></span>
+      </button>`;
+    })
+    .join("");
+  return `
+    <div class="crew-docked">
+      <button type="button" class="crew-docked-hd" aria-expanded="false">
+        <span class="crew-docked-lbl">Docked vehicles &middot; ${vehicles.length}</span>
+        <span class="crew-docked-chev">▸</span>
+      </button>
+      <div class="crew-docked-body" style="display:none">${rows}</div>
+    </div>`;
+}
+
+/** Wires the docked-vehicles collapse toggle and per-row selection. No-op if the block wasn't rendered. */
+function wireDockedVehicles(root) {
+  const hd = root.querySelector(".crew-docked-hd");
+  const body = root.querySelector(".crew-docked-body");
+  if (!hd || !body) return;
+  const chev = hd.querySelector(".crew-docked-chev");
+  hd.onclick = () => {
+    const open = body.style.display !== "none";
+    body.style.display = open ? "none" : "block";
+    if (chev) chev.textContent = open ? "▸" : "▾";
+    hd.setAttribute("aria-expanded", String(!open));
+  };
+  for (const row of root.querySelectorAll(".crew-docked-row")) {
+    row.onclick = () => {
+      const v = state.byId.get(row.dataset.id);
+      if (v) select(v);
+    };
+  }
+}
+
 export async function fetchAndRenderCrew(s) {
   const el = $("#info-crew");
   if (!el) return;
@@ -171,6 +237,7 @@ export async function fetchAndRenderCrew(s) {
   }
   const showToday = ISS_TODAY_IDS.has(s.id);
   const craft = isISS ? "ISS" : "Tiangong";
+  const stationKey = isISS ? "iss" : "css";
   el.style.display = "block";
   el.innerHTML = `<div class="crew-block"><div style="padding:14px;text-align:center;font-size:9.5px;color:var(--ink-faint);letter-spacing:0.1em">Fetching crew…</div></div>`;
   setInfoFreshness(null); // clear any stale note from the previous selection while this fetch is in flight
@@ -214,7 +281,6 @@ export async function fetchAndRenderCrew(s) {
   // roster — kept as a harmless, source-agnostic generic backstop.
   let crewSuspect = false;
   if (!crewFetchFailed && state.capsulesData) {
-    const stationKey = isISS ? "iss" : "css";
     let expectedSeats = 0;
     let unrecognizedFamily = false;
     for (const c of Object.values(state.capsulesData)) {
@@ -336,6 +402,11 @@ export async function fetchAndRenderCrew(s) {
       }</div>
     </div>`
         : ""
+    }
+    ${
+      // eslint-disable-next-line orbital/no-unescaped-innerhtml -- dockedVehiclesHTML() escapes every dynamic value (vehicle name/id) via esc() internally
+      dockedVehiclesHTML(dockedVehicles(stationKey))
     }`;
   wireCrewAvatars(el);
+  wireDockedVehicles(el);
 }
