@@ -520,7 +520,6 @@ export function refreshInfo() {
     `<span class="chip" title="${oc.note}">${oc.name}</span>` +
     `<span class="chip ${lit ? "lit" : "shad"}"><i></i>${lit ? "In sunlight" : "In Earth&rsquo;s shadow"}</span>` +
     `<span class="chip">Over ${regionName(lat, lon)}</span>` +
-    (s.ownerName ? `<span class="chip">${esc(s.ownerName)}</span>` : ``) +
     `<span class="chip">&asymp;${orbits.toFixed(1)} orbits / day</span>`;
   const ns = lat >= 0 ? "N" : "S",
     ew = lon >= 0 ? "E" : "W";
