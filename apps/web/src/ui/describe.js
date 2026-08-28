@@ -38,7 +38,7 @@ export function classify(s) {
     )
   )
     return "capsule";
-  if (/\bSTARLINK\b|\bONEWEB\b/.test(vn)) return "starlink";
+  if (/\bSTARLINK\b|\bONEWEB\b|\bKUIPER\b/.test(vn)) return "starlink";
   if (
     id === "20580" ||
     / HUBBLE | HST | KEPLER | SPITZER | TESS | WEBB | JWST | CHANDRA | CXO | FERMI | FGRST | GLAST /.test(
@@ -50,7 +50,7 @@ export function classify(s) {
   if (WEATHER_NAME_RE.test(n)) return "weather";
   if (EO_NAME_RE.test(n)) return "eo";
   if (s.cat === "geostationary") return "geo";
-  if (s.cat === "starlink") return "starlink";
+  if (s.cat === "starlink" || s.cat === "kuiper") return "starlink";
   if (s.cat === "science") return "telescope"; // science satellites without specific name match
   return "generic";
 }
@@ -137,11 +137,13 @@ export function describe(s) {
     return "Aqua — NASA's water-cycle satellite, launched 2002. Measures precipitation, evaporation, ocean temperatures, sea ice, and water vapour to understand how water moves through the Earth system.";
   if (/DSCOVR/.test(n))
     return "DSCOVR — the Deep Space Climate Observatory, sitting at the Sun-Earth L1 point 1 million miles away. Monitors the solar wind 15–60 minutes before it hits Earth and returns the iconic 'EPIC' daily images of the full sunlit Earth.";
-  // --- Starlink / OneWeb ---
+  // --- Starlink / OneWeb / Kuiper ---
   if (n.includes("STARLINK"))
-    return "One of SpaceX's Starlink broadband satellites — part of a constellation now numbering over 6,000 spacecraft, the largest active satellite fleet ever assembled.";
+    return "One of SpaceX's Starlink broadband satellites — over 10,000 now in orbit at roughly 550 km, more than every other satellite type combined, forming a laser-linked mesh network that also powers Direct-to-Cell texting in dead zones with no towers.";
   if (n.includes("ONEWEB"))
-    return "A OneWeb satellite — part of a 648-satellite constellation delivering global broadband internet, particularly to remote and polar regions.";
+    return "A OneWeb satellite — part of a roughly 600-satellite polar broadband constellation now run by Eutelsat OneWeb, flying nearly three times higher than Starlink to reach pole-to-pole coverage for maritime, aviation, and government customers.";
+  if (n.includes("KUIPER"))
+    return "One of Amazon's Kuiper (Amazon Leo) broadband satellites — already the third-largest constellation in orbit behind Starlink and China's networks, racing toward an FCC deadline requiring half its planned 3,236 satellites flying by mid-2026.";
   // --- Soyuz / Dragon / Cygnus ---
   if (/SOYUZ/.test(n))
     return "A Soyuz spacecraft — Russia's workhorse crew vehicle, in continuous service since 1967. Each one flies a crew to and from the ISS before being deorbited.";
