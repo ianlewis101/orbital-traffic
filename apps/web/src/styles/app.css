@@ -107,7 +107,7 @@
 
   /* ---------- wordmark ---------- */
   #brand{top:22px;left:24px;animation:rise .8s both .05s;display:flex;align-items:center;gap:12px}
-  #brand .mark{width:34px;height:34px;flex-shrink:0}
+  #brand .mark{width:52px;height:52px;flex-shrink:0}
   #brand .wm{font-family:var(--logo);font-weight:800;font-size:28px;line-height:0.92;letter-spacing:0.01em;
     background:linear-gradient(95deg,#eef1f8 12%,#5eead4 55%,#a78bfa 92%);-webkit-background-clip:text;
     background-clip:text;color:transparent}
