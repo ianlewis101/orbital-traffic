@@ -342,7 +342,7 @@
     align-items:center;justify-content:center;gap:26px;transition:opacity .9s}
   #splash.gone{opacity:0;pointer-events:none}
   #splash .splash-brand{display:flex;flex-direction:column;align-items:center;gap:14px}
-  #splash .splash-brand .mark{width:56px;height:56px}
+  #splash .splash-brand .mark{width:96px;height:96px}
   #splash .ttl{font-family:var(--logo);font-weight:800;font-size:36px;letter-spacing:0.01em;
     background:linear-gradient(95deg,#eef1f8 12%,#5eead4 55%,#a78bfa 92%);-webkit-background-clip:text;
     background-clip:text;color:transparent}
