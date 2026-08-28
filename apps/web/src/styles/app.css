@@ -585,7 +585,7 @@
      dense block. Cards give real boundaries; a per-section icon + accent
      color gives quick wayfinding without adding new tokens (reuses
      --signal/--amber/--violet, already meaningful elsewhere in the app). */
-  #settings-body{display:flex;flex-direction:column;gap:13px;padding-top:2px}
+  #settings-body{display:flex;flex-direction:column;gap:13px;padding-top:13px}
   .set-card{background:rgba(255,255,255,0.035);border:1px solid var(--line);
     border-radius:14px;padding:14px 15px 15px;animation:rise .5s both}
   .set-card:nth-child(1){animation-delay:.02s}
