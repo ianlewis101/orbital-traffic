@@ -171,7 +171,15 @@ async function boot() {
   initPicking();
   applyReduceMotion();
 
-  await ingest(data.sats);
+  try {
+    await ingest(data.sats);
+  } catch (e) {
+    // ingest() guards every per-record step, so this should be unreachable
+    // against real data — but boot must never get stuck here: whatever made
+    // it into state.sats before a hypothetical throw stays, and the app
+    // still renders with that rather than never reaching the scene at all.
+    console.error(e);
+  }
   // Age reference for the bundled catalog, read from the data itself: the
   // newest TLE epoch among loaded objects. We deliberately don't use the
   // Last-Modified header of /data/satellites.json — on GitHub Pages that
