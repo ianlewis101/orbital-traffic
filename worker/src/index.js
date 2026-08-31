@@ -31,6 +31,13 @@ import {
 } from "@orbital-traffic/catalog";
 
 export const TLE_TTL = 20 * 60; // 20 minutes
+// One CelesTrak group failing (timeout, transient 5xx) shouldn't poison the
+// merged catalog for the full 20-minute TLE_TTL — that's how a single flaky
+// moment made an entire category (e.g. geostationary) vanish from every
+// visitor's feed for up to 20 minutes. Same rationale and value as
+// CREW_FAIL_TTL: short enough for a real retry soon, long enough to collapse
+// a stampede of visitors into ~one retry attempt.
+export const TLE_PARTIAL_FAIL_TTL = 90;
 export const CREW_TTL = 60 * 60; // 1 hour
 export const TODAY_TTL = 5 * 60; // 5 minutes
 export const CAPSULES_TTL = 10 * 60; // 10 minutes — source refreshes every 4h, so this just bounds edge staleness
@@ -104,25 +111,48 @@ const CAPSULES_URL =
 const LAUNCH_REENTRY_URL =
   "https://raw.githubusercontent.com/ianlewis101/orbital-traffic/main/launch-reentry-log.json";
 
+// A stalled CelesTrak connection on any one of the 13 groups otherwise hangs
+// this fetch indefinitely — Promise.allSettled below waits for every group
+// to settle, so one straggler holds up the whole /tle response until the
+// platform's own wall-clock limit kills the request with zero bytes sent.
+// Aborting a slow group after this long lets it fail fast and fall out of
+// the merge like any other failed group, instead of taking every visitor's
+// request down with it. 10s comfortably covers a normal response even for
+// "active", the largest group.
+const GROUP_FETCH_TIMEOUT_MS = 10000;
+
 async function fetchGroup([group, cat]) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), GROUP_FETCH_TIMEOUT_MS);
   try {
     const res = await fetch(CELESTRAK_BASE + group, {
       headers: FETCH_HEADERS,
       cf: { cacheTtl: TLE_TTL, cacheEverything: true },
+      signal: controller.signal,
     });
-    if (!res.ok) return [];
-    return parseGp(await res.text(), cat);
+    if (!res.ok) return { recs: [], ok: false };
+    return { recs: parseGp(await res.text(), cat), ok: true };
   } catch {
-    return [];
+    return { recs: [], ok: false };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
 export async function buildTLERecords() {
   const results = await Promise.allSettled(GROUPS.map(fetchGroup));
+  const settled = results.map((r) =>
+    r.status === "fulfilled" ? r.value : { recs: [], ok: false }
+  );
   // Merge in GROUPS order (not fetch-completion order) so a satellite
   // already claimed by a specific group is never overwritten by a later,
   // more generic one.
-  return mergeRecords(results.map((r) => (r.status === "fulfilled" ? r.value : [])));
+  const records = mergeRecords(settled.map((s) => s.recs));
+  // Not serialized to the client (JSON.stringify on an array only emits
+  // index-keyed entries) — read by the /tle route's ttlFor below to decide
+  // how long this merge is safe to cache. See TLE_PARTIAL_FAIL_TTL.
+  records.failedGroups = settled.filter((s) => !s.ok).length;
+  return records;
 }
 
 /**
@@ -473,7 +503,10 @@ async function cached(ctx, path, ttl, build, ttlFor = () => ttl) {
 }
 
 const ROUTES = {
-  "/tle": (ctx) => cached(ctx, "/tle", TLE_TTL, buildTLERecords),
+  "/tle": (ctx) =>
+    cached(ctx, "/tle", TLE_TTL, buildTLERecords, (d) =>
+      d.failedGroups > 0 ? TLE_PARTIAL_FAIL_TTL : TLE_TTL
+    ),
   "/crew": (ctx, request, env) =>
     cached(
       ctx,

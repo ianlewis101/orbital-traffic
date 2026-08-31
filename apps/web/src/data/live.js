@@ -22,6 +22,20 @@ const REFRESH_JITTER_MS = 2 * 60 * 1000;
 // moment the user looks back at it, without waiting out the interval.
 const VISIBILITY_STALE_MS = 20 * 60 * 1000;
 
+// A stalled connection to the Worker or to CelesTrak otherwise hangs fetch()
+// indefinitely (no browser-default timeout) — the primary /tle fetch would
+// sit unresolved instead of falling back, and inside the fallback's
+// Promise.allSettled a single stuck group holds up the whole merge. Bounding
+// every request lets a stuck one fail fast and fall out cleanly, mirroring
+// the Worker's own per-group timeout (worker/src/index.js's fetchGroup()).
+const FETCH_TIMEOUT_MS = 12000;
+
+function fetchWithTimeout(url, opts) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  return fetch(url, { ...opts, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
 // A single in-flight sync, shared by every caller. ingest() yields to the
 // browser between batches, so two overlapping syncs would interleave their
 // catalog writes mid-ingest; the periodic timer, the visibility handler, and
@@ -82,7 +96,7 @@ async function runLiveSync() {
   // at boot), so it must never block or fail the satellite catalog sync.
   refreshEvents();
   try {
-    const res = await fetch(WORKER_BASE + "/tle", { cache: "no-store" });
+    const res = await fetchWithTimeout(WORKER_BASE + "/tle", { cache: "no-store" });
     if (!res.ok) throw new Error("worker " + res.status);
     const recs = await res.json();
     if (!recs.length) throw new Error("empty");
@@ -90,7 +104,7 @@ async function runLiveSync() {
   } catch {
     const results = await Promise.allSettled(
       GROUPS.map(async ([grp, cat]) => {
-        const r = await fetch(CELESTRAK_BASE + grp, { cache: "no-store" });
+        const r = await fetchWithTimeout(CELESTRAK_BASE + grp, { cache: "no-store" });
         if (!r.ok) return [];
         return parseGp(await r.text(), cat);
       })
