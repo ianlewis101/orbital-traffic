@@ -4,9 +4,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 /**
  * "Today in Space" HUD card: a collapsed-by-default event feed reusing
  * .today-row markup, fed by the Worker's /events route. Covers the render
- * shape per event type, the empty state, the collapsed-header count text,
- * and tap-to-select (including the "inert" case where an event has no
- * live object to select — e.g. a decayed object already pruned locally).
+ * shape per event type, the empty state, the static (count-independent)
+ * header title, and tap-to-select (including the "inert" case where an
+ * event has no live object to select — e.g. a decayed object already
+ * pruned locally).
  */
 
 const selectSpy = vi.fn();
@@ -44,10 +45,10 @@ describe("refreshEvents / renderEvents", () => {
     await mod.refreshEvents();
     const list = document.getElementById("events-list");
     expect(list.textContent).toContain("No major events");
-    expect(document.getElementById("events-title").textContent).toBe("Today in Space · No events");
+    expect(document.getElementById("events-title").textContent).toBe("Today in Space");
   });
 
-  it("renders a docking event with station arrow copy and updates the header count", async () => {
+  it("renders a docking event with station arrow copy and leaves the header title unchanged", async () => {
     const { mod, state } = await load();
     const dragon = { id: "80001", name: "CREW DRAGON 12" };
     state.byId.set("80001", dragon);
@@ -73,7 +74,7 @@ describe("refreshEvents / renderEvents", () => {
     await mod.refreshEvents();
     const list = document.getElementById("events-list");
     expect(list.textContent).toContain("Docked · CREW DRAGON 12 → ISS");
-    expect(document.getElementById("events-title").textContent).toBe("Today in Space · 1 event");
+    expect(document.getElementById("events-title").textContent).toBe("Today in Space");
 
     const row = list.querySelector(".event-row");
     expect(row.classList.contains("inert")).toBe(false);

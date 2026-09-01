@@ -91,22 +91,9 @@ export function renderEvents() {
   }
 }
 
-function updateHeader(count) {
-  const title = $("#events-title");
-  if (!title) return;
-  if (count == null) {
-    title.textContent = "Today in Space";
-  } else if (count === 0) {
-    title.textContent = "Today in Space · No events";
-  } else {
-    title.textContent = `Today in Space · ${count} event${count === 1 ? "" : "s"}`;
-  }
-}
-
 /**
  * One /events read, then a re-render. Best-effort: on any failure the
- * header falls back to its bare "Today in Space" title (no false "0
- * events") and the body keeps whatever it last rendered.
+ * body keeps whatever it last rendered.
  */
 export async function refreshEvents() {
   try {
@@ -115,7 +102,6 @@ export async function refreshEvents() {
     const d = await r.json();
     if (!Array.isArray(d.events)) return;
     cachedEvents = d.events;
-    updateHeader(cachedEvents.length);
     renderEvents();
   } catch {
     // Leaves cachedEvents/header as they were.
