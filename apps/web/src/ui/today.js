@@ -39,11 +39,64 @@ function reasonFor(row) {
   return Number.isFinite(n) ? row.template.replace("{n}", String(n)) : row.reason;
 }
 
+const SLOT_COUNT = 5;
+const LAST_SHOWN_KEY = "ot-hotlist-last-shown";
+
+function shuffled(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/**
+ * Picked once per boot (the card is a fixed "here's today's five" for the
+ * whole session, not a live-updating carousel). `pinned` rows (ISS) always
+ * show; the rest of the SLOT_COUNT is filled by a random draw from the
+ * non-pinned pool, preferring entries that weren't part of the last boot's
+ * draw so reloading doesn't just show the same four again. If the pool is
+ * too small to avoid every repeat, falling back to the full pool (letting a
+ * repeat through) beats showing fewer than SLOT_COUNT rows.
+ */
+export function pickRotation(rows) {
+  const pinned = rows.filter((r) => r.pinned);
+  const pool = rows.filter((r) => !r.pinned);
+  const needed = Math.max(0, SLOT_COUNT - pinned.length);
+
+  let lastShown = [];
+  try {
+    lastShown = JSON.parse(localStorage.getItem(LAST_SHOWN_KEY) || "[]");
+  } catch {
+    lastShown = [];
+  }
+
+  const fresh = pool.filter((r) => !lastShown.includes(r.id));
+  const candidates = fresh.length >= needed ? fresh : pool;
+  const chosen = shuffled(candidates).slice(0, needed);
+
+  try {
+    localStorage.setItem(LAST_SHOWN_KEY, JSON.stringify(chosen.map((r) => r.id)));
+  } catch {
+    // Best-effort — a failed write just means the next boot can't dedupe.
+  }
+
+  return [...pinned, ...chosen];
+}
+
+let rotation = null;
+
+function getRotation() {
+  if (!rotation) rotation = pickRotation(DATA.hotlist);
+  return rotation;
+}
+
 export function renderToday() {
   const box = $("#today-list");
   if (!box) return;
   box.innerHTML = "";
-  DATA.hotlist.forEach((h) => {
+  getRotation().forEach((h) => {
     const sat = state.byId.get(h.id);
     const hex = catColorHex(sat ? sat.cat : "other");
     const el = document.createElement("button");

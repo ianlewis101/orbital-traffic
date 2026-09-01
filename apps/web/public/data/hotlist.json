@@ -2,6 +2,7 @@
   {
     "id": "25544",
     "name": "ISS",
+    "pinned": true,
     "live": "issCrew",
     "template": "{n} humans living in space right now",
     "reason": "Continuously crewed since November 2000"
