@@ -3,3 +3,4 @@ export * from "./tle.js";
 export * from "./groups.js";
 export * from "./capsules.js";
 export * from "./events.js";
+export * from "./concurrency.js";

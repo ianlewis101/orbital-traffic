@@ -569,7 +569,11 @@ describe("worker routes", () => {
     expect(body.events.map((e) => e.type)).toEqual(["reentry", "docking", "launch", "crew"]);
     expect(body.events[1]).toMatchObject({ type: "docking", subtype: "docked", id: "80001" });
     expect(body.events[2]).toMatchObject({ type: "launch", count: 2, ids: ["60001", "60002"] });
-    expect(body.events[3]).toMatchObject({ type: "crew", direction: "arrived", name: "Anil Menon" });
+    expect(body.events[3]).toMatchObject({
+      type: "crew",
+      direction: "arrived",
+      name: "Anil Menon",
+    });
     expect(body.windowHours).toBe(48);
   });
 
@@ -594,7 +598,8 @@ describe("worker routes", () => {
   it("/events degrades one source to empty without failing the whole route", async () => {
     const recentIso = new Date().toISOString();
     fetch.mockImplementation((url) => {
-      if (url.includes("capsule-status.json")) return Promise.resolve(new Response("err", { status: 500 }));
+      if (url.includes("capsule-status.json"))
+        return Promise.resolve(new Response("err", { status: 500 }));
       if (url.includes("launch-reentry-log.json")) {
         return Promise.resolve(
           new Response(
@@ -711,7 +716,11 @@ describe("buildTLERecords", () => {
   });
 
   it("fetches every configured CelesTrak group", async () => {
-    fetch.mockResolvedValue(textResponse(""));
+    // A fresh Response per call, matching real fetch() — a Response body can
+    // only be read once, so mockResolvedValue's single shared instance would
+    // make every call after the first look like a failure to fetchGroup()'s
+    // await res.text(), which is not what this test means to exercise.
+    fetch.mockImplementation(() => Promise.resolve(textResponse("")));
     await buildTLERecords();
     expect(fetch).toHaveBeenCalledTimes(GROUPS.length);
   });
@@ -724,5 +733,46 @@ describe("buildTLERecords", () => {
     const recs = await buildTLERecords();
     expect(recs).toHaveLength(1);
     expect(recs[0].cat).toBe("stations");
+  });
+
+  it("never has more than a few CelesTrak requests in flight at once", async () => {
+    // Regression guard for the real failure this project hit: CelesTrak
+    // enforces a low per-IP concurrent-connection ceiling, and firing all 13
+    // GROUPS requests simultaneously (the original Promise.allSettled
+    // design) left most of them stalled — not because any single request was
+    // slow, but purely from contending for the same ceiling. Bounded
+    // concurrency is the actual fix; this asserts the bound is respected
+    // rather than just that the end result looks right.
+    let inFlight = 0;
+    let maxInFlight = 0;
+    fetch.mockImplementation(() => {
+      inFlight++;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      return new Promise((resolve) =>
+        setTimeout(() => {
+          inFlight--;
+          resolve(textResponse(""));
+        }, 5)
+      );
+    });
+    await buildTLERecords();
+    expect(maxInFlight).toBeLessThanOrEqual(3);
+  });
+
+  it("retries a group that failed in the initial concurrency-bounded pass", async () => {
+    let stationsCalls = 0;
+    fetch.mockImplementation((url) => {
+      if (url.includes("GROUP=stations")) {
+        stationsCalls++;
+        // Fails only the first time — a lone retry (not contending with the
+        // other 12 for the connection ceiling) succeeds.
+        if (stationsCalls === 1) return Promise.reject(new Error("celestrak flaky"));
+        return Promise.resolve(textResponse(ISS_GP));
+      }
+      return Promise.resolve(textResponse(""));
+    });
+    const recs = await buildTLERecords();
+    expect(stationsCalls).toBe(2);
+    expect(recs.find((r) => r.name === "ISS (ZARYA)")?.cat).toBe("stations");
   });
 });
