@@ -30,19 +30,52 @@ export function catColorHex(cat) {
 // docking/undocking/launched/landed vehicles ARE cat:"capsules"; a
 // re-entering/decaying object becomes cat:"debris" the same metaphor;
 // crew-change violet already matches capsule-status.js's .crew-today-dot.
-// Glyphs follow the app's one existing icon-on-a-swatch precedent
-// (.cat.fav-only .sw::after{content:"★"} in legend.js/app.css) rather
-// than introducing an SVG icon set — there isn't one anywhere else yet
-// (Design item #14, "standardize icons", is still unstarted).
 export const EVENT_TYPES = {
-  docking: { color: CATS.capsules.color, glyph: "⬡" },
-  launch: { color: CATS.communications.color, glyph: "▲" },
-  reentry: { color: CATS.debris.color, glyph: "▼" },
-  crew: { color: 0xb39bff, glyph: "◆" },
+  docking: { color: CATS.capsules.color },
+  launch: { color: CATS.communications.color },
+  reentry: { color: CATS.debris.color },
+  crew: { color: 0xb39bff },
 };
 
 export function eventColorHex(type) {
   return "#" + (EVENT_TYPES[type] || EVENT_TYPES.docking).color.toString(16).padStart(6, "0");
+}
+
+// Icon-first badges for the event feed (Design item #14, "standardize
+// icons" — first entry). Fixed inline-SVG strings keyed by event type,
+// same closed-table-with-fallback shape as eventColorHex above, so both
+// are allow-listed together in eslint-rules/no-unescaped-innerhtml.js.
+const EVENT_ICON_SVG = {
+  docking: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 4 L18.9 8 L18.9 16 L12 20 L5.1 16 L5.1 8 Z"/>
+    <line x1="5.1" y1="12" x2="9.5" y2="12"/>
+    <line x1="14.5" y1="12" x2="18.9" y2="12"/>
+    <line x1="10.7" y1="9.6" x2="10.7" y2="14.4"/>
+    <line x1="13.3" y1="9.6" x2="13.3" y2="14.4"/>
+  </svg>`,
+  launch: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 2.3c2.8 0 4.4 3.6 4.4 7.4v6.6h-8.8v-6.6c0-3.8 1.6-7.4 4.4-7.4Z"/>
+    <circle cx="12" cy="9.3" r="1.7"/>
+    <path d="M7.6 14.3 4.6 19.3l3-1"/>
+    <path d="M16.4 14.3 19.4 19.3l-3-1"/>
+    <path d="M10 20.5 12 23.3 14 20.5"/>
+  </svg>`,
+  reentry: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4.2 9.2C7 6.6 17 6.6 19.8 9.2"/>
+    <line x1="12" y1="9.6" x2="12" y2="17.6"/>
+    <path d="M8.6 15 12 18.6 15.4 15"/>
+    <path d="M8.7 11.6 6.9 13.6"/>
+    <path d="M15.3 11.6 17.1 13.6"/>
+  </svg>`,
+  crew: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="10" r="6.6"/>
+    <path d="M8.6 8.4c1.1-1.4 2.6-2 4.4-1.6"/>
+    <path d="M4.6 20c1.7-3.1 5-4.9 7.4-4.9s5.7 1.8 7.4 4.9"/>
+  </svg>`,
+};
+
+export function eventIconSvg(type) {
+  return EVENT_ICON_SVG[type] || EVENT_ICON_SVG.docking;
 }
 
 // ---------- live data endpoints ----------

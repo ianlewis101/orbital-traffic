@@ -190,17 +190,20 @@
   #events .body{padding:5px 7px 7px}
   .events-empty{padding:12px 7px;font-size:10px;color:var(--ink-faint);letter-spacing:0.03em;text-align:center;line-height:1.4}
   /* event-row extends .today-row's layout/hover/typography as-is; only the
-     glyph-on-swatch and the non-selectable ("inert") state are new. */
+     icon badge and the non-selectable ("inert") state are new. */
   .event-row.inert{cursor:default}
   .event-row.inert:hover{background:none}
-  /* Same mechanism as the existing favorites-star precedent
-     (.cat.fav-only .sw::after{content:"★"}) — a small glyph rendered next
-     to the color swatch rather than a separate icon asset. */
-  .event-row .sw::after{font-size:8px;margin-left:2px}
-  .event-row .sw.ev-docking::after{content:"⬡"}
-  .event-row .sw.ev-launch::after{content:"▲"}
-  .event-row .sw.ev-reentry::after{content:"▼"}
-  .event-row .sw.ev-crew::after{content:"◆"}
+  /* Icon-first badge: a real SVG (config.js's eventIconSvg()) tinted via
+     inline color + the app's existing glow-on-currentColor idiom (same as
+     .today-row .sw / .cat .sw), sized for a touch-friendly tap target
+     instead of the old 8px dot-plus-glyph. */
+  .event-row .badge{
+    width:22px;height:22px;flex:0 0 auto;border-radius:7px;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,0.05);border:1px solid var(--line);
+    box-shadow:0 0 9px currentColor;
+  }
+  .event-row .badge svg{width:13px;height:13px}
 
   /* ---------- time machine (minimal) ---------- */
   #time{position:static;width:100%}

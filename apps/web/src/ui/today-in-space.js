@@ -1,4 +1,4 @@
-import { CATS, WORKER_BASE, eventColorHex } from "../config.js";
+import { CATS, WORKER_BASE, eventColorHex, eventIconSvg } from "../config.js";
 import { state, $ } from "../state.js";
 import { select } from "./info.js";
 import { esc } from "../util/html.js";
@@ -78,12 +78,13 @@ export function renderEvents() {
   for (const e of cachedEvents) {
     const { text, target } = describeEvent(e);
     const hex = eventColorHex(e.type);
+    const icon = eventIconSvg(e.type);
     const rel = formatRelativeTime(new Date(e.at));
 
     const el = document.createElement("button");
     el.type = "button";
     el.className = "today-row event-row" + (target ? "" : " inert");
-    el.innerHTML = `<span class="sw ev-${esc(e.type)}" style="background:${hex};color:${hex}"></span>
+    el.innerHTML = `<span class="badge" style="color:${hex}">${icon}</span>
       <span class="info"><span class="nm">${esc(text)}</span><span class="reason">${esc(rel || "")}</span></span>`;
     if (target) el.onclick = () => select(target);
     box.appendChild(el);
