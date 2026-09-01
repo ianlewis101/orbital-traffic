@@ -21,5 +21,14 @@
     "reason": "Standby backup in NOAA's geostationary weather fleet"
   },
   { "id": "48274", "name": "CSS (Tiangong)", "reason": "China's permanent space station" },
-  { "id": "27424", "name": "Aqua", "reason": "Tracking Earth's water cycle since 2002" }
+  { "id": "27424", "name": "Aqua", "reason": "Tracking Earth's water cycle since 2002" },
+  { "id": "00900", "name": "Calsphere 1", "reason": "Cold War radar calibration sphere, still orbiting since 1963" },
+  { "id": "07530", "name": "AO-7", "reason": "Declared dead in 1981 — came back to life in 2002" },
+  { "id": "02826", "name": "OPS 5712 (P/L 160)", "reason": "Classified 1960s Air Force payload, never declassified" },
+  { "id": "02874", "name": "OPS 5712 (P/L 153)", "reason": "Companion payload from that same undisclosed 1960s mission" },
+  { "id": "58400", "name": "Malligyong-1", "reason": "North Korea's first spy satellite — capability still disputed" },
+  { "id": "46396", "name": "Gaofen-11 02", "reason": "Chinese spy satellite assessed to rival the US's own KH-11s" },
+  { "id": "54227", "name": "MATS", "reason": "Photographs glowing electric-blue clouds at the edge of space" },
+  { "id": "58992", "name": "ADRAS-J", "reason": "Chased a piece of tumbling rocket debris for 293 days" },
+  { "id": "58955", "name": "HBTSS-SV2", "reason": "Prototype built to track hypersonic missiles other systems can't catch" }
 ]
