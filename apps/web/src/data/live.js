@@ -22,6 +22,33 @@ const REFRESH_JITTER_MS = 2 * 60 * 1000;
 // moment the user looks back at it, without waiting out the interval.
 const VISIBILITY_STALE_MS = 20 * 60 * 1000;
 
+// A stalled connection to the Worker or to CelesTrak otherwise hangs fetch()
+// indefinitely (no browser-default timeout) — the primary /tle fetch would
+// sit unresolved instead of falling back, and inside the fallback's
+// Promise.allSettled a single stuck group holds up the whole merge. Bounding
+// every request lets a stuck one fail fast and fall out cleanly, mirroring
+// the Worker's own per-group timeout (worker/src/index.js's fetchGroup()).
+const FETCH_TIMEOUT_MS = 12000;
+
+function fetchWithTimeout(url, opts) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  return fetch(url, { ...opts, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
+// A "successful" response that's drastically smaller than the catalog
+// already on screen is worse than an honest failure — applying it would
+// replace a complete globe with a visibly broken one. Half of whatever's
+// currently loaded is a generous floor: a real CelesTrak/Worker hiccup drops
+// at most a handful of the 13 fetched groups, nowhere close to half the
+// catalog, so this only ever trips on a response that's actually broken —
+// and it only ever blocks a regression, never a correction (a genuinely
+// small current count, e.g. from a prior bad sync, still accepts a full
+// recovery fetch because that raises the count, not lowers it).
+export function isPlausibleCatalog(recs) {
+  return recs.length > 0 && recs.length >= state.sats.length / 2;
+}
+
 // A single in-flight sync, shared by every caller. ingest() yields to the
 // browser between batches, so two overlapping syncs would interleave their
 // catalog writes mid-ingest; the periodic timer, the visibility handler, and
@@ -82,15 +109,15 @@ async function runLiveSync() {
   // at boot), so it must never block or fail the satellite catalog sync.
   refreshEvents();
   try {
-    const res = await fetch(WORKER_BASE + "/tle", { cache: "no-store" });
+    const res = await fetchWithTimeout(WORKER_BASE + "/tle", { cache: "no-store" });
     if (!res.ok) throw new Error("worker " + res.status);
     const recs = await res.json();
-    if (!recs.length) throw new Error("empty");
+    if (!isPlausibleCatalog(recs)) throw new Error("implausible catalog size: " + recs.length);
     await applyLive(recs, await capsulesPromise);
   } catch {
     const results = await Promise.allSettled(
       GROUPS.map(async ([grp, cat]) => {
-        const r = await fetch(CELESTRAK_BASE + grp, { cache: "no-store" });
+        const r = await fetchWithTimeout(CELESTRAK_BASE + grp, { cache: "no-store" });
         if (!r.ok) return [];
         return parseGp(await r.text(), cat);
       })
@@ -100,12 +127,14 @@ async function runLiveSync() {
     // more generic one — results is in GROUPS order since Promise.allSettled
     // preserves input order. Mirrors the Worker's buildTLERecords() merge.
     const recs = mergeRecords(results.map((r) => (r.status === "fulfilled" ? r.value : [])));
-    if (recs.length) {
+    if (isPlausibleCatalog(recs)) {
       await applyLive(recs, await capsulesPromise);
     } else {
-      // Both paths failed. Leave an honest state behind so the freshness
-      // line reads "cached elements · retrying" rather than a permanent
-      // "syncing…" — the periodic policy will retry on its own.
+      // Both paths failed, or the fallback merge came back implausibly small
+      // (see isPlausibleCatalog) — either way, never apply it. Leave an
+      // honest state behind so the freshness line reads "cached elements ·
+      // retrying" rather than a permanent "syncing…" — the periodic policy
+      // will retry on its own.
       state.syncFailed = true;
       toast("Live fetch unavailable — showing cached elements");
       updateCount();

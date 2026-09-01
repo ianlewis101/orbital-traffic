@@ -48,6 +48,7 @@ export default [
       globals: {
         ...globals.serviceworker,
         caches: "readonly",
+        AbortController: "readonly",
       },
     },
   },
