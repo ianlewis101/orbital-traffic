@@ -1,4 +1,10 @@
-import { parseGp, mergeRecords, GROUPS, CELESTRAK_BASE } from "@orbital-traffic/catalog";
+import {
+  parseGp,
+  mergeRecords,
+  GROUPS,
+  CELESTRAK_BASE,
+  mapWithConcurrency,
+} from "@orbital-traffic/catalog";
 import { WORKER_BASE } from "../config.js";
 import { state, $ } from "../state.js";
 import { ingest, removeSats } from "./ingest.js";
@@ -24,16 +30,36 @@ const VISIBILITY_STALE_MS = 20 * 60 * 1000;
 
 // A stalled connection to the Worker or to CelesTrak otherwise hangs fetch()
 // indefinitely (no browser-default timeout) — the primary /tle fetch would
-// sit unresolved instead of falling back, and inside the fallback's
-// Promise.allSettled a single stuck group holds up the whole merge. Bounding
-// every request lets a stuck one fail fast and fall out cleanly, mirroring
-// the Worker's own per-group timeout (worker/src/index.js's fetchGroup()).
+// sit unresolved instead of falling back. Bounding every request lets a
+// stuck one fail fast, mirroring the Worker's own per-group timeout
+// (worker/src/index.js's fetchGroup()).
 const FETCH_TIMEOUT_MS = 12000;
+
+// CelesTrak enforces a low per-IP concurrent-connection ceiling — measured
+// directly against the real endpoint, firing all 13 GROUPS requests at once
+// left 9 of 13 stalled past a 15s timeout, even though each resolves in 1-2s
+// issued alone. This fallback used to fire all 13 simultaneously
+// (Promise.allSettled(GROUPS.map(...))), which is the real reason a category
+// could vanish or undercount on a real (especially mobile) connection, not
+// per-request slowness. Same fix and same reasoning as the Worker's
+// buildTLERecords() — see GROUP_FETCH_CONCURRENCY there.
+const GROUP_FETCH_CONCURRENCY = 3;
 
 function fetchWithTimeout(url, opts) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   return fetch(url, { ...opts, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
+/** One CelesTrak group for the fallback merge — mirrors the Worker's fetchGroup(). */
+async function fetchGroupRecords([grp, cat]) {
+  try {
+    const r = await fetchWithTimeout(CELESTRAK_BASE + grp, { cache: "no-store" });
+    if (!r.ok) return { recs: [], ok: false };
+    return { recs: parseGp(await r.text(), cat), ok: true };
+  } catch {
+    return { recs: [], ok: false };
+  }
 }
 
 // A "successful" response that's drastically smaller than the catalog
@@ -115,18 +141,15 @@ async function runLiveSync() {
     if (!isPlausibleCatalog(recs)) throw new Error("implausible catalog size: " + recs.length);
     await applyLive(recs, await capsulesPromise);
   } catch {
-    const results = await Promise.allSettled(
-      GROUPS.map(async ([grp, cat]) => {
-        const r = await fetchWithTimeout(CELESTRAK_BASE + grp, { cache: "no-store" });
-        if (!r.ok) return [];
-        return parseGp(await r.text(), cat);
-      })
-    );
+    const settled = await mapWithConcurrency(GROUPS, GROUP_FETCH_CONCURRENCY, fetchGroupRecords);
+    for (let i = 0; i < GROUPS.length; i++) {
+      if (!settled[i].ok) settled[i] = await fetchGroupRecords(GROUPS[i]);
+    }
     // Merge in GROUPS order (not fetch-completion order) so a satellite
     // already claimed by a specific group is never overwritten by a later,
-    // more generic one — results is in GROUPS order since Promise.allSettled
+    // more generic one — settled is in GROUPS order since mapWithConcurrency
     // preserves input order. Mirrors the Worker's buildTLERecords() merge.
-    const recs = mergeRecords(results.map((r) => (r.status === "fulfilled" ? r.value : [])));
+    const recs = mergeRecords(settled.map((s) => s.recs));
     if (isPlausibleCatalog(recs)) {
       await applyLive(recs, await capsulesPromise);
     } else {

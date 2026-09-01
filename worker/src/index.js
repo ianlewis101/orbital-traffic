@@ -28,6 +28,7 @@ import {
   GROUPS,
   CELESTRAK_BASE,
   FETCH_HEADERS,
+  mapWithConcurrency,
 } from "@orbital-traffic/catalog";
 
 export const TLE_TTL = 20 * 60; // 20 minutes
@@ -111,15 +112,24 @@ const CAPSULES_URL =
 const LAUNCH_REENTRY_URL =
   "https://raw.githubusercontent.com/ianlewis101/orbital-traffic/main/launch-reentry-log.json";
 
-// A stalled CelesTrak connection on any one of the 13 groups otherwise hangs
-// this fetch indefinitely — Promise.allSettled below waits for every group
-// to settle, so one straggler holds up the whole /tle response until the
-// platform's own wall-clock limit kills the request with zero bytes sent.
-// Aborting a slow group after this long lets it fail fast and fall out of
-// the merge like any other failed group, instead of taking every visitor's
-// request down with it. 10s comfortably covers a normal response even for
-// "active", the largest group.
+// Belt-and-suspenders against a single stalled connection: aborts a group
+// fetch that's taking unreasonably long so it can fail fast and fall out of
+// the merge, rather than hold up the response indefinitely. This alone does
+// NOT fix the real failure mode below — see GROUP_FETCH_CONCURRENCY.
 const GROUP_FETCH_TIMEOUT_MS = 10000;
+
+// CelesTrak enforces a low per-IP concurrent-connection ceiling. Measured
+// directly against the real endpoint: firing all 13 GROUPS requests at once
+// (this function's original design, one Promise.allSettled(GROUPS.map(...)))
+// left 9 of the 13 stalled past a 15s timeout — even though each of those
+// same 13 requests, issued alone, resolved in 1-2s. That's what was actually
+// causing categories to vanish or undercount (Starlink reading 0, debris
+// reading 115 instead of ~2,600, etc.) — not slow individual requests. Fetch
+// with bounded concurrency instead; a request that still doesn't make it
+// through gets one sequential retry below, which is reliable precisely
+// because a lone request isn't contending with a dozen siblings for the same
+// connection ceiling.
+const GROUP_FETCH_CONCURRENCY = 3;
 
 async function fetchGroup([group, cat]) {
   const controller = new AbortController();
@@ -140,10 +150,10 @@ async function fetchGroup([group, cat]) {
 }
 
 export async function buildTLERecords() {
-  const results = await Promise.allSettled(GROUPS.map(fetchGroup));
-  const settled = results.map((r) =>
-    r.status === "fulfilled" ? r.value : { recs: [], ok: false }
-  );
+  const settled = await mapWithConcurrency(GROUPS, GROUP_FETCH_CONCURRENCY, fetchGroup);
+  for (let i = 0; i < GROUPS.length; i++) {
+    if (!settled[i].ok) settled[i] = await fetchGroup(GROUPS[i]);
+  }
   // Merge in GROUPS order (not fetch-completion order) so a satellite
   // already claimed by a specific group is never overwritten by a later,
   // more generic one.
