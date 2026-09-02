@@ -117,6 +117,18 @@ function updateMiniCard(s) {
 // =====================================================================
 // SELECTION + INFO
 // =====================================================================
+/**
+ * Turn off "Center on Globe" follow mode. Called when the user manually
+ * drags/zooms the globe — otherwise frameSelected() keeps re-locking the
+ * camera onto the tracked object every frame (main.js's loop), silently
+ * overriding the gesture the user just made and making the globe feel
+ * stuck after the initial center animation finishes.
+ */
+export function stopTracking() {
+  state.tracking = false;
+  $("#info-track").style.color = "";
+}
+
 export function select(s) {
   state.selected = s;
   const info = $("#info");
@@ -130,8 +142,7 @@ export function select(s) {
   if (!s) {
     info.classList.remove("show");
     subDot.visible = false;
-    state.tracking = false;
-    $("#info-track").style.color = "";
+    stopTracking();
     clearTrail();
     return;
   }

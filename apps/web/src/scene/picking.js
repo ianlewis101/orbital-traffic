@@ -4,7 +4,7 @@ import { state, $ } from "../state.js";
 import { renderer, camera, cam } from "./core.js";
 import { clouds } from "./clouds.js";
 import { neoPoints, neoSats } from "./neos.js";
-import { select } from "../ui/info.js";
+import { select, stopTracking } from "../ui/info.js";
 import { resolvePick } from "./pick-core.js";
 
 const ray = new THREE.Raycaster();
@@ -29,7 +29,11 @@ export function initPicking() {
   const tip = $("#tip");
   renderer.domElement.addEventListener("pointermove", (e) => {
     if (downXY) {
-      // dragging
+      // dragging — a manual rotate means the user wants to look away from
+      // whatever's centered, so drop any active "Center on Globe" follow
+      // lock or frameSelected() would re-aim the camera right back next
+      // frame and the drag would have no visible effect.
+      if (state.tracking) stopTracking();
       const dx = e.clientX - downXY.x,
         dy = e.clientY - downXY.y;
       cam.thT -= dx * 0.005;
@@ -76,6 +80,7 @@ export function initPicking() {
     "wheel",
     (e) => {
       e.preventDefault();
+      if (state.tracking) stopTracking();
       cam.rT = Math.max(EARTH_R * 1.25, Math.min(160, cam.rT * (1 + Math.sign(e.deltaY) * 0.1)));
     },
     { passive: false }
@@ -98,6 +103,7 @@ export function initPicking() {
     "touchmove",
     (e) => {
       if (e.touches.length === 2 && pinch) {
+        if (state.tracking) stopTracking();
         const d = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY
