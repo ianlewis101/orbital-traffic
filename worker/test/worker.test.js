@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import worker, {
   buildTLERecords,
+  getTLERecords,
+  refreshTLECache,
   TLE_TTL,
   SATCAT_TTL,
   SATCAT_FAIL_TTL,
@@ -774,5 +776,103 @@ describe("buildTLERecords", () => {
     const recs = await buildTLERecords();
     expect(stationsCalls).toBe(2);
     expect(recs.find((r) => r.name === "ISS (ZARYA)")?.cat).toBe("stations");
+  });
+});
+
+// Minimal stub of the Workers KV binding surface getTLERecords()/
+// refreshTLECache() actually use.
+function stubKv(initial) {
+  let stored = initial;
+  return {
+    get: vi.fn(async (key, type) => {
+      if (stored === undefined) return null;
+      return type === "json" ? JSON.parse(stored) : stored;
+    }),
+    put: vi.fn(async (key, value) => {
+      stored = value;
+    }),
+    _stored: () => stored,
+  };
+}
+
+describe("TLE_CACHE (Workers KV warm cache)", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("getTLERecords reads the cron-refreshed catalog from KV instead of building live", async () => {
+    const kv = stubKv(JSON.stringify({ recs: [{ name: "ISS (ZARYA)", cat: "stations" }], failedGroups: 0 }));
+    const recs = await getTLERecords({ TLE_CACHE: kv });
+    expect(Array.from(recs)).toEqual([{ name: "ISS (ZARYA)", cat: "stations" }]);
+    expect(recs.failedGroups).toBe(0);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("getTLERecords falls back to a live build when KV has nothing yet", async () => {
+    fetch.mockImplementation((url) => {
+      if (url.includes("GROUP=stations")) return Promise.resolve(textResponse(ISS_GP));
+      return Promise.resolve(textResponse(""));
+    });
+    const kv = stubKv(undefined);
+    const recs = await getTLERecords({ TLE_CACHE: kv });
+    expect(recs.find((r) => r.name === "ISS (ZARYA)")?.cat).toBe("stations");
+    expect(fetch).toHaveBeenCalled();
+  });
+
+  it("getTLERecords falls back to a live build when the KV read throws", async () => {
+    fetch.mockImplementation(() => Promise.resolve(textResponse("")));
+    const kv = { get: vi.fn().mockRejectedValue(new Error("KV unavailable")) };
+    await expect(getTLERecords({ TLE_CACHE: kv })).resolves.toBeInstanceOf(Array);
+  });
+
+  it("getTLERecords builds live when no TLE_CACHE binding is present", async () => {
+    fetch.mockImplementation(() => Promise.resolve(textResponse("")));
+    const recs = await getTLERecords({});
+    expect(recs).toHaveLength(0);
+    expect(fetch).toHaveBeenCalledTimes(GROUPS.length);
+  });
+
+  it("refreshTLECache writes the merged catalog and failedGroups to KV", async () => {
+    fetch.mockImplementation((url) => {
+      if (url.includes("GROUP=stations")) return Promise.resolve(textResponse(ISS_GP));
+      return Promise.resolve(textResponse(""));
+    });
+    const kv = stubKv(undefined);
+    await refreshTLECache({ TLE_CACHE: kv });
+    expect(kv.put).toHaveBeenCalledTimes(1);
+    const [key, value, opts] = kv.put.mock.calls[0];
+    expect(key).toBe("tle");
+    const stored = JSON.parse(value);
+    expect(stored.recs.find((r) => r.name === "ISS (ZARYA)")?.cat).toBe("stations");
+    expect(stored.failedGroups).toBe(0);
+    expect(opts.expirationTtl).toBeGreaterThan(0);
+  });
+
+  it("refreshTLECache tolerates a missing TLE_CACHE binding (never throws)", async () => {
+    fetch.mockImplementation(() => Promise.resolve(textResponse("")));
+    await expect(refreshTLECache({})).resolves.toBeInstanceOf(Array);
+  });
+
+  it("the /tle route serves the KV-warmed catalog without building live", async () => {
+    const kv = stubKv(JSON.stringify({ recs: [{ name: "ISS (ZARYA)", cat: "stations" }], failedGroups: 0 }));
+    const res = await worker.fetch(new Request("https://x/tle"), { TLE_CACHE: kv }, ctx);
+    expect(res.status).toBe(200);
+    const recs = await res.json();
+    expect(recs).toEqual([{ name: "ISS (ZARYA)", cat: "stations" }]);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("scheduled() refreshes TLE_CACHE via waitUntil without blocking", async () => {
+    fetch.mockImplementation(() => Promise.resolve(textResponse("")));
+    const kv = stubKv(undefined);
+    const waited = [];
+    const schedCtx = { waitUntil: (p) => waited.push(p) };
+    await worker.scheduled({}, { TLE_CACHE: kv }, schedCtx);
+    expect(waited).toHaveLength(1);
+    await waited[0];
+    expect(kv.put).toHaveBeenCalledTimes(1);
   });
 });

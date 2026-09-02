@@ -165,6 +165,72 @@ export async function buildTLERecords() {
   return records;
 }
 
+// buildTLERecords() at GROUP_FETCH_CONCURRENCY=3 legitimately takes ~25s
+// (measured live: 23-27s) — necessary to stay under CelesTrak's per-IP
+// connection ceiling (see GROUP_FETCH_CONCURRENCY above), but too slow to
+// build on demand inside a user's request. The `cached()` wrapper below
+// only helps once a request has already paid that cost once — and it can't
+// help across data centers: the Cache API (`caches.default`) is local to
+// the data center that handled the request and never replicates elsewhere
+// (see https://developers.cloudflare.com/workers/reference/how-the-cache-works/),
+// so every Cloudflare PoP a visitor happens to land on pays this cold-build
+// cost independently. With one regular user whose requests don't reliably
+// hit the same PoP twice, that's not a rare edge case — it's close to every
+// session. TLE_CACHE (Workers KV) fixes that: it replicates globally and
+// reads back in tens of milliseconds from any PoP, so `scheduled()` below
+// keeps it warm on a cron well inside TLE_TTL, and getTLERecords() reads
+// from it instead of ever running the slow path in the common case.
+const TLE_KV_KEY = "tle";
+// Comfortably longer than the cron interval (CRON_TRIGGERS in
+// wrangler.toml, currently every 10 minutes) so one missed run doesn't
+// expire the entry — expiry here is a dead-man's-switch, not the normal
+// refresh path.
+const TLE_KV_EXPIRATION_TTL = 30 * 60; // 30 minutes
+
+/**
+ * Rebuild the merged TLE catalog and store it in TLE_CACHE (Workers KV) —
+ * called from scheduled() on a cron, so real user requests almost never
+ * pay buildTLERecords()'s ~25s cost. failedGroups rides along explicitly
+ * (a plain KV-stored object survives JSON round-trips fully, unlike the
+ * array-with-a-property shape buildTLERecords() returns for direct/
+ * in-request use) so getTLERecords() below can still tell a partial merge
+ * apart from a complete one after reading it back.
+ */
+export async function refreshTLECache(env) {
+  const records = await buildTLERecords();
+  if (!env?.TLE_CACHE) return records;
+  await env.TLE_CACHE.put(
+    TLE_KV_KEY,
+    JSON.stringify({ recs: records, failedGroups: records.failedGroups || 0 }),
+    { expirationTtl: TLE_KV_EXPIRATION_TTL }
+  );
+  return records;
+}
+
+/**
+ * The /tle route's data source: prefer the KV-warmed catalog (fast from
+ * any data center) and only fall back to a live, on-demand
+ * buildTLERecords() if KV has nothing yet (first deploy before the cron's
+ * first run) or is unreachable — same "never worse than before" shape as
+ * every other fallback in this codebase, just slower rather than absent.
+ */
+export async function getTLERecords(env) {
+  const kv = env?.TLE_CACHE;
+  if (kv) {
+    try {
+      const stored = await kv.get(TLE_KV_KEY, "json");
+      if (stored && Array.isArray(stored.recs)) {
+        const recs = stored.recs;
+        recs.failedGroups = stored.failedGroups || 0;
+        return recs;
+      }
+    } catch {
+      // KV read failed — fall through to a live build rather than error out.
+    }
+  }
+  return buildTLERecords();
+}
+
 /**
  * One station's active-expedition crew from LL2's /spacestation/ endpoint.
  * ok:false only means this station's own fetch failed — buildCrew() decides
@@ -513,8 +579,8 @@ async function cached(ctx, path, ttl, build, ttlFor = () => ttl) {
 }
 
 const ROUTES = {
-  "/tle": (ctx) =>
-    cached(ctx, "/tle", TLE_TTL, buildTLERecords, (d) =>
+  "/tle": (ctx, request, env) =>
+    cached(ctx, "/tle", TLE_TTL, () => getTLERecords(env), (d) =>
       d.failedGroups > 0 ? TLE_PARTIAL_FAIL_TTL : TLE_TTL
     ),
   "/crew": (ctx, request, env) =>
@@ -582,5 +648,12 @@ export default {
     // env rides along so /crew can see the optional LL2_API_KEY binding;
     // routes that don't need it just ignore the extra argument.
     return route(ctx, request, env);
+  },
+  // Cron trigger (see wrangler.toml's [triggers]) — keeps TLE_CACHE (Workers
+  // KV) warm well within TLE_TTL so a real visitor's /tle request almost
+  // never pays buildTLERecords()'s ~25s cold-build cost. waitUntil() lets
+  // the invocation return immediately without blocking on the ~25s build.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(refreshTLECache(env));
   },
 };

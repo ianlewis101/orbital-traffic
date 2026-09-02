@@ -5,3 +5,18 @@ workers_dev = true
 
 [observability]
 enabled = true
+
+# Keeps TLE_CACHE warm well inside TLE_TTL (20 min, worker/src/index.js) so
+# a real visitor's /tle request reads a KV-cached catalog instead of paying
+# buildTLERecords()'s ~25s CelesTrak cold-build cost — see refreshTLECache()
+# and getTLERecords() for why the Cache API alone (local to one data center)
+# can't do this across Cloudflare's edge.
+[triggers]
+crons = ["*/10 * * * *"]
+
+# Workers KV: globally-replicated, fast-read store for the cron-refreshed
+# merged TLE catalog. Distinct from the per-data-center Cache API `cached()`
+# already uses — see the comment above TLE_KV_KEY in src/index.js.
+[[kv_namespaces]]
+binding = "TLE_CACHE"
+id = "854640b1d0e94ff4b2e22b92716b1981"
