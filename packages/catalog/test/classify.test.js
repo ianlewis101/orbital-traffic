@@ -291,6 +291,13 @@ describe("correctOtherCat", () => {
     }
   });
 
+  it("promotes CELESTIS-17 & SHERPA-FX1 (47486) to science instead of other", () => {
+    // Commercial orbital transfer vehicle (Sherpa-FX1) hosting a passive
+    // memorial-spaceflight payload — same OTV precedent as Vigoride-3.
+    expect(correctOtherCat("47486", "CELESTIS-17 & SHERPA-FX1", "other")).toBe("science");
+    expect(categorize("47486", "CELESTIS-17 & SHERPA-FX1", "other")).toBe("science");
+  });
+
   it("promotes LINK (NORAD 69792, NASA's active rescue mission) to science instead of other", () => {
     expect(correctOtherCat("69792", "LINK", "other")).toBe("science");
     expect(categorize("69792", "LINK", "other")).toBe("science");

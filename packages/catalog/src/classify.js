@@ -373,6 +373,9 @@ export const SCIENCE_IDS = new Set([
   // STELLA/AJISAI), whose entire orbital life IS an active geodesy role.
   // MARAFON-D GVM's only function ended at deployment.
   "59072", // MARAFON-D GVM
+  "47486", // CELESTIS-17 & SHERPA-FX1 — commercial orbital transfer vehicle
+  // (Sherpa-FX1) hosting a passive memorial-spaceflight payload; same OTV
+  // precedent as Vigoride-3. Description corrected 2026-09-02.
 ]);
 /** Cataloged fragments/sub-payloads with no name DEBRIS_NAME_RE can match. */
 export const DEBRIS_IDS = new Set(["51950", "69320"]);
