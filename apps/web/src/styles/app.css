@@ -855,6 +855,13 @@
     /* Openers move above #mini-card (44px) and #meta (10px). */
     #overhead-fab{right:10px;bottom:96px;width:48px;height:48px}
     #settings-btn{right:10px;bottom:152px;width:44px;height:44px}
+    /* The info card is a bottom sheet here too (up to 82vh tall), so an open
+       one sits directly under these two fabs (z-index 12 vs the card's 5) —
+       same overlap problem #overhead.show/#settings.show already solve for
+       each other above. Hide both openers while a detail card is open rather
+       than let them float over its footer content, forcing a scroll to read
+       what's underneath. Relies on #info preceding both openers in index.html. */
+    #info.show ~ #overhead-fab,#info.show ~ #settings-btn{display:none}
 
     /* Comfortable touch targets in the lists. Settings rows are already
        46px min-height at the base size, so no mobile override is needed
