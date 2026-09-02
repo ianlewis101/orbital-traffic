@@ -291,6 +291,23 @@ describe("correctOtherCat", () => {
     }
   });
 
+  it("rescues 2026-09-02 Popular Objects research batch by NORAD ID", () => {
+    // science: calibration satellites and civilian tech demonstrators
+    expect(correctOtherCat("00900", "CALSPHERE 1", "other")).toBe("science");
+    // OPS 5712 (P/L 153) is SURCAL 153, a calibration satellite — not the
+    // classified SIGINT payload its sibling P/L 160 (below) actually is.
+    expect(correctOtherCat("02874", "OPS 5712 (P/L 153)", "other")).toBe("science");
+    expect(correctOtherCat("54227", "MATS", "other")).toBe("science");
+    expect(correctOtherCat("58992", "ADRAS-J", "other")).toBe("science");
+    // communications: amateur radio relay
+    expect(correctOtherCat("07530", "OSCAR 7 (AO-7)", "other")).toBe("communications");
+    // classified: known military/intelligence satellites with no shared name pattern
+    expect(correctOtherCat("02826", "OPS 5712 (P/L 160)", "other")).toBe("classified");
+    expect(correctOtherCat("58400", "MALLIGYONG-1", "other")).toBe("classified");
+    expect(correctOtherCat("46396", "GAOFEN-11 02", "other")).toBe("classified");
+    expect(correctOtherCat("58955", "HBTSS-SV2", "other")).toBe("classified");
+  });
+
   it("promotes LINK (NORAD 69792, NASA's active rescue mission) to science instead of other", () => {
     expect(correctOtherCat("69792", "LINK", "other")).toBe("science");
     expect(categorize("69792", "LINK", "other")).toBe("science");
