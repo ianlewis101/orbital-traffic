@@ -35,6 +35,23 @@ const VISIBILITY_STALE_MS = 20 * 60 * 1000;
 // (worker/src/index.js's fetchGroup()).
 const FETCH_TIMEOUT_MS = 12000;
 
+// The Worker's own /tle route legitimately takes far longer than 12s on a
+// cache miss: buildTLERecords() fetches all 13 CelesTrak groups at
+// GROUP_FETCH_CONCURRENCY=3 (worker/src/index.js), which serializes into
+// ~5 batches — measured 23-27s end to end against the live Worker after the
+// 2026-09-01 concurrency fix (d6562e4) traded speed for correctness there.
+// Timing this request out at the same 12s used for individual CelesTrak
+// group requests below was aborting almost every cache-miss sync
+// prematurely (TLE_TTL is 20 minutes, and with a single regular user the
+// cache routinely goes cold between sessions) and dropping into the
+// CelesTrak-direct fallback — strictly worse, since that fallback repeats
+// the same concurrency-bounded 13-group fetch directly from the client's
+// (often mobile) connection instead of Cloudflare's network, which is what
+// produced the "Orbit Classes total never resolves" reports. Give the
+// Worker request enough headroom to actually finish its cold path rather
+// than raced into that slower fallback.
+const WORKER_FETCH_TIMEOUT_MS = 35000;
+
 // CelesTrak enforces a low per-IP concurrent-connection ceiling — measured
 // directly against the real endpoint, firing all 13 GROUPS requests at once
 // left 9 of 13 stalled past a 15s timeout, even though each resolves in 1-2s
@@ -45,9 +62,9 @@ const FETCH_TIMEOUT_MS = 12000;
 // buildTLERecords() — see GROUP_FETCH_CONCURRENCY there.
 const GROUP_FETCH_CONCURRENCY = 3;
 
-function fetchWithTimeout(url, opts) {
+function fetchWithTimeout(url, opts, timeoutMs = FETCH_TIMEOUT_MS) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   return fetch(url, { ...opts, signal: controller.signal }).finally(() => clearTimeout(timer));
 }
 
@@ -135,7 +152,11 @@ async function runLiveSync() {
   // at boot), so it must never block or fail the satellite catalog sync.
   refreshEvents();
   try {
-    const res = await fetchWithTimeout(WORKER_BASE + "/tle", { cache: "no-store" });
+    const res = await fetchWithTimeout(
+      WORKER_BASE + "/tle",
+      { cache: "no-store" },
+      WORKER_FETCH_TIMEOUT_MS
+    );
     if (!res.ok) throw new Error("worker " + res.status);
     const recs = await res.json();
     if (!isPlausibleCatalog(recs)) throw new Error("implausible catalog size: " + recs.length);
