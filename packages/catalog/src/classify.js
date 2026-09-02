@@ -373,13 +373,35 @@ export const SCIENCE_IDS = new Set([
   // STELLA/AJISAI), whose entire orbital life IS an active geodesy role.
   // MARAFON-D GVM's only function ended at deployment.
   "59072", // MARAFON-D GVM
+  // 2026-09-02: Popular Objects rotation-pool research batch — individually
+  // verified against public sources (launch dates, program declassification
+  // records, mission status), not just carried over from descriptions.json.
+  "00900", // CALSPHERE 1 (radar calibration sphere)
+  "02874", // OPS 5712 (P/L 153) — actually SURCAL 153, a calibration
+  // satellite, not the classified SIGINT payload its "OPS" cover name and
+  // sibling P/L 160 (02826, correctly classified below) might suggest.
+  "54227", // MATS (Swedish noctilucent-cloud science satellite)
+  "58992", // ADRAS-J — commercial debris-inspection tech demonstrator, not
+  // military-owned; see CLASSIFIED_IDS's comment for the alternative case.
 ]);
 /** Cataloged fragments/sub-payloads with no name DEBRIS_NAME_RE can match. */
 export const DEBRIS_IDS = new Set(["51950", "69320"]);
 /** One-off comms/data-relay satellites with no shared constellation name (see COMMS_NAME_RE for those that do). */
-export const COMMS_IDS = new Set(["23439"]);
+export const COMMS_IDS = new Set([
+  "23439",
+  "07530", // AO-7 / AMSAT-OSCAR 7 (amateur radio relay)
+]);
 /** One-off military satellites identified by individual codename rather than a recognizable scheme (see CLASSIFIED_NAME_RE). */
-export const CLASSIFIED_IDS = new Set(["57757"]);
+export const CLASSIFIED_IDS = new Set([
+  "57757",
+  // 2026-09-02: same research batch as SCIENCE_IDS above.
+  "02826", // OPS 5712 (P/L 160) — Poppy 5A naval SIGINT satellite (NRO)
+  "58400", // MALLIGYONG-1 (North Korean reconnaissance satellite)
+  "46396", // GAOFEN-11 02 — assessed military reconnaissance; deliberately
+  // an ID rather than a GAOFEN name pattern, since most Gaofen-series
+  // satellites are genuinely civilian Earth-observation missions.
+  "58955", // HBTSS-SV2 (US Missile Defense Agency hypersonic tracker)
+]);
 
 /**
  * Rescues records still tagged "other" after the station allowlist and the
