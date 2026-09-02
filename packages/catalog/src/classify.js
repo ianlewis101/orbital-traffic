@@ -383,6 +383,9 @@ export const SCIENCE_IDS = new Set([
   "54227", // MATS (Swedish noctilucent-cloud science satellite)
   "58992", // ADRAS-J — commercial debris-inspection tech demonstrator, not
   // military-owned; see CLASSIFIED_IDS's comment for the alternative case.
+  "47486", // CELESTIS-17 & SHERPA-FX1 — commercial orbital transfer vehicle
+  // (Sherpa-FX1) hosting a passive memorial-spaceflight payload; same OTV
+  // precedent as Vigoride-3. Description corrected 2026-09-02.
 ]);
 /** Cataloged fragments/sub-payloads with no name DEBRIS_NAME_RE can match. */
 export const DEBRIS_IDS = new Set(["51950", "69320"]);
