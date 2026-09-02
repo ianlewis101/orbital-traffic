@@ -399,8 +399,11 @@ Monorepo (npm workspaces):
   to App Store Connect via the "iOS Build & Upload" GitHub
   Actions workflow (.github/workflows/ios-build.yml, manually
   triggered via workflow_dispatch with an "upload" toggle) — no
-  local Xcode/Mac needed to cut a build. Preparing the first
-  public App Store submission (was internal TestFlight testing).
+  local Xcode/Mac needed to cut a build. A build (2.0.0/20) was
+  submitted for public App Store review 2026-08-28; its final
+  disposition (accepted/released vs. rejected) isn't tracked
+  here — check docs/audit-status.md's iOS build tracker or App
+  Store Connect directly rather than assuming from this file.
   Uploads used to land in "Missing Compliance" in App Store
   Connect and silently never reach testers until someone answered
   the export-compliance question by hand; that is resolved —
@@ -434,7 +437,9 @@ Monorepo (npm workspaces):
 
 OBJECT COUNT — ONE DERIVATION, SEVERAL HAND-WRITTEN COPIES:
 the marketing figure for "how many objects does this track"
-(e.g. "18,000+") has exactly one source of truth and several
+(e.g. "19,000+" — check the actual hand-written surfaces below
+for the current figure rather than trusting this example) has
+exactly one source of truth and several
 surfaces that must be kept in sync with it by hand, because
 they can't be templated:
 
