@@ -818,15 +818,28 @@
        swiped down; tapping it restores the full card without deselecting.
        bottom:44px (not 10px) keeps it clear of the #meta attribution line,
        which is anchored at bottom:10px in this same media block — both
-       sharing bottom:10px used to let the mini-card cover the "Privacy" link */
+       sharing bottom:10px used to let the mini-card cover the "Privacy" link.
+       max-width used to be min(70vw,300px), sized purely off the viewport
+       with no awareness of #leftstack (fixed at left:10px, width:185px, so
+       its right edge sits at a constant 195px regardless of screen width).
+       On every phone narrower than ~730px wide, 70vw alone left the pill
+       free to grow wide enough to overlap #leftstack's right edge before
+       the .nm ellipsis (below) ever kicked in — e.g. a 23-char name like
+       "COSMOS 2477 [GLONASS-M]" ran ~25px into "POPULAR OBJECTS" on a
+       402px-wide screen, and the smaller the phone the worse the overlap.
+       The calc() term reserves #leftstack's 195px zone plus a 14px clean
+       gap (right:10 + 195 + 14 = 219) so the pill's max width always stops
+       clear of it; the pre-existing 70vw/300px caps are kept via the outer
+       min() so very wide "mobile" viewports (tablets up to this 768px
+       breakpoint) aren't forced needlessly wide. */
     #mini-card{display:none;position:fixed;right:10px;bottom:44px;z-index:11;
       align-items:center;gap:9px;min-height:44px;padding:8px 14px 8px 12px;
       background:rgba(17,22,42,0.88);backdrop-filter:blur(18px) saturate(1.2);
       -webkit-backdrop-filter:blur(18px) saturate(1.2);
       border:1px solid rgba(94,234,212,0.22);border-radius:22px;
       box-shadow:0 10px 30px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,255,255,0.08);
-      max-width:min(70vw,300px);cursor:pointer;-webkit-tap-highlight-color:transparent;
-      touch-action:manipulation}
+      max-width:min(70vw,300px,calc(100vw - 219px));cursor:pointer;
+      -webkit-tap-highlight-color:transparent;touch-action:manipulation}
     #mini-card.show{display:flex;animation:popin .26s cubic-bezier(.34,1.56,.64,1) both}
 
     /* Overhead + Settings → the same bottom sheet as the info card. */
@@ -870,8 +883,13 @@
     .ohrow .nm{font-size:11px}
     .oh-chip{padding:6px 10px}
     #mini-card .d{width:9px;height:9px;border-radius:50%;flex:none;box-shadow:0 0 8px currentColor}
+    /* min-width:0 overrides the flex-item default of min-width:auto, which
+       — combined with white-space:nowrap below — would otherwise resolve
+       to the full unwrapped text width and block this item from ever
+       shrinking, silently defeating text-overflow:ellipsis and letting the
+       name spill past #mini-card's max-width instead of truncating. */
     #mini-card .nm{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:0.03em;
-      color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
     #mini-card .chev{color:var(--amber);flex:none}
     @keyframes popin{from{opacity:0;transform:translateY(10px) scale(.92)}to{opacity:1;transform:translateY(0) scale(1)}}
   }
