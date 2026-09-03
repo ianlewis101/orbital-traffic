@@ -139,8 +139,17 @@ export function initLiveRefresh() {
 
 async function runLiveSync() {
   const totEl = $("#legend-tot");
+  // Deliberately never blanks the number to "…" here. It already shows the
+  // real, correct boot-catalog count before this ever runs (main.js's boot()
+  // calls ingest()/updateCount() first, and this only fires 2s later) — a
+  // background refresh has no reason to hide a number that's already right
+  // just because a newer one might arrive shortly. The previous behavior
+  // (blank + pulse for the sync's full duration) is exactly what read as
+  // "the app won't load" even after the underlying fetch got fast: a user
+  // has no way to tell "silently updating in the background" apart from
+  // "still loading" if the visible number disappears either way. The pulse
+  // alone, over the still-correct digits, is enough of a "syncing" cue.
   totEl.classList.add("loading");
-  totEl.textContent = "…";
   // Capsule phase data rides along with every live sync so de-orbited
   // capsules leave the globe and missing active ones get injected.
   const capsulesPromise = fetchCapsuleStatus();

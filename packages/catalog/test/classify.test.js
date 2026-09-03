@@ -254,6 +254,18 @@ describe("correctOtherCat", () => {
     expect(correctOtherCat("14", "KUIPER-00008", "other")).toBe("kuiper");
   });
 
+  it("rescues Starlink satellites by name when the dedicated group's own fetch failed (2026-09-03)", () => {
+    // Starlink normally arrives already tagged "starlink" via groups.js and
+    // never reaches correctOtherCat() at all — this only matters when the
+    // GROUP=starlink fetch itself fails but "active"/"last-30-days" still
+    // carry the same satellites tagged "other". Confirmed live: a Starlink
+    // fetch failure merged ~11,000 Starlink satellites into "other" with no
+    // rescue to route them back, the same failure shape ONEWEB_NAME_RE and
+    // KUIPER_NAME_RE already guard against for their own constellations.
+    expect(correctOtherCat("15", "STARLINK-30042", "other")).toBe("starlink");
+    expect(correctOtherCat("16", "STARLINK-1007", "other")).toBe("starlink");
+  });
+
   it("rescues 2026-07-10 curated batch objects by NORAD ID", () => {
     // debris: fragments/test objects named only by international designator
     expect(correctOtherCat("51950", "2022-023E", "other")).toBe("debris");
