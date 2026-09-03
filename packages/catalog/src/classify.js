@@ -278,6 +278,21 @@ export function correctDebrisCat(name, cat) {
  * false-positive risk.
  */
 export const NAV_NAME_RE = /GPS|NAVSTAR|GALILEO|GLONASS|BEIDOU|CENTISPACE/;
+/**
+ * Starlink normally arrives already tagged "starlink" via its own dedicated
+ * CelesTrak group (groups.js), so this rescue is dormant in the healthy
+ * case. It exists for when that group's fetch fails while the generic
+ * "active"/"last-30-days" catch-alls still succeed (a real, observed
+ * failure mode — see GROUP_FETCH_CONCURRENCY's comment in the Worker):
+ * every Starlink satellite still shows up via those catch-alls, tagged
+ * "other", and without this rescue there was nothing to route it back —
+ * unlike OneWeb (correctStarlinkCat()'s ONEWEB_NAME_RE) and Kuiper
+ * (KUIPER_NAME_RE below), which both already had one. Confirmed live
+ * 2026-09-03: a starlink-group fetch failure left ~11,000 Starlink
+ * satellites merged into "other" (13,378 vs. a normal ~2,300) with no way
+ * back until the next successful fetch.
+ */
+export const STARLINK_NAME_RE = /STARLINK/;
 /** Amazon's Kuiper broadband constellation ("KUIPER-00008"); no dedicated CelesTrak group yet. */
 export const KUIPER_NAME_RE = /KUIPER/;
 export const WEATHER_NAME_RE = /GOES|METEOSAT|HIMAWARI|NOAA|METOP|METEOR|DMSP|ELEKTRO|FENGYUN/;
@@ -450,6 +465,7 @@ export function correctOtherCat(id, name, cat) {
   if (WEATHER_NAME_RE.test(n) || EO_NAME_RE.test(n) || SCI_CONSTELLATION_RE.test(n))
     return "science";
   if (CLASSIFIED_NAME_RE.test(n)) return "classified";
+  if (STARLINK_NAME_RE.test(n)) return "starlink";
   if (KUIPER_NAME_RE.test(n)) return "kuiper";
   return "other";
 }
@@ -462,7 +478,7 @@ export function correctOtherCat(id, name, cat) {
  *   3. debris name backstop
  *   4. name-pattern rescue for whatever is still "other" (crew/cargo vehicle
  *      promotion to "capsules" first, then nav/comms/science/classified/
- *      kuiper)
+ *      starlink/kuiper)
  * Unknown input categories normalize to "other" first.
  */
 export function categorize(id, name, cat) {
