@@ -332,6 +332,34 @@ describe("correctOtherCat", () => {
     expect(categorize("69792", "LINK", "other")).toBe("science");
   });
 
+  it("rescues 2026-09-02 second Popular Objects research batch by NORAD ID", () => {
+    // science: research satellites and university/cadet tech demonstrators
+    expect(correctOtherCat("24920", "FORTE", "other")).toBe("science");
+    expect(correctOtherCat("26113", "IMAGE", "other")).toBe("science");
+    expect(correctOtherCat("33498", "STARS (KUKAI)", "other")).toBe("science");
+    expect(correctOtherCat("39090", "STRAND-1", "other")).toBe("science");
+    expect(correctOtherCat("40021", "DUCHIFAT-1", "other")).toBe("science");
+    expect(correctOtherCat("41896", "ARASE (ERG)", "other")).toBe("science");
+    expect(correctOtherCat("43016", "MAKERSAT 0", "other")).toBe("science");
+    expect(correctOtherCat("43815", "FALCONSAT-6", "other")).toBe("science");
+    // communications: dual-purpose AIS/science hybrid
+    expect(correctOtherCat("42826", "NORSAT-1", "other")).toBe("communications");
+    // classified: known military/intelligence satellites with no shared name pattern
+    expect(correctOtherCat("28470", "JB-3 3 (ZY 2C)", "other")).toBe("classified");
+    expect(correctOtherCat("31797", "SAR-LUPE 2", "other")).toBe("classified");
+    // SJ-11-01's abbreviated name does not match CLASSIFIED_NAME_RE's spelled-out SHIJIAN pattern.
+    expect(correctOtherCat("36088", "SJ-11-01", "other")).toBe("classified");
+    expect(correctOtherCat("43215", "PAZ", "other")).toBe("classified");
+    expect(correctOtherCat("41032", "COSMOS 2510 (EKS 1)", "other")).toBe("classified");
+    expect(correctOtherCat("42921", "ORS-5 SENSORSAT", "other")).toBe("classified");
+    expect(correctOtherCat("44233", "RISAT-2B", "other")).toBe("classified");
+    expect(correctOtherCat("44078", "EMISAT", "other")).toBe("classified");
+    expect(correctOtherCat("44552", "COSMOS 2541 (EKS 3)", "other")).toBe("classified");
+    expect(correctOtherCat("44857", "RISAT-2BR1", "other")).toBe("classified");
+    expect(correctOtherCat("48907", "MANDRAKE 2 ABLE", "other")).toBe("classified");
+    expect(correctOtherCat("53370", "KHAYYAM", "other")).toBe("classified");
+  });
+
   it("science IDs corrected after an initial ID/description mismatch (GreenCube, IMECE)", () => {
     // 53109 is GREENCUBE (IO-117), not the Vega AVUM stage originally attributed to it
     expect(correctOtherCat("53109", "GREENCUBE (IO-117)", "other")).toBe("science");

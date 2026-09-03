@@ -401,6 +401,15 @@ export const SCIENCE_IDS = new Set([
   "47486", // CELESTIS-17 & SHERPA-FX1 — commercial orbital transfer vehicle
   // (Sherpa-FX1) hosting a passive memorial-spaceflight payload; same OTV
   // precedent as Vigoride-3. Description corrected 2026-09-02.
+  // 2026-09-02: second Popular Objects rotation-pool batch.
+  "24920", // FORTE (nuclear-test-detection research disguised as lightning study)
+  "26113", // IMAGE (declared lost 2005, found still transmitting 2018)
+  "33498", // STARS (KUKAI) — tethered-satellite demonstrator
+  "39090", // STRAND-1 — ran on an unmodified smartphone
+  "40021", // DUCHIFAT-1 — Israeli high-school-built satellite
+  "41896", // ARASE (ERG) — Van Allen radiation belt research
+  "43016", // MAKERSAT 0 — 3D-printed structural components test
+  "43815", // FALCONSAT-6 — US Air Force Academy cadet-built satellite
 ]);
 /** Cataloged fragments/sub-payloads with no name DEBRIS_NAME_RE can match. */
 export const DEBRIS_IDS = new Set(["51950", "69320"]);
@@ -408,6 +417,7 @@ export const DEBRIS_IDS = new Set(["51950", "69320"]);
 export const COMMS_IDS = new Set([
   "23439",
   "07530", // AO-7 / AMSAT-OSCAR 7 (amateur radio relay)
+  "42826", // NORSAT-1 (AIS ship-tracking + solar science hybrid)
 ]);
 /** One-off military satellites identified by individual codename rather than a recognizable scheme (see CLASSIFIED_NAME_RE). */
 export const CLASSIFIED_IDS = new Set([
@@ -419,6 +429,22 @@ export const CLASSIFIED_IDS = new Set([
   // an ID rather than a GAOFEN name pattern, since most Gaofen-series
   // satellites are genuinely civilian Earth-observation missions.
   "58955", // HBTSS-SV2 (US Missile Defense Agency hypersonic tracker)
+  // 2026-09-02: second Popular Objects rotation-pool batch — known
+  // military/intelligence satellites with no shared, safe name pattern.
+  "28470", // JB-3 3 (ZY 2C) — Chinese reconnaissance, civilian cover name
+  "31797", // SAR-LUPE 2 (German military SAR reconnaissance)
+  "36088", // SJ-11-01 — assessed Chinese military/missile-warning satellite;
+  // abbreviated "SJ" catalog name, so CLASSIFIED_NAME_RE's SHIJIAN pattern
+  // (which needs the name spelled out) does not catch this one.
+  "43215", // PAZ (Spanish military SAR reconnaissance)
+  "41032", // COSMOS 2510 (EKS 1) — assessed Russian surveillance satellite
+  "42921", // ORS-5 SENSORSAT (US Air Force GEO-belt surveillance)
+  "44233", // RISAT-2B (Indian military SAR reconnaissance)
+  "44078", // EMISAT (Indian electronic intelligence satellite)
+  "44552", // COSMOS 2541 (EKS 3) — Russian nuclear early-warning satellite
+  "44857", // RISAT-2BR1 (Indian military SAR reconnaissance)
+  "48907", // MANDRAKE 2 ABLE (US Space Force/DARPA laser-comms demonstrator)
+  "53370", // KHAYYAM — Iranian reconnaissance satellite, Russian-built
 ]);
 
 /**
