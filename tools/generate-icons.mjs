@@ -69,8 +69,8 @@ const ALIASES = [
  * scale, so the maskable variant shrinks it to fit that safe zone. Anything
  * outside is background, which is exactly what should get cropped.
  */
-const CRAFT_STANDARD = "rotate(-22 512 512) translate(512 512) scale(1.04) translate(-512 -512)";
-const CRAFT_MASKABLE = "rotate(-22 512 512) translate(512 512) scale(0.78) translate(-512 -512)";
+const CRAFT_STANDARD = "rotate(-34 512 512) translate(512 512) scale(1.074) translate(-512 -512)";
+const CRAFT_MASKABLE = "rotate(-34 512 512) translate(512 512) scale(0.78) translate(-512 -512)";
 
 /**
  * The launch image is a SQUARE that iOS scales with `scaleAspectFill` to cover
@@ -78,14 +78,14 @@ const CRAFT_MASKABLE = "rotate(-22 512 512) translate(512 512) scale(0.78) trans
  * horizontally. Covering a 1320x2868 iPhone 16 Pro Max with a square means
  * scaling to the device's height, leaving only the middle ~46% of the square's
  * width on screen (1320/2868). The craft therefore has to sit inside a much
- * tighter safe zone than even the maskable icon's — at the standard 1.04 it
- * spans ~87% of the canvas width and would be sliced through both solar arrays.
+ * tighter safe zone than even the maskable icon's — at the standard scale it
+ * spans ~86% of the canvas width and would be sliced through both solar arrays.
  *
  * 0.46 keeps the full spacecraft inside the narrowest shipping aspect with room
  * to spare; assertSplashSafeZone() below measures the rendered pixels and fails
  * the build if that ever stops being true.
  */
-const CRAFT_SPLASH = "rotate(-22 512 512) translate(512 512) scale(0.46) translate(-512 -512)";
+const CRAFT_SPLASH = "rotate(-34 512 512) translate(512 512) scale(0.46) translate(-512 -512)";
 
 /** Narrowest current iPhone aspect (iPhone 16 Pro Max, 1320x2868). */
 const NARROWEST_ASPECT = 1320 / 2868;
