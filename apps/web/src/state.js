@@ -23,6 +23,12 @@ export const state = {
   // the objects loaded at boot, so the freshness line can show the catalog's
   // real age before (and if) the first live sync lands.
   bootCatalogTime: null,
+  // { message, at } for the most recent sync attempt that threw an
+  // unexpected error (not the ordinary "both paths failed" case, which
+  // syncFailed already covers) — surfaced in Settings so a real failure
+  // mode is readable directly off the device instead of requiring a
+  // connected browser console. Cleared on the next successful sync.
+  lastSyncError: null,
   capsulesData: null,
   capsulesTime: null,
 };

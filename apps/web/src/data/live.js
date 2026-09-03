@@ -160,40 +160,71 @@ async function runLiveSync() {
   // already swallows its own failures (same shape as refreshTodayLiveFacts()
   // at boot), so it must never block or fail the satellite catalog sync.
   refreshEvents();
+  // Everything below is wrapped in one outer try/finally on top of the
+  // primary→fallback try/catch that was already here. Without it, an
+  // unexpected throw from deep inside applyLive() (ingest/rebuildLegend/
+  // etc. — not the ordinary "both paths failed" case just below, which is
+  // caught and handled explicitly) would propagate straight out of this
+  // async function as an unhandled rejection: fetchLive() is called via a
+  // bare setTimeout with no .catch(), so nothing would ever see it. The
+  // visible result would be the "loading" pulse left on forever with no
+  // error, no toast, nothing distinguishable from a slow network from the
+  // outside — exactly the kind of report this app has no way to diagnose
+  // without a connected browser console. lastSyncError makes that reason
+  // readable in Settings instead.
+  //
+  // applyLive() is deliberately called once, outside the inner try/catch
+  // below rather than inside it: that inner block's only job is picking
+  // which dataset to use (primary vs. CelesTrak fallback vs. neither), by
+  // catching *fetch/parse/plausibility* failures specifically. Calling
+  // applyLive() from inside it (the original shape) meant a throw from
+  // applyLive() itself — ingest(), buildClouds(), a real bug — looked
+  // exactly like "the fetch failed" and silently triggered a pointless
+  // fallback retry instead of surfacing as the error it actually was.
   try {
-    const res = await fetchWithTimeout(
-      WORKER_BASE + "/tle",
-      { cache: "no-store" },
-      WORKER_FETCH_TIMEOUT_MS
-    );
-    if (!res.ok) throw new Error("worker " + res.status);
-    const recs = await res.json();
-    if (!isPlausibleCatalog(recs)) throw new Error("implausible catalog size: " + recs.length);
-    await applyLive(recs, await capsulesPromise);
-  } catch {
-    const settled = await mapWithConcurrency(GROUPS, GROUP_FETCH_CONCURRENCY, fetchGroupRecords);
-    for (let i = 0; i < GROUPS.length; i++) {
-      if (!settled[i].ok) settled[i] = await fetchGroupRecords(GROUPS[i]);
+    let recs = null;
+    try {
+      const res = await fetchWithTimeout(
+        WORKER_BASE + "/tle",
+        { cache: "no-store" },
+        WORKER_FETCH_TIMEOUT_MS
+      );
+      if (!res.ok) throw new Error("worker " + res.status);
+      const primaryRecs = await res.json();
+      if (!isPlausibleCatalog(primaryRecs)) {
+        throw new Error("implausible catalog size: " + primaryRecs.length);
+      }
+      recs = primaryRecs;
+    } catch {
+      const settled = await mapWithConcurrency(GROUPS, GROUP_FETCH_CONCURRENCY, fetchGroupRecords);
+      for (let i = 0; i < GROUPS.length; i++) {
+        if (!settled[i].ok) settled[i] = await fetchGroupRecords(GROUPS[i]);
+      }
+      // Merge in GROUPS order (not fetch-completion order) so a satellite
+      // already claimed by a specific group is never overwritten by a later,
+      // more generic one — settled is in GROUPS order since
+      // mapWithConcurrency preserves input order. Mirrors the Worker's
+      // buildTLERecords() merge.
+      const fallbackRecs = mergeRecords(settled.map((s) => s.recs));
+      if (isPlausibleCatalog(fallbackRecs)) {
+        recs = fallbackRecs;
+      } else {
+        // Both paths failed, or the fallback merge came back implausibly
+        // small (see isPlausibleCatalog) — either way, never apply it.
+        // Leave an honest state behind so the freshness line reads "cached
+        // elements · retrying" rather than a permanent "syncing…" — the
+        // periodic policy will retry on its own.
+        state.syncFailed = true;
+        toast("Live fetch unavailable — showing cached elements");
+        updateCount();
+      }
     }
-    // Merge in GROUPS order (not fetch-completion order) so a satellite
-    // already claimed by a specific group is never overwritten by a later,
-    // more generic one — settled is in GROUPS order since mapWithConcurrency
-    // preserves input order. Mirrors the Worker's buildTLERecords() merge.
-    const recs = mergeRecords(settled.map((s) => s.recs));
-    if (isPlausibleCatalog(recs)) {
-      await applyLive(recs, await capsulesPromise);
-    } else {
-      // Both paths failed, or the fallback merge came back implausibly small
-      // (see isPlausibleCatalog) — either way, never apply it. Leave an
-      // honest state behind so the freshness line reads "cached elements ·
-      // retrying" rather than a permanent "syncing…" — the periodic policy
-      // will retry on its own.
-      state.syncFailed = true;
-      toast("Live fetch unavailable — showing cached elements");
-      updateCount();
-    }
+    if (recs) await applyLive(recs, await capsulesPromise);
+  } catch (e) {
+    state.lastSyncError = { message: String(e?.message || e), at: new Date() };
+  } finally {
+    totEl.classList.remove("loading");
   }
-  totEl.classList.remove("loading");
 }
 
 async function fetchCapsuleStatus() {
@@ -243,6 +274,7 @@ async function applyLive(recs, capsules) {
   state.source = "live";
   state.srcTime = new Date();
   state.syncFailed = false;
+  state.lastSyncError = null;
   rebuildLegend();
   updateCount();
   renderToday();
