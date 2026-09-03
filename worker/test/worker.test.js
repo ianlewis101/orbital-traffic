@@ -865,6 +865,21 @@ describe("TLE_CACHE (Workers KV warm cache)", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it("the /tle route reports X-TLE-Source: kv and a builtAt timestamp when served from KV", async () => {
+    const builtAt = Date.UTC(2026, 0, 1, 12, 0, 0);
+    const kv = stubKv(JSON.stringify({ recs: [{ name: "ISS (ZARYA)", cat: "stations" }], failedGroups: 0, builtAt }));
+    const res = await worker.fetch(new Request("https://x/tle"), { TLE_CACHE: kv }, ctx);
+    expect(res.headers.get("X-TLE-Source")).toBe("kv");
+    expect(res.headers.get("X-TLE-Built-At")).toBe(new Date(builtAt).toISOString());
+  });
+
+  it("the /tle route reports X-TLE-Source: live when it has to build on demand", async () => {
+    fetch.mockImplementation(() => Promise.resolve(textResponse("")));
+    const res = await worker.fetch(new Request("https://x/tle"), {}, ctx);
+    expect(res.headers.get("X-TLE-Source")).toBe("live");
+    expect(res.headers.get("X-TLE-Built-At")).not.toBe("");
+  });
+
   it("scheduled() refreshes TLE_CACHE via waitUntil without blocking", async () => {
     fetch.mockImplementation(() => Promise.resolve(textResponse("")));
     const kv = stubKv(undefined);

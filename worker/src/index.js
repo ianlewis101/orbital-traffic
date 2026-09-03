@@ -201,7 +201,11 @@ export async function refreshTLECache(env) {
   if (!env?.TLE_CACHE) return records;
   await env.TLE_CACHE.put(
     TLE_KV_KEY,
-    JSON.stringify({ recs: records, failedGroups: records.failedGroups || 0 }),
+    JSON.stringify({
+      recs: records,
+      failedGroups: records.failedGroups || 0,
+      builtAt: Date.now(),
+    }),
     { expirationTtl: TLE_KV_EXPIRATION_TTL }
   );
   return records;
@@ -213,6 +217,15 @@ export async function refreshTLECache(env) {
  * buildTLERecords() if KV has nothing yet (first deploy before the cron's
  * first run) or is unreachable — same "never worse than before" shape as
  * every other fallback in this codebase, just slower rather than absent.
+ *
+ * `source` ("kv" | "live") and `builtAt` ride along the same
+ * non-enumerable-to-JSON way `failedGroups` already does — the /tle route
+ * below surfaces them as response headers (X-TLE-Source / X-TLE-Built-At)
+ * so whether a given response actually came from the warm cache is a
+ * one-line `curl -I` check instead of an inference from response timing,
+ * which turned out to be ambiguous in practice (a fast response can also
+ * come from the per-data-center Cache API layer replaying an earlier live
+ * build, not necessarily from TLE_CACHE).
  */
 export async function getTLERecords(env) {
   const kv = env?.TLE_CACHE;
@@ -222,13 +235,18 @@ export async function getTLERecords(env) {
       if (stored && Array.isArray(stored.recs)) {
         const recs = stored.recs;
         recs.failedGroups = stored.failedGroups || 0;
+        recs.source = "kv";
+        recs.builtAt = stored.builtAt || null;
         return recs;
       }
     } catch {
       // KV read failed — fall through to a live build rather than error out.
     }
   }
-  return buildTLERecords();
+  const records = await buildTLERecords();
+  records.source = "live";
+  records.builtAt = Date.now();
+  return records;
 }
 
 /**
@@ -534,12 +552,13 @@ function badRequest(message) {
   });
 }
 
-function jsonResponse(data, ttl) {
+function jsonResponse(data, ttl, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
       "Cache-Control": `public, max-age=${ttl}`,
+      ...extraHeaders,
     },
   });
 }
@@ -565,7 +584,7 @@ export const CREW_FAIL_TTL = 90;
  * the response's Cache-Control header, which cache.put honors — so the
  * same value also keeps browsers from sitting on a failure.
  */
-async function cached(ctx, path, ttl, build, ttlFor = () => ttl) {
+async function cached(ctx, path, ttl, build, ttlFor = () => ttl, headersFor = () => ({})) {
   const cache = typeof caches !== "undefined" ? caches.default : null;
   const cacheKey = new Request(`https://orbital-traffic.internal${path}`, { method: "GET" });
   if (cache) {
@@ -573,15 +592,30 @@ async function cached(ctx, path, ttl, build, ttlFor = () => ttl) {
     if (hit) return hit;
   }
   const data = await build();
-  const res = jsonResponse(data, ttlFor(data));
+  const res = jsonResponse(data, ttlFor(data), headersFor(data));
   if (cache) ctx.waitUntil(cache.put(cacheKey, res.clone()));
   return res;
 }
 
 const ROUTES = {
+  // X-TLE-Source ("kv" | "live") and X-TLE-Built-At let anyone verify
+  // whether a given response actually came from the warm TLE_CACHE (fast
+  // from any data center) versus a live on-demand buildTLERecords() —
+  // added after response-timing alone turned out to be an ambiguous signal
+  // for this (a fast response can also just be this same cached()
+  // wrapper's per-data-center Cache API layer replaying an earlier live
+  // build). `curl -sI .../tle` is now enough to tell which happened.
   "/tle": (ctx, request, env) =>
-    cached(ctx, "/tle", TLE_TTL, () => getTLERecords(env), (d) =>
-      d.failedGroups > 0 ? TLE_PARTIAL_FAIL_TTL : TLE_TTL
+    cached(
+      ctx,
+      "/tle",
+      TLE_TTL,
+      () => getTLERecords(env),
+      (d) => (d.failedGroups > 0 ? TLE_PARTIAL_FAIL_TTL : TLE_TTL),
+      (d) => ({
+        "X-TLE-Source": d.source || "unknown",
+        "X-TLE-Built-At": d.builtAt ? new Date(d.builtAt).toISOString() : "",
+      })
     ),
   "/crew": (ctx, request, env) =>
     cached(
