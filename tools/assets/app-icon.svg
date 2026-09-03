@@ -112,7 +112,7 @@
 
   <!-- ============ SPACECRAFT ============ -->
   <g filter="url(#drop)">
-    <g id="craft" transform="rotate(-22 512 512) translate(512 512) scale(1.04) translate(-512 -512)">
+    <g id="craft" transform="rotate(-34 512 512) translate(512 512) scale(1.074) translate(-512 -512)">
       <!-- solar arrays -->
       <use href="#array" x="100" y="412"/>
       <use href="#array" x="652" y="412"/>
