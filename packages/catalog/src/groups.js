@@ -23,7 +23,23 @@ export const GROUPS = [
   ["stations", "stations"],
   ["gps-ops", "navigation"],
   ["galileo", "navigation"],
-  ["glonass", "navigation"],
+  // CelesTrak renamed this group from "glonass" to "glo-ops" at some point
+  // before 2026-08-21 with no notice — GROUP=glonass now 404s with "not
+  // found" rather than returning empty data. Found 2026-09-03 via
+  // refresh-tle-data.yml's own failure logs: it fetches all 13 GROUPS
+  // successfully every single day except this one (0 objects, correctly
+  // treated as a fetch failure by its all-or-nothing safety guard — see
+  // tools/fetch-tles.mjs), which meant the *entire* bundled-catalog refresh
+  // had been silently blocked every day for two weeks (last successful run
+  // 2026-08-20) even though 12 of 13 groups were completely healthy the
+  // whole time. Also silently dropped every GLONASS satellite from the
+  // Worker's /tle and the client's CelesTrak-direct fallback for the same
+  // two weeks, since neither of those paths has (or should have) an
+  // all-or-nothing guard — they just merged in zero GLONASS records with no
+  // error at all. Verified directly against the real endpoint: GROUP=glo-ops
+  // returns 29 real GLONASS satellites; GROUP=glonass returns "GROUP=glonass
+  // not found".
+  ["glo-ops", "navigation"],
   ["geo", "geostationary"],
   ["cosmos-2251-debris", "debris"],
   ["iridium-33-debris", "debris"],
