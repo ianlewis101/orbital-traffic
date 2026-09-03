@@ -45,10 +45,19 @@ export function applyCam() {
   cam.theta += (cam.thT - cam.theta) * 0.16;
   cam.phi += (cam.phT - cam.phi) * 0.16;
   const sp = Math.sin(cam.phi);
+  // camera.fov is applied to the vertical axis, so on a narrow portrait
+  // viewport the implied horizontal FOV is much tighter than 45° — wide,
+  // near-equatorial features (e.g. the GEO ring) clip off the left/right
+  // edges well before anything is cut off vertically. Pad the rendered
+  // distance out on portrait aspects so horizontal coverage matches the
+  // square case cam.r's clamps (picking.js, frameSelected()) were tuned
+  // against; cam.r/cam.rT themselves stay untouched so those clamps keep
+  // their original meaning.
+  const rEff = cam.r * Math.max(1, 1 / camera.aspect);
   camera.position.set(
-    cam.r * sp * Math.sin(cam.theta),
-    cam.r * Math.cos(cam.phi),
-    cam.r * sp * Math.cos(cam.theta)
+    rEff * sp * Math.sin(cam.theta),
+    rEff * Math.cos(cam.phi),
+    rEff * sp * Math.cos(cam.theta)
   );
   camera.lookAt(0, 0, 0);
 }
