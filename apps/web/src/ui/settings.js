@@ -578,12 +578,35 @@ function catalogAgeText() {
   return "Catalog last updated: not yet synced";
 }
 
+/**
+ * Shown only when the most recent sync attempt threw an error the ordinary
+ * "both paths failed" handling doesn't cover (state.syncFailed already
+ * accounts for that ordinary case via catalogAgeText()'s ·retrying text —
+ * see freshness.js). This is specifically for the unexpected case: it makes
+ * a real bug's actual error message readable directly off the device,
+ * instead of requiring a connected browser console to diagnose a report
+ * like "it never finishes loading" with nothing else to go on.
+ */
+function lastSyncErrorText() {
+  if (!state.lastSyncError) return null;
+  const { message, at } = state.lastSyncError;
+  return `Last sync attempt failed: ${message} (${formatRelativeTime(at)})`;
+}
+
 function buildData() {
   const { el, body } = card("Data", "data", "data");
   const age = document.createElement("div");
   age.className = "set-status";
   age.textContent = catalogAgeText();
   body.appendChild(age);
+
+  const errLine = document.createElement("div");
+  errLine.className = "set-status bad";
+  const errText = lastSyncErrorText();
+  errLine.textContent = errText || "";
+  errLine.hidden = !errText;
+  body.appendChild(errLine);
+
   body.appendChild(
     note(
       "Orbital elements refresh automatically every 15 minutes while the app is " +
@@ -597,8 +620,16 @@ function buildData() {
     try {
       await fetchLive();
       age.textContent = catalogAgeText();
+      const nowErr = lastSyncErrorText();
+      errLine.textContent = nowErr || "";
+      errLine.hidden = !nowErr;
       flash($("#legend-tot"));
-      toast("Catalog refreshed");
+      // state.syncFailed's own "Live fetch unavailable" toast already fired
+      // from inside fetchLive() for the ordinary failure case — only speak
+      // up here for the two cases it doesn't cover: genuine success, or the
+      // unexpected-error case lastSyncError exists for.
+      if (nowErr) toast("Sync failed — see error below");
+      else if (!state.syncFailed) toast("Catalog refreshed");
     } finally {
       btn.disabled = false;
       btn.textContent = "Refresh catalog now";
