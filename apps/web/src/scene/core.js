@@ -40,24 +40,47 @@ export const cam = {
   phT: 1.15,
 };
 
+// --- zoom range ---
+//
+// Closest approach. EARTH_R * 1.25 puts the camera ~1,600 km above the
+// surface, which is what makes LEO traffic visibly move against the globe in
+// real time: the ISS passes within ~1.2 units of the eye there, so its
+// angular rate is large. This floor is aspect-INDEPENDENT on purpose — see
+// maxCamR() below.
+export const MIN_CAM_R = EARTH_R * 1.25;
+
+// Furthest retreat. camera.fov applies to the VERTICAL axis, so on a narrow
+// portrait viewport the implied horizontal FOV is much tighter than 45° —
+// wide, near-equatorial features (the GEO ring, ~42 units across) clip off
+// the left and right edges even at full zoom-out, with no way to pull back
+// further. Portrait screens therefore get a proportionally higher ceiling;
+// landscape/square (aspect >= 1) keeps the original 160.
+//
+// This compensation belongs on the ceiling ONLY, never as a 1/aspect scale
+// applied to the rendered camera position: scaling the position pushes the
+// zoom-IN floor out by the same factor (MIN_CAM_R became ~EARTH_R * 2.7 on a
+// phone), far enough that satellites stop visibly moving and the globe no
+// longer fills the frame at max zoom.
+const MAX_CAM_R_BASE = 160;
+
+export function maxCamR() {
+  return MAX_CAM_R_BASE * Math.max(1, 1 / camera.aspect);
+}
+
+/** Clamp a camera distance to the current viewport's zoom range. */
+export function clampCamR(r) {
+  return Math.max(MIN_CAM_R, Math.min(maxCamR(), r));
+}
+
 export function applyCam() {
   cam.r += (cam.rT - cam.r) * 0.12;
   cam.theta += (cam.thT - cam.theta) * 0.16;
   cam.phi += (cam.phT - cam.phi) * 0.16;
   const sp = Math.sin(cam.phi);
-  // camera.fov is applied to the vertical axis, so on a narrow portrait
-  // viewport the implied horizontal FOV is much tighter than 45° — wide,
-  // near-equatorial features (e.g. the GEO ring) clip off the left/right
-  // edges well before anything is cut off vertically. Pad the rendered
-  // distance out on portrait aspects so horizontal coverage matches the
-  // square case cam.r's clamps (picking.js, frameSelected()) were tuned
-  // against; cam.r/cam.rT themselves stay untouched so those clamps keep
-  // their original meaning.
-  const rEff = cam.r * Math.max(1, 1 / camera.aspect);
   camera.position.set(
-    rEff * sp * Math.sin(cam.theta),
-    rEff * Math.cos(cam.phi),
-    rEff * sp * Math.cos(cam.theta)
+    cam.r * sp * Math.sin(cam.theta),
+    cam.r * Math.cos(cam.phi),
+    cam.r * sp * Math.cos(cam.theta)
   );
   camera.lookAt(0, 0, 0);
 }
@@ -79,4 +102,8 @@ export function resize() {
   renderer.setSize(w, h);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
+  // Rotating portrait -> landscape lowers the ceiling; pull a camera that's
+  // now beyond it back into range rather than leaving it stranded out there
+  // until the next pinch happens to bring it back.
+  cam.rT = clampCamR(cam.rT);
 }
