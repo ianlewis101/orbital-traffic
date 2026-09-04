@@ -217,7 +217,7 @@ async function runLiveSync() {
         // elements · retrying" rather than a permanent "syncing…" — the
         // periodic policy will retry on its own.
         state.syncFailed = true;
-        toast("Live fetch unavailable — showing cached elements");
+        toast("Live fetch unavailable — showing cached elements", "error");
         updateCount();
       }
     }
