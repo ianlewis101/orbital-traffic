@@ -24,7 +24,7 @@
     { "path": "/photos/station_generic_2.jpg", "credit": "NASA (STS-88, Unity/Zarya docked)" },
     { "path": "/photos/station_generic_3.jpg", "credit": "NASA (ISS Expedition 3 EVA)" },
     { "path": "/photos/station_generic_4.jpg", "credit": "China Manned Space Engineering Office, CC BY 4.0" },
-    { "path": "/photos/station_generic_5.jpg", "credit": "Go4Liftoff.com" }
+    { "path": "/photos/station_generic_5.jpg", "credit": "Go4Liftoff.com (rendering)" }
   ] },
   "navigation_generic": { "pool": [
     { "path": "/photos/navigation_generic_2.jpg", "credit": "U.S. Air Force, public domain" },
