@@ -57,6 +57,12 @@ export default [
     languageOptions: { globals: { ...globals.node } },
   },
   {
+    // Node scripts that also hand callbacks to Playwright to run inside the
+    // page, where the browser globals are the ones in scope.
+    files: ["tools/store-screenshots/*.mjs"],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
+  },
+  {
     files: ["**/*.test.js"],
     languageOptions: { globals: { ...globals.node } },
   },
