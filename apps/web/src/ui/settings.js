@@ -35,6 +35,7 @@ import { savedIds } from "./favorites.js";
 import { refreshInfo, select } from "./info.js";
 import { toast, flash } from "./status.js";
 import { closeOtherSheets } from "./sheets.js";
+import { attachSheetSwipe } from "./sheet-swipe.js";
 
 const GITHUB = "https://github.com/ianlewis101/orbital-traffic";
 
@@ -86,87 +87,15 @@ function isOpen() {
   return panel()?.classList.contains("show");
 }
 
-// =====================================================================
-// MOBILE — swipe-down-to-close
-//
-// Same drag physics as the object card's swipe-to-collapse (ui/info.js —
-// dragging only "grabs" past a 6px vertical threshold, only when scrolled
-// to the top, and only commits past an 80px drag or a fast-enough flick;
-// otherwise it snaps back open). Adapted to close outright rather than
-// collapse to a mini-card: unlike the info card, this sheet has nothing to
-// collapse into.
-// =====================================================================
-const isMobileLayout = () => window.matchMedia("(max-width:768px)").matches;
-let sheetDrag = null,
-  sheetAnimGen = 0;
-
-function onSheetTouchStart(e) {
-  if (!isMobileLayout()) return;
-  sheetDrag = { startY: e.touches[0].clientY, dragging: false };
-}
-function onSheetTouchMove(e) {
-  if (!sheetDrag) return;
-  const y = e.touches[0].clientY;
-  if (!sheetDrag.dragging) {
-    const dy0 = y - sheetDrag.startY;
-    const body = $("#settings-body");
-    if (dy0 > 6 && (!body || body.scrollTop <= 0)) {
-      sheetDrag.dragging = true;
-      sheetDrag.dragStartY = y;
-      sheetDrag.dragStartTime = performance.now();
-      panel().style.transition = "none";
-    } else if (dy0 < -6) {
-      sheetDrag = null;
-      return;
-    } else return;
-  }
-  sheetDrag.lastY = y;
-  e.preventDefault();
-  panel().style.transform = `translateY(${Math.max(0, y - sheetDrag.dragStartY)}px)`;
-}
-function onSheetTouchEnd() {
-  if (!sheetDrag || !sheetDrag.dragging) {
-    sheetDrag = null;
-    return;
-  }
-  const dy = Math.max(0, sheetDrag.lastY - sheetDrag.dragStartY);
-  const elapsed = Math.max(1, performance.now() - sheetDrag.dragStartTime);
-  sheetDrag = null;
-  panel().style.transition = "";
-  if (dy > 80 || dy / elapsed > 0.5) dismissSheet();
-  else snapSheetOpen();
-}
-function onSheetTouchCancel() {
-  if (!sheetDrag) return;
-  const wasDragging = sheetDrag.dragging;
-  sheetDrag = null;
-  panel().style.transition = "";
-  if (wasDragging) snapSheetOpen();
-}
-function dismissSheet() {
-  const p = panel();
-  const gen = ++sheetAnimGen;
-  p.style.transition = "transform .3s cubic-bezier(.32,.72,0,1)";
-  p.style.transform = "translateY(110%)";
-  setTimeout(() => {
-    if (sheetAnimGen !== gen) return;
-    closeSettings();
-  }, 300);
-}
-function snapSheetOpen() {
-  const p = panel();
-  const gen = ++sheetAnimGen;
-  p.style.transition = "transform .32s cubic-bezier(.34,1.56,.64,1)";
-  p.style.transform = "translateY(0)";
-  setTimeout(() => {
-    if (sheetAnimGen !== gen) return;
-    p.style.transition = "";
-    p.style.transform = "";
-  }, 320);
-}
+// Swipe-down-to-close lives in ui/sheet-swipe.js, shared with the Tracked
+// Chain card — same drag physics as the object card's swipe-to-collapse,
+// committing to a close rather than a collapse. Wired in initSettings(),
+// which fills in this reset (see attachSheetSwipe's return value); until
+// then, and in tests that never call initSettings(), it is a no-op.
+let resetSheetDrag = () => {};
 
 export function closeSettings() {
-  sheetAnimGen++; // invalidate any in-flight drag animation
+  resetSheetDrag(); // abandon any in-flight drag animation
   const p = panel();
   p?.classList.remove("show");
   if (p) {
@@ -698,7 +627,7 @@ export function openSettings() {
   const p = panel();
   if (!p) return;
   closeOtherSheets("settings");
-  sheetAnimGen++; // invalidate any leftover drag animation from the last close
+  resetSheetDrag(); // abandon any leftover drag animation from the last close
   p.style.transition = "";
   p.style.transform = "";
   p.classList.add("show");
@@ -715,12 +644,7 @@ export function initSettings() {
   if (btn) {
     btn.onclick = () => (isOpen() ? closeSettings() : openSettings());
   }
-  if (p) {
-    p.addEventListener("touchstart", onSheetTouchStart, { passive: true });
-    p.addEventListener("touchmove", onSheetTouchMove, { passive: false });
-    p.addEventListener("touchend", onSheetTouchEnd);
-    p.addEventListener("touchcancel", onSheetTouchCancel);
-  }
+  if (p) resetSheetDrag = attachSheetSwipe("settings", "settings-body", closeSettings);
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && isOpen()) closeSettings();
   });

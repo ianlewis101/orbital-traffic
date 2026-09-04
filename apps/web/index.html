@@ -213,10 +213,10 @@
       <span class="ph-t">Tracked Chain</span>
       <span class="ph-r">
         <span class="ph-i" id="chain-count"></span>
-        <button type="button" class="x" id="chain-x" aria-label="Stop tracking this chain">&#10005;</button>
+        <button type="button" class="x" id="chain-x" aria-label="Close chain details">&#10005;</button>
       </span>
     </div>
-    <div class="sheet-body">
+    <div class="sheet-body" id="chain-body">
       <div class="chain-top">
         <div class="cat-tag" id="chain-cat"><span class="d"></span><span></span></div>
         <div class="chain-nm" id="chain-nm">&mdash;</div>
@@ -228,6 +228,9 @@
       <div class="grid" id="chain-grid"></div>
       <div class="tele-h lab">Satellites &mdash; front of the train first</div>
       <div id="chain-list"></div>
+      <div class="foot">
+        <button type="button" id="chain-stop">&#10005; Stop tracking chain</button>
+      </div>
       <div class="sheet-attr">Chain worked out on your device from live orbital elements</div>
     </div>
   </div>

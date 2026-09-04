@@ -35,7 +35,7 @@ const MARKUP = `
         <button type="button" class="x" id="chain-x">✕</button>
       </span>
     </div>
-    <div class="sheet-body">
+    <div class="sheet-body" id="chain-body">
       <div class="chain-top">
         <div class="cat-tag" id="chain-cat"><span class="d"></span><span></span></div>
         <div class="chain-nm" id="chain-nm">—</div>
@@ -45,10 +45,14 @@ const MARKUP = `
       <div class="chips" id="chain-chips"></div>
       <div class="grid" id="chain-grid"></div>
       <div id="chain-list"></div>
+      <div class="foot"><button type="button" id="chain-stop">✕ Stop tracking chain</button></div>
     </div>
   </div>
   <div id="overhead"></div><div id="settings"></div>
 `;
+
+const memberRows = () => [...document.querySelectorAll("#chain-list .ohrow")];
+const moreButton = () => document.querySelector("#chain-list .oh-more");
 
 function chainFixture(over = {}) {
   return {
@@ -56,9 +60,11 @@ function chainFixture(over = {}) {
     cat: "starlink",
     launch: "26196",
     launchLabel: "2026-196",
-    ids: ["60001", "60002", "60003"],
-    count: 3,
-    leadId: "60003",
+    // Six members, so the collapsed list (3 rows) and its expander are both
+    // exercised by the ordinary fixture rather than a special case.
+    ids: ["60001", "60002", "60003", "60004", "60005", "60006"],
+    count: 6,
+    leadId: "60006",
     leadName: "STARLINK-37694",
     arcDeg: 100.4,
     spacingDeg: 3.72,
@@ -125,7 +131,7 @@ describe("selectChain", () => {
     // are on screen at a time.
     expect(selectSpy).toHaveBeenCalledWith(null);
     expect(buildOverlaySpy).toHaveBeenCalledTimes(1);
-    expect(buildOverlaySpy.mock.calls[0][0].map((s) => s.id)).toEqual(["60001", "60002", "60003"]);
+    expect(buildOverlaySpy.mock.calls[0][0].map((s) => s.id)).toEqual(chain.ids);
     expect(buildOverlaySpy.mock.calls[0][1]).toBe("starlink");
     expect(framePointSpy).toHaveBeenCalledTimes(1);
     // Desktop: the card is a side panel, so the chain stays centred.
@@ -140,14 +146,14 @@ describe("selectChain", () => {
     expect(framePointSpy.mock.calls[0][2]).toBeGreaterThan(0);
   });
 
-  it("renders the launch, the live numbers and every member", async () => {
+  it("renders the launch and the live numbers", async () => {
     const chain = chainFixture();
     const { mod } = await load({ chains: [chain] });
     mod.selectChain(chain);
 
     expect(document.getElementById("chain-nm").textContent).toBe("Starlink train · 2026-196");
     expect(document.getElementById("chain-sub").textContent).toContain("Launch 2026-196");
-    expect(document.getElementById("chain-count").textContent).toBe("3");
+    expect(document.getElementById("chain-count").textContent).toBe("6");
     expect(document.getElementById("chain-lead").textContent).toContain("Starlink");
 
     const chips = document.getElementById("chain-chips").textContent;
@@ -158,20 +164,14 @@ describe("selectChain", () => {
     const grid = document.getElementById("chain-grid").textContent;
     expect(grid).toContain("Satellites");
     expect(grid).toContain("Chain length");
-
-    const rows = document.querySelectorAll("#chain-list .ohrow");
-    expect(rows).toHaveLength(3);
-    // Listed front of the train first: the lead satellite (last in flight
-    // order) is row 1, and the tail is last.
-    expect(rows[0].textContent).toContain("60003");
-    expect(rows[0].querySelector(".el").textContent).toBe("#1");
-    expect(rows[2].textContent).toContain("60001");
-    expect(rows[2].querySelector(".el").textContent).toBe("#3");
   });
 
   it("does nothing when too few of the chain's objects are still loaded", async () => {
     const chain = chainFixture();
-    const { mod, state } = await load({ chains: [chain], missing: ["60002", "60003"] });
+    const { mod, state } = await load({
+      chains: [chain],
+      missing: ["60002", "60003", "60004", "60005", "60006"],
+    });
     mod.selectChain(chain);
     expect(state.chain).toBeNull();
     expect(buildOverlaySpy).not.toHaveBeenCalled();
@@ -187,17 +187,65 @@ describe("selectChain", () => {
   });
 });
 
-describe("member rows", () => {
-  it("open the object card and leave the chain lit", async () => {
+describe("member list", () => {
+  it("starts collapsed to three rows, front of the train first", async () => {
+    const chain = chainFixture();
+    const { mod } = await load({ chains: [chain] });
+    mod.selectChain(chain);
+
+    const rows = memberRows();
+    expect(rows).toHaveLength(3);
+    // The lead satellite (last in flight order) is row 1.
+    expect(rows[0].textContent).toContain("60006");
+    expect(rows[0].querySelector(".el").textContent).toBe("#1");
+    expect(rows[2].textContent).toContain("60004");
+    expect(moreButton().textContent).toBe("Show all 6 satellites");
+  });
+
+  it("expands to the whole string and back", async () => {
+    const chain = chainFixture();
+    const { mod } = await load({ chains: [chain] });
+    mod.selectChain(chain);
+
+    moreButton().click();
+    expect(memberRows()).toHaveLength(6);
+    expect(memberRows()[5].textContent).toContain("60001"); // the tail
+    expect(moreButton().textContent).toBe("Show fewer");
+    expect(moreButton().getAttribute("aria-expanded")).toBe("true");
+
+    moreButton().click();
+    expect(memberRows()).toHaveLength(3);
+  });
+
+  it("collapses again for the next chain selected", async () => {
+    const chain = chainFixture();
+    const { mod } = await load({ chains: [chain] });
+    mod.selectChain(chain);
+    moreButton().click();
+    expect(memberRows()).toHaveLength(6);
+
+    mod.selectChain(chain);
+    expect(memberRows()).toHaveLength(3);
+  });
+
+  it("offers no expander when the whole chain already fits", async () => {
+    const chain = chainFixture({ ids: ["60001", "60002", "60003"], count: 3 });
+    const { mod } = await load({ chains: [chain] });
+    mod.selectChain(chain);
+    expect(memberRows()).toHaveLength(3);
+    expect(moreButton()).toBeNull();
+  });
+
+  it("opens the object card on a row tap and leaves the chain lit", async () => {
     const chain = chainFixture();
     const { mod, state } = await load({ chains: [chain] });
     mod.selectChain(chain);
     selectSpy.mockClear();
 
-    document.querySelectorAll("#chain-list .ohrow")[0].click();
+    memberRows()[0].click();
 
     expect(selectSpy).toHaveBeenCalledTimes(1);
-    expect(selectSpy.mock.calls[0][0].id).toBe("60003"); // the lead satellite
+    expect(selectSpy.mock.calls[0][0].id).toBe("60006"); // the lead satellite
     // Card out of the way, chain still selected and still drawn.
     expect(document.getElementById("chain").classList.contains("show")).toBe(false);
     expect(state.chain).toBe(chain);
@@ -205,28 +253,122 @@ describe("member rows", () => {
   });
 });
 
-describe("clearChain", () => {
-  it("drops the card, the overlay and the selection", async () => {
+describe("closing the card", () => {
+  it("✕ puts the card away but leaves the chain lit", async () => {
     const chain = chainFixture();
     const { mod, state } = await load({ chains: [chain] });
-    mod.selectChain(chain);
     mod.initChainCard();
+    mod.selectChain(chain);
 
     document.getElementById("chain-x").click();
 
-    expect(state.chain).toBeNull();
-    expect(clearOverlaySpy).toHaveBeenCalled();
     expect(document.getElementById("chain").classList.contains("show")).toBe(false);
+    expect(state.chain).toBe(chain);
+    expect(clearOverlaySpy).not.toHaveBeenCalled();
   });
 
-  it("is also wired to Escape while the card is open", async () => {
+  it("Escape does the same", async () => {
     const chain = chainFixture();
     const { mod, state } = await load({ chains: [chain] });
     mod.initChainCard();
     mod.selectChain(chain);
 
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+
+    expect(document.getElementById("chain").classList.contains("show")).toBe(false);
+    expect(state.chain).toBe(chain);
+    expect(clearOverlaySpy).not.toHaveBeenCalled();
+  });
+
+  it("reopens from the same chain, collapsed and re-framed", async () => {
+    const chain = chainFixture();
+    const { mod } = await load({ chains: [chain] });
+    mod.initChainCard();
+    mod.selectChain(chain);
+    document.getElementById("chain-x").click();
+
+    mod.selectChain(chain);
+    expect(document.getElementById("chain").classList.contains("show")).toBe(true);
+    expect(memberRows()).toHaveLength(3);
+    expect(framePointSpy).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("clearChain", () => {
+  it("is what the Stop tracking button does: card, overlay and selection all go", async () => {
+    const chain = chainFixture();
+    const { mod, state } = await load({ chains: [chain] });
+    mod.initChainCard();
+    mod.selectChain(chain);
+
+    document.getElementById("chain-stop").click();
+
     expect(state.chain).toBeNull();
+    expect(clearOverlaySpy).toHaveBeenCalled();
+    expect(document.getElementById("chain").classList.contains("show")).toBe(false);
+  });
+});
+
+/**
+ * Swipe-down-to-dismiss (ui/sheet-swipe.js, shared with Settings): the same
+ * gesture, but committing to closeChainCard() — the chain stays lit.
+ */
+describe("swipe-down (mobile)", () => {
+  function touchEvent(type, y) {
+    const ev = new Event(type, { bubbles: true, cancelable: true });
+    ev.touches = [{ clientY: y }];
+    return ev;
+  }
+  const touchEnd = () => new Event("touchend", { bubbles: true, cancelable: true });
+
+  it("closes the card on a drag past the commit threshold, keeping the chain", async () => {
+    const chain = chainFixture();
+    const { mod, state } = await load({ chains: [chain], mobile: true });
+    mod.initChainCard();
+    mod.selectChain(chain);
+    const panel = document.getElementById("chain");
+
+    panel.dispatchEvent(touchEvent("touchstart", 100));
+    panel.dispatchEvent(touchEvent("touchmove", 120)); // clears the 6px grab threshold
+    panel.dispatchEvent(touchEvent("touchmove", 250)); // past the 80px commit line
+    panel.dispatchEvent(touchEnd());
+
+    await vi.waitFor(() => expect(panel.classList.contains("show")).toBe(false));
+    expect(state.chain).toBe(chain);
+    expect(clearOverlaySpy).not.toHaveBeenCalled();
+  });
+
+  it("snaps back open on a short, slow drag", async () => {
+    const chain = chainFixture();
+    const { mod } = await load({ chains: [chain], mobile: true });
+    mod.initChainCard();
+    mod.selectChain(chain);
+    const panel = document.getElementById("chain");
+
+    panel.dispatchEvent(touchEvent("touchstart", 100));
+    panel.dispatchEvent(touchEvent("touchmove", 120));
+    panel.dispatchEvent(touchEvent("touchmove", 130)); // 10px — under the line
+    // A real gap so the release isn't read as a fast flick.
+    await new Promise((r) => setTimeout(r, 100));
+    panel.dispatchEvent(touchEnd());
+
+    await new Promise((r) => setTimeout(r, 400));
+    expect(panel.classList.contains("show")).toBe(true);
+  });
+
+  it("ignores touches on desktop layout", async () => {
+    const chain = chainFixture();
+    const { mod } = await load({ chains: [chain] });
+    mod.initChainCard();
+    mod.selectChain(chain);
+    const panel = document.getElementById("chain");
+
+    panel.dispatchEvent(touchEvent("touchstart", 100));
+    panel.dispatchEvent(touchEvent("touchmove", 250));
+    panel.dispatchEvent(touchEnd());
+
+    await new Promise((r) => setTimeout(r, 400));
+    expect(panel.classList.contains("show")).toBe(true);
   });
 });
 
@@ -271,7 +413,7 @@ describe("chain copy", () => {
   it("summarises a chain for the event feed", async () => {
     const { mod } = await load();
     const chain = chainFixture();
-    expect(mod.chainSummary(chain)).toBe("Starlink train · 3 satellites");
+    expect(mod.chainSummary(chain)).toBe("Starlink train · 6 satellites");
     expect(mod.chainDetail(chain)).toBe("Still in a line 178 mi up · 56s apart");
   });
 

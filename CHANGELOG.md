@@ -12,8 +12,12 @@
   globe at once, joined head to tail along their shared orbit, with the camera aimed at
   the string. A _Tracked Chain_ card names the launch it came from and gives its live
   numbers (how many are still in the string, how high, how far apart in miles and in
-  seconds, how long the chain is), then lists every member front-of-the-train first;
-  tapping one opens the ordinary object card with the chain still lit behind it. A
+  seconds, how long the chain is), then lists the first three satellites front-of-the-train
+  first, with the rest a tap away; tapping one opens the ordinary object card with the
+  chain still lit behind it. Closing the card — ✕, Escape, or a swipe down on a phone,
+  the same gesture Settings and the object card use — puts it away and leaves the chain
+  drawn on the globe, which is what you selected it for; its "Stop tracking" button is
+  what lets go. A
   grouped "Launched · N new Starlink satellites" event now opens the whole chain too,
   instead of one arbitrary satellite from the batch. Detection is geometric and runs on
   device from live elements, so a train appears as it launches and fades out on its own

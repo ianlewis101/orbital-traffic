@@ -7,6 +7,7 @@ import { buildChainOverlay, clearChainOverlay, chainCenterEci } from "../scene/c
 import { framePoint } from "../scene/core.js";
 import { select } from "./info.js";
 import { closeOtherSheets } from "./sheets.js";
+import { attachSheetSwipe } from "./sheet-swipe.js";
 
 /**
  * The "Tracked Chain" card — the whole-launch counterpart to the info card's
@@ -22,6 +23,13 @@ import { closeOtherSheets } from "./sheets.js";
  * The two selections coexist on purpose: tapping a member opens the ordinary
  * info card with the chain still lit behind it, so you can walk the string
  * satellite by satellite without losing it.
+ *
+ * CLOSING THE CARD IS NOT UNTRACKING. ✕, Escape, a swipe down and another
+ * sheet taking the slot all just put the card away — the chain stays lit on
+ * the globe, which is the whole point of having selected it, and the "Today
+ * in Space" row brings the card back. Only the card's own "Stop tracking"
+ * button clears the highlight (clearChain()), plus the two automatic cases:
+ * selecting a different chain, and a sync in which this one no longer exists.
  */
 
 /** How far back to pull the camera when framing a chain (Earth radii). */
@@ -35,7 +43,20 @@ const CHAIN_STANDOFF = 3.6;
  */
 const CHAIN_LIFT_RAD = 0.21;
 
+/**
+ * Member rows shown before the list is expanded. A chain is 8-30 satellites
+ * with near-identical names; the list is there to be walked when you want it,
+ * not to bury the numbers and the prose above it under 28 rows every time the
+ * card opens.
+ */
+const COLLAPSED_MEMBERS = 3;
+
 const isMobileLayout = () => window.matchMedia("(max-width:768px)").matches;
+
+/** Reset for the swipe gesture's animation, filled in by initChainCard(). */
+let resetSheetDrag = () => {};
+/** Whether the member list is showing all rows. Reset on each new selection. */
+let membersExpanded = false;
 
 const LEAD_COPY = {
   starlink:
@@ -108,7 +129,8 @@ function renderMembers(chain) {
   // detectChains() returns members tail-first along the direction of travel;
   // the list reads the other way round, leading satellite first, because that
   // is the order they cross the sky in when the train passes overhead.
-  const sats = chainSats(chain).reverse();
+  const all = chainSats(chain).reverse();
+  const sats = membersExpanded ? all : all.slice(0, COLLAPSED_MEMBERS);
   const hex = catColorHex(chain.cat);
   sats.forEach((s, i) => {
     const b = document.createElement("button");
@@ -137,6 +159,20 @@ function renderMembers(chain) {
     };
     list.appendChild(b);
   });
+
+  if (all.length <= COLLAPSED_MEMBERS) return;
+  const more = document.createElement("button");
+  more.type = "button";
+  more.className = "oh-more";
+  more.setAttribute("aria-expanded", membersExpanded ? "true" : "false");
+  more.textContent = membersExpanded
+    ? "Show fewer"
+    : `Show all ${all.length.toLocaleString()} satellites`;
+  more.onclick = () => {
+    membersExpanded = !membersExpanded;
+    renderMembers(chain);
+  };
+  list.appendChild(more);
 }
 
 /** Repaint the card from state.chain. Safe to call with nothing selected. */
@@ -166,6 +202,7 @@ export function selectChain(chain) {
   const sats = chainSats(chain);
   if (sats.length < 2) return;
   state.chain = chain;
+  membersExpanded = false; // every fresh selection starts with the list collapsed
   select(null);
   buildChainOverlay(sats, chain.cat, new Date(state.simNow));
   const centre = chainCenterEci(new Date(state.simNow));
@@ -177,17 +214,21 @@ function openChainCard() {
   const p = panel();
   if (!p) return;
   closeOtherSheets("chain");
+  resetSheetDrag(); // abandon any leftover drag animation from the last close
   renderChainCard();
   p.classList.add("show");
   p.scrollTop = 0;
 }
 
 /**
- * Hide the card but keep the chain lit — used when another sheet takes the
- * slot, and when the user drills into one member. The "Today in Space" row
- * reopens it.
+ * Put the card away and leave the chain lit. Every "close" gesture lands here
+ * — ✕, Escape, a swipe down, another sheet taking the slot, drilling into one
+ * member — because none of them mean "stop tracking this chain"; the string on
+ * the globe is what the user asked for, and the "Today in Space" row reopens
+ * the card. clearChain() is the one that lets go.
  */
 export function closeChainCard() {
+  resetSheetDrag();
   panel()?.classList.remove("show");
 }
 
@@ -223,8 +264,11 @@ export function resyncChain() {
 
 export function initChainCard() {
   const x = $("#chain-x");
-  if (x) x.onclick = () => clearChain();
+  if (x) x.onclick = () => closeChainCard();
+  const stop = $("#chain-stop");
+  if (stop) stop.onclick = () => clearChain();
+  resetSheetDrag = attachSheetSwipe("chain", "chain-body", closeChainCard);
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && isOpen()) clearChain();
+    if (e.key === "Escape" && isOpen()) closeChainCard();
   });
 }

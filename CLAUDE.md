@@ -114,6 +114,15 @@ cross-check those against this document instead.
    never state.simNow — the time machine must not invent or
    erase chains.
 
+   CLOSING THE CHAIN CARD IS NOT UNTRACKING: ✕, Escape, a swipe
+   down and another sheet taking the slot all just put the card
+   away — the chain stays lit on the globe (the highlight is the
+   feature; the "Today in Space" row reopens the card), and only
+   the card's own "Stop tracking" button calls clearChain(). Two
+   automatic cases also clear it: selecting a different chain,
+   and a sync in which this one no longer exists. Don't "fix"
+   ✕ back to clearing the highlight.
+
    Do not add classification logic anywhere else (e.g. inline
    in ingest.js or duplicated in the Worker) — categorize() in
    packages/catalog/src/classify.js is the single source of
@@ -246,6 +255,17 @@ cross-check those against this document instead.
      propagates to a position object full of NaN rather than to
      nothing, and NaN fails every comparison, so an unguarded
      value slips straight past a `<= minElevation` filter.
+   - apps/web/src/ui/sheet-swipe.js's attachSheetSwipe() is the
+     swipe-down-to-dismiss gesture for the bottom sheets
+     (Settings, Tracked Chain) — grab threshold, scroll-position
+     guard, commit distance/velocity and the snap-back all live
+     there once. A new sheet wires it rather than copying the
+     handlers. It returns a reset() the sheet must call whenever
+     it is opened or closed by another route, or a settling
+     animation from the last gesture lands on the reopened sheet.
+     ui/info.js keeps its own copy on purpose: it collapses to
+     the mini-card instead of dismissing, so its commit branch
+     drives different state.
    - apps/web/src/settings.js is the single home for persisted
      user preferences (one validated "ot-settings" localStorage
      key), including the two Saved lists —
