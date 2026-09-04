@@ -80,7 +80,8 @@ inlined minified copies into a 3.8 MB `index.html`).
   direct-CelesTrak fallback).
 - `src/ui/` — info card (telemetry, SATCAT enrichment, crew, curated descriptions,
   procedural SVG artwork), chain card (a whole launch selected at once), legend, search,
-  time machine, clock, favourites.
+  time machine, clock, favourites. `sheet-swipe.js` holds the bottom sheets' shared
+  swipe-down-to-dismiss gesture.
 
 **Propagation budget:** positions update at ~20 Hz, but only ~3,500 SGP4 propagations run
 per tick, round-robin across the catalog, so 11k+ objects never stall a frame. The

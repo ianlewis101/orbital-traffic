@@ -602,6 +602,15 @@
   /* Long lists stay inside the sheet's own scroll on desktop rather than
      pushing the attribution line past the bottom of a 320px-wide plate. */
   #chain-list{margin-top:8px}
+  /* "Stop tracking" is the one control that lets go of the chain — ✕ and a
+     swipe only put the card away — so it gets the same quiet, full-width
+     treatment as the object card's secondary action rather than a warning
+     colour it doesn't deserve. */
+  #chain .foot{padding:14px 0 4px}
+  #chain-stop{width:100%;text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:0.18em;
+    padding:11px 0;text-transform:uppercase;color:var(--ink-dim);background:none;border:1px solid var(--line);
+    border-radius:8px;cursor:pointer;transition:all .12s;touch-action:manipulation}
+  #chain-stop:hover{background:rgba(255,255,255,0.05);color:var(--ink)}
 
   /* ---------- settings sections ----------
      Each section is its own raised card, not a run of divs separated by a
