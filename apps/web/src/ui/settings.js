@@ -628,7 +628,7 @@ function buildData() {
       // from inside fetchLive() for the ordinary failure case — only speak
       // up here for the two cases it doesn't cover: genuine success, or the
       // unexpected-error case lastSyncError exists for.
-      if (nowErr) toast("Sync failed — see error below");
+      if (nowErr) toast("Sync failed — see error below", "error");
       else if (!state.syncFailed) toast("Catalog refreshed");
     } finally {
       btn.disabled = false;
