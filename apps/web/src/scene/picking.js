@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { EARTH_R } from "../config.js";
 import { state, $ } from "../state.js";
-import { renderer, camera, cam } from "./core.js";
+import { renderer, camera, cam, clampCamR } from "./core.js";
 import { clouds } from "./clouds.js";
 import { neoPoints, neoSats } from "./neos.js";
 import { select, stopTracking } from "../ui/info.js";
@@ -81,7 +81,7 @@ export function initPicking() {
     (e) => {
       e.preventDefault();
       if (state.tracking) stopTracking();
-      cam.rT = Math.max(EARTH_R * 1.25, Math.min(160, cam.rT * (1 + Math.sign(e.deltaY) * 0.1)));
+      cam.rT = clampCamR(cam.rT * (1 + Math.sign(e.deltaY) * 0.1));
     },
     { passive: false }
   );
@@ -108,7 +108,7 @@ export function initPicking() {
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY
         );
-        cam.rT = Math.max(EARTH_R * 1.25, Math.min(160, (cam.rT * pinch) / d));
+        cam.rT = clampCamR((cam.rT * pinch) / d);
         pinch = d;
       }
     },
