@@ -1,5 +1,5 @@
 import * as satellite from "satellite.js";
-import { categorize, satrecAgeDays, noradId } from "@orbital-traffic/catalog";
+import { categorize, satrecAgeDays, noradId, intlDesignator } from "@orbital-traffic/catalog";
 import { CATS } from "../config.js";
 import { state } from "../state.js";
 
@@ -74,13 +74,22 @@ export async function ingest(records, { prune = false } = {}) {
         // 100000.
         const id = noradId(r.l1);
         const cat = categorize(id, r.name, r.cat);
+        // International designator, kept per object because satellite.js v5's
+        // twoline2satrec() does not carry one (its v4 `intldesg` field is
+        // gone), so it can only be read off the raw line here — after this
+        // point the records array is released. It identifies the launch, which
+        // is what groups a batch into one chain (packages/catalog's
+        // detectChains()) and what the info card and share card print as
+        // "INT'L".
+        const desig = intlDesignator(r.l1);
         const ex = state.byId.get(id);
         if (ex) {
           ex.rec = rec;
           ex.name = r.name || ex.name;
           ex.cat = cat;
+          ex.desig = desig;
         } else {
-          const s = { id, name: (r.name || "OBJ " + id).trim(), cat, rec, alive: true };
+          const s = { id, name: (r.name || "OBJ " + id).trim(), cat, desig, rec, alive: true };
           state.sats.push(s);
           state.byId.set(id, s);
         }

@@ -158,7 +158,7 @@ export function select(s) {
   $("#info-cat").querySelector("span:last-child").textContent = (CATS[s.cat] || CATS.other).label;
   $("#info-nm").textContent = s.name;
   $("#info-figure").innerHTML = figureHTML(s);
-  const li = launchInfo(s.rec);
+  const li = launchInfo(s);
   $("#info-nid").textContent = "NORAD " + s.id + (li.desig !== "—" ? "  ·  INT'L " + li.desig : "");
   setLaunchLine(s, li);
   setFlagLine(s);
@@ -172,8 +172,17 @@ export function select(s) {
   enrichSatcat(s);
 }
 
-function launchInfo(rec) {
-  const d = ((rec && rec.intldesg) || "").trim();
+/**
+ * International designator + implied launch year for an object.
+ *
+ * Reads the designator ingest() copied off TLE line 1 (s.desig) rather than
+ * the satrec: satellite.js v5's twoline2satrec() dropped v4's `intldesg`
+ * field, so this returned "—" for every object in the catalog and the card's
+ * INT'L half and its "Launched <year>" fallback silently never rendered. The
+ * satrec is still checked second for any caller whose parser does provide it.
+ */
+function launchInfo(s) {
+  const d = ((s && (s.desig || (s.rec && s.rec.intldesg))) || "").trim();
   let year = null,
     desig = "—";
   if (/^\d{5}/.test(d)) {
@@ -468,7 +477,7 @@ export function enrichSatcat(s) {
       }
       if (r.LAUNCH_SITE) s.launchSite = SITES[r.LAUNCH_SITE] || null;
       if (state.selected === s) {
-        setLaunchLine(s, launchInfo(s.rec));
+        setLaunchLine(s, launchInfo(s));
         setFlagLine(s);
         $("#info-lead").textContent = describe(s);
         $("#info-figure").innerHTML = figureHTML(s);

@@ -31,6 +31,13 @@ export const state = {
   lastSyncError: null,
   capsulesData: null,
   capsulesTime: null,
+  // Launch chains ("Starlink trains") currently detectable in the catalog,
+  // tightest first, re-derived on every sync by data/chains.js. `chain` is
+  // the one the user has lit on the globe, if any — a selection parallel to
+  // `selected`, not a replacement for it: tapping a member of a lit chain
+  // opens that satellite in the info card with the chain still highlighted.
+  chains: [],
+  chain: null,
 };
 Object.keys(CATS).forEach((c) => (state.cats[c] = 0));
 

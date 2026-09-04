@@ -516,31 +516,32 @@
      explicitly, ahead of any generic UI font, fixes it on every platform. */
   #info .flagline .fl{font-size:13px;letter-spacing:1px;line-height:1;
     font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif}
-  /* ---------- what's overhead + settings ----------
-     Two sheets sharing one shell. On desktop they're ordinary right-hand
-     plates; on mobile both become the same bottom sheet the info card uses.
-     Only one is ever open at a time (each opener closes the other), so they
-     can share the bottom:0 slot without fighting over it. */
+  /* ---------- what's overhead + settings + tracked chain ----------
+     Three sheets sharing one shell. On desktop they're ordinary right-hand
+     plates; on mobile all become the same bottom sheet the info card uses.
+     Only one is ever open at a time (ui/sheets.js's closeOtherSheets()), so
+     they can share the bottom:0 slot without fighting over it. */
   /* Above #hint (10), #mini-card (11), the openers (12) and #tip (13), but
      below toast (30) so a "catalog refreshed" message still reads over the
      top. Without this the boot hint prints straight through the panel header
      and the openers float over the list rows. */
-  #overhead,#settings{top:104px;right:24px;width:320px;max-height:calc(100vh - 150px);
+  #overhead,#settings,#chain{top:104px;right:24px;width:320px;max-height:calc(100vh - 150px);
     z-index:15;display:none;flex-direction:column;overflow:hidden}
-  #overhead.show,#settings.show{display:flex}
+  #overhead.show,#settings.show,#chain.show{display:flex}
   /* An open sheet covers the area both openers sit in, at every breakpoint,
      so hide them rather than let them overlap the content. Relies on the
-     openers following both sheets in index.html. ✕ and Escape close. */
+     openers following all three sheets in index.html. ✕ and Escape close. */
   #overhead.show ~ #overhead-fab,#overhead.show ~ #settings-btn,
-  #settings.show ~ #overhead-fab,#settings.show ~ #settings-btn{display:none}
+  #settings.show ~ #overhead-fab,#settings.show ~ #settings-btn,
+  #chain.show ~ #overhead-fab,#chain.show ~ #settings-btn{display:none}
   .sheet-drag{display:none}
   .sheet-body{overflow-y:auto;overflow-x:hidden;padding:0 15px 14px}
   .sheet-attr{font-size:9px;letter-spacing:0.06em;color:var(--ink-faint);opacity:0.6;
     padding-top:12px;text-align:center;line-height:1.5}
-  #overhead .ph .x,#settings .ph .x{cursor:pointer;color:var(--ink-faint);font-size:11px;line-height:1;
+  #overhead .ph .x,#settings .ph .x,#chain .ph .x{cursor:pointer;color:var(--ink-faint);font-size:11px;line-height:1;
     padding:2px 4px;border:1px solid transparent;border-radius:5px;background:none}
-  #overhead .ph .x:hover,#settings .ph .x:hover{color:var(--ink);border-color:var(--line)}
-  #overhead .ph-r,#settings .ph-r{display:flex;align-items:center;gap:9px}
+  #overhead .ph .x:hover,#settings .ph .x:hover,#chain .ph .x:hover{color:var(--ink);border-color:var(--line)}
+  #overhead .ph-r,#settings .ph-r,#chain .ph-r{display:flex;align-items:center;gap:9px}
 
   /* Floating openers. The mobile bottom-right column is already stacked
      (#meta at 10px, #mini-card at 44px), so these sit above both. */
@@ -580,6 +581,27 @@
   .ohrow .d{width:7px;height:7px;border-radius:50%;flex:none;box-shadow:0 0 7px currentColor}
   .ohrow .nm{flex:1;color:var(--ink);letter-spacing:0.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .ohrow .el{color:var(--ink-dim);font-variant-numeric:tabular-nums;flex:none}
+
+  /* ---------- tracked chain ----------
+     Borrows the sheet shell above and the object card's type scale, so a
+     chain reads as the same kind of thing as a tracked object — one launch
+     instead of one satellite. Member rows are .ohrow, unchanged, exactly as
+     What's Overhead uses them: same list, same tap-to-select behaviour. */
+  #chain .chain-top{padding:12px 0 11px;border-bottom:1px solid var(--line)}
+  #chain .cat-tag{display:inline-flex;align-items:center;gap:7px;font-size:8.5px;letter-spacing:0.2em;
+    text-transform:uppercase;color:var(--ink-dim);margin-bottom:9px;font-weight:600}
+  #chain .cat-tag .d{width:7px;height:7px;box-shadow:0 0 7px currentColor}
+  #chain .chain-nm{font-family:var(--serif);font-weight:700;font-size:19px;line-height:1.1;
+    letter-spacing:-0.01em;color:var(--ink);word-break:break-word}
+  #chain .chain-sub{font-size:9.5px;color:var(--ink-faint);margin-top:6px;letter-spacing:0.1em;
+    text-transform:uppercase;font-variant-numeric:tabular-nums}
+  #chain .chain-lead{padding:12px 0 0;font-size:11.5px;line-height:1.68;color:var(--ink-dim);letter-spacing:0.005em}
+  #chain .chips{padding-top:12px;display:flex;flex-wrap:wrap;gap:6px}
+  #chain .tele-h{padding:15px 0 0;color:var(--ink-faint)}
+  #chain .grid{padding:10px 0 4px;display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+  /* Long lists stay inside the sheet's own scroll on desktop rather than
+     pushing the attribution line past the bottom of a 320px-wide plate. */
+  #chain-list{margin-top:8px}
 
   /* ---------- settings sections ----------
      Each section is its own raised card, not a run of divs separated by a
@@ -757,6 +779,12 @@
     .today-row .reason{font-size:9px}
     .today-row .sw{width:7px;height:7px}
 
+    /* Today in Space — same capped, scrollable body as Popular Objects
+       above it. Its length is data-driven (a busy 48 hours plus a chain row
+       per train currently flying), so without a ceiling a lively week pushes
+       the whole left stack off the top of a phone screen. */
+    #events .body{max-height:34vh;overflow-y:auto}
+
     /* Brand — smaller */
     #brand{top:10px;left:10px;display:none} /* hidden — search takes that space */
 
@@ -842,13 +870,18 @@
       -webkit-tap-highlight-color:transparent;touch-action:manipulation}
     #mini-card.show{display:flex;animation:popin .26s cubic-bezier(.34,1.56,.64,1) both}
 
-    /* Overhead + Settings → the same bottom sheet as the info card. */
-    #overhead,#settings{
+    /* Overhead + Settings + Chain → the same bottom sheet as the info card. */
+    #overhead,#settings,#chain{
       top:auto;bottom:0;left:0;right:0;
       width:100%;max-width:100%;max-height:82vh;
       border-radius:18px 18px 0 0;animation:none;
     }
-    #overhead.show,#settings.show{animation:slideup .3s cubic-bezier(.22,.7,.2,1)}
+    #overhead.show,#settings.show,#chain.show{animation:slideup .3s cubic-bezier(.22,.7,.2,1)}
+    /* The chain card takes deliberately less of the screen than its two
+       siblings: it exists to explain a string of satellites drawn on the
+       globe, so the globe has to stay visible above it. Its own body
+       scrolls, so nothing is lost — the list just starts further down. */
+    #chain{max-height:52vh}
     /* Grab handle, matching #info-drag. Settings now closes on a downward
        swipe too (ui/settings.js's onSheetTouchStart/Move/End, bound to the
        whole #settings panel so a drag can start from the handle, header, or
@@ -859,11 +892,16 @@
       background:rgba(17,22,42,0.92);backdrop-filter:blur(12px);border-radius:18px 18px 0 0}
     .sheet-drag::before{content:"";display:block;margin:0 auto;width:38px;height:4px;border-radius:2px;
       background:rgba(255,255,255,0.22)}
-    #overhead .ph,#settings .ph{position:sticky;top:24px;z-index:2;
+    #overhead .ph,#settings .ph,#chain .ph{position:sticky;top:24px;z-index:2;
       background:rgba(17,22,42,0.92);backdrop-filter:blur(12px)}
     /* The ✕ stays on mobile here (unlike #info, which has the mini-card and
        swipe-down to fall back on — these sheets have neither). */
-    #overhead .ph .x,#settings .ph .x{display:block;padding:6px 8px;font-size:13px}
+    #overhead .ph .x,#settings .ph .x,#chain .ph .x{display:block;padding:6px 8px;font-size:13px}
+    /* Chain rows are a real tap target on a phone, same as .ohrow's own
+       mobile bump — they open the object card. */
+    #chain .ohrow{padding:11px 0;font-size:11px;min-height:44px}
+    #chain .ohrow .nm{font-size:11px}
+    #chain .chain-nm{font-size:22px}
 
     /* Openers move above #mini-card (44px) and #meta (10px). */
     #overhead-fab{right:10px;bottom:96px;width:48px;height:48px}

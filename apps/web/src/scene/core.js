@@ -85,15 +85,36 @@ export function applyCam() {
   camera.lookAt(0, 0, 0);
 }
 
+/**
+ * Aim the camera rig at an ECI position (km).
+ *
+ * `standoff` is how far back to sit, in Earth radii above the target's own
+ * orbital radius: the default 2.2 frames a single object closely, while a
+ * caller framing something that spans a large arc of its orbit (a launch
+ * chain) passes a larger value to fit the whole of it on screen.
+ *
+ * `liftRad` puts the target that many radians above the centre of the view
+ * instead of dead centre — the rig always looks at the Earth's centre, so
+ * this is the only way to keep a target clear of a bottom sheet covering the
+ * lower half of a phone screen.
+ */
+export function framePoint(p, standoff = 2.2, liftRad = 0) {
+  const mag = Math.hypot(p.x, p.y, p.z); // km
+  if (!mag) return;
+  cam.rT = Math.max(EARTH_R * 1.6, Math.min(mag / KM_U + EARTH_R * standoff, 120));
+  // world mapping: X=eci.x, Y=eci.z(north), Z=eci.y
+  cam.thT = Math.atan2(p.x, p.y);
+  const polar = Math.acos(Math.max(-1, Math.min(1, p.z / mag)));
+  // Moving the camera south of the target lifts the target up the screen;
+  // same clamp the drag handler uses so the rig can't flip over a pole.
+  cam.phT = Math.max(0.12, Math.min(Math.PI - 0.12, polar + liftRad));
+}
+
 /** Aim the camera rig at the selected object. */
 export function frameSelected() {
   const s = state.selected;
   if (!s || !s._p) return;
-  const mag = Math.hypot(s._p.x, s._p.y, s._p.z); // km
-  cam.rT = Math.max(EARTH_R * 1.6, Math.min(mag / KM_U + EARTH_R * 2.2, 120));
-  // world mapping: X=eci.x, Y=eci.z(north), Z=eci.y
-  cam.thT = Math.atan2(s._p.x, s._p.y);
-  cam.phT = Math.acos(Math.max(-1, Math.min(1, s._p.z / mag)));
+  framePoint(s._p);
 }
 
 export function resize() {

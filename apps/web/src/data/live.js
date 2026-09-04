@@ -8,10 +8,12 @@ import {
 import { WORKER_BASE } from "../config.js";
 import { state, $ } from "../state.js";
 import { ingest, removeSats } from "./ingest.js";
+import { refreshChains } from "./chains.js";
 import { buildClouds } from "../scene/clouds.js";
 import { rebuildLegend } from "../ui/legend.js";
 import { renderToday } from "../ui/today.js";
-import { refreshEvents } from "../ui/today-in-space.js";
+import { refreshEvents, renderEvents } from "../ui/today-in-space.js";
+import { resyncChain } from "../ui/chain.js";
 import { updateCount, flash, toast } from "../ui/status.js";
 import { select } from "../ui/info.js";
 import { shouldSyncOnVisible } from "../util/freshness.js";
@@ -275,9 +277,17 @@ async function applyLive(recs, capsules) {
   state.srcTime = new Date();
   state.syncFailed = false;
   state.lastSyncError = null;
+  // Chains are re-derived from the elements that just landed, then any lit
+  // one is re-pointed at its fresh snapshot (or dropped, if the string has
+  // finally dispersed). renderEvents() repaints the feed's chain rows off the
+  // new list — refreshEvents() above only repaints when /events itself
+  // answers, and a chain row must not go stale waiting on that.
+  refreshChains();
+  resyncChain();
   rebuildLegend();
   updateCount();
   renderToday();
+  renderEvents();
   // Flash the visible total, not the old hidden #count-n mirror, so a live
   // count change is actually seen.
   flash($("#legend-tot"));

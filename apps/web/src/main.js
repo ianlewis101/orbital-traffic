@@ -4,6 +4,7 @@ import { state, $ } from "./state.js";
 import { satrecEpochDate } from "@orbital-traffic/catalog";
 import { loadData } from "./data/store.js";
 import { ingest } from "./data/ingest.js";
+import { refreshChains } from "./data/chains.js";
 import { fetchLive, initLiveRefresh } from "./data/live.js";
 import { sunDirECI } from "./astro/sun.js";
 import {
@@ -18,10 +19,12 @@ import {
 import { initStarfield } from "./scene/starfield.js";
 import { initEarth, earthGroup, earthUniforms } from "./scene/earth.js";
 import { buildClouds, updatePositions } from "./scene/clouds.js";
+import { updateChainOverlay } from "./scene/chain.js";
 import { initNeos, updateNeoPositions } from "./scene/neos.js";
 import { initPicking } from "./scene/picking.js";
 import { updateSelMarker } from "./scene/marker.js";
 import { refreshInfo, initInfoCard } from "./ui/info.js";
+import { initChainCard } from "./ui/chain.js";
 import { rebuildLegend, initLegendToggle } from "./ui/legend.js";
 import { renderToday, initTodayToggle, refreshTodayLiveFacts } from "./ui/today.js";
 import { initEventsToggle, refreshEvents } from "./ui/today-in-space.js";
@@ -98,6 +101,9 @@ function loop(now) {
   if (now - state.lastProp > 48 || state.rate > 1) {
     state.lastProp = now;
     updatePositions(date);
+    // Shares updatePositions' throttle: it propagates the same way, for at
+    // most a few dozen objects, and no-ops entirely when no chain is lit.
+    updateChainOverlay(date);
     if (state.selected) {
       if (++infoTick % 3 === 0) {
         refreshInfo();
@@ -160,6 +166,7 @@ async function boot() {
   initEarth();
   initNeos();
   initInfoCard();
+  initChainCard();
   initTimeMachine();
   initTodayToggle();
   initEventsToggle();
@@ -189,6 +196,10 @@ async function boot() {
   // is actually looking at.
   state.bootCatalogTime = newestCatalogEpoch(state.sats);
   buildClouds();
+  // Launch chains ("Starlink trains") come out of the elements just ingested,
+  // so the boot catalog already has them — the feed doesn't wait on the first
+  // live sync to offer one.
+  refreshChains();
   rebuildLegend();
   updateCount();
   renderToday();
