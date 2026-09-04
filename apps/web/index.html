@@ -207,6 +207,31 @@
     <div class="sheet-body" id="settings-body"></div>
   </div>
 
+  <div id="chain" class="plate" role="dialog" aria-label="Tracked chain">
+    <div class="sheet-drag"></div>
+    <div class="ph">
+      <span class="ph-t">Tracked Chain</span>
+      <span class="ph-r">
+        <span class="ph-i" id="chain-count"></span>
+        <button type="button" class="x" id="chain-x" aria-label="Stop tracking this chain">&#10005;</button>
+      </span>
+    </div>
+    <div class="sheet-body">
+      <div class="chain-top">
+        <div class="cat-tag" id="chain-cat"><span class="d"></span><span></span></div>
+        <div class="chain-nm" id="chain-nm">&mdash;</div>
+        <div class="chain-sub" id="chain-sub"></div>
+      </div>
+      <div class="chain-lead" id="chain-lead"></div>
+      <div class="chips" id="chain-chips"></div>
+      <div class="tele-h lab">Chain Telemetry</div>
+      <div class="grid" id="chain-grid"></div>
+      <div class="tele-h lab">Satellites &mdash; front of the train first</div>
+      <div id="chain-list"></div>
+      <div class="sheet-attr">Chain worked out on your device from live orbital elements</div>
+    </div>
+  </div>
+
   <button type="button" id="overhead-fab" aria-label="What&rsquo;s overhead" aria-expanded="false" aria-controls="overhead" title="What&rsquo;s overhead">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <path d="M3 17a9 9 0 0 1 18 0"/><path d="M12 3v2"/><path d="M4.6 7.6 6 9"/><path d="M19.4 7.6 18 9"/><circle cx="12" cy="17" r="1.6"/>

@@ -49,6 +49,16 @@ Every ingestion path runs this same pipeline: the web app's `ingest()`, the Work
 `/tle` handler, and the daily data refresh. Historically these were three hand-synced
 copies (JS ×2 + Python) that drifted; now a classification fix is one change plus a test.
 
+`chains.js` is a sibling module in the same spirit, and also not part of `categorize()`:
+it finds **launch chains** — the string of 20-30 satellites a constellation launch flies
+as for its first days or weeks in orbit, before each raises itself to its operational
+shell. `detectChains()` groups the catalog by international-designator batch and keeps a
+group only while it is recent, still below its constellation's operating altitude (read
+from that category's own median, not hardcoded), still coplanar, and still bunched
+(mean spacing across the occupied arc). Members keep their ordinary category throughout;
+a chain is a transient arrangement of already-classified objects, re-derived from live
+elements on every sync.
+
 `capsules.js` is a sibling module, not part of `categorize()`: it derives each tracked
 crewed capsule's or cargo vehicle's **phase** (`docked` / `free-flying` / `landed`) from
 orbital elements — propagated 3D separation from the capsule's associated station, not
@@ -63,13 +73,14 @@ Vite-built ES modules. `three` and `satellite.js` are npm dependencies (the lega
 inlined minified copies into a 3.8 MB `index.html`).
 
 - `src/scene/` — renderer/camera rig, procedural Earth (canvas day/night textures from
-  coastline polygons + custom shader), per-category point clouds, orbit trail, NEO shell,
-  raycast picking, screen-space selection marker.
+  coastline polygons + custom shader), per-category point clouds, orbit trail, launch-chain
+  highlight, NEO shell, raycast picking, screen-space selection marker.
 - `src/astro/` — SGP4 wrapper, sun direction, classical elements, Kepler solver for NEOs.
 - `src/data/` — catalog loading (`/data/*.json`), ingest, live refresh (Worker with
   direct-CelesTrak fallback).
 - `src/ui/` — info card (telemetry, SATCAT enrichment, crew, curated descriptions,
-  procedural SVG artwork), legend, search, time machine, clock, favourites.
+  procedural SVG artwork), chain card (a whole launch selected at once), legend, search,
+  time machine, clock, favourites.
 
 **Propagation budget:** positions update at ~20 Hz, but only ~3,500 SGP4 propagations run
 per tick, round-robin across the catalog, so 11k+ objects never stall a frame. The

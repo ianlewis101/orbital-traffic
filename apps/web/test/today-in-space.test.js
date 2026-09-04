@@ -11,8 +11,16 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
  */
 
 const selectSpy = vi.fn();
+const selectChainSpy = vi.fn();
 vi.mock("../src/ui/info.js", () => ({
   select: (...a) => selectSpy(...a),
+}));
+// The chain card pulls in the scene modules (three.js geometry, a canvas
+// point sprite); the feed only needs its copy helpers and its opener.
+vi.mock("../src/ui/chain.js", () => ({
+  chainSummary: (c) => `Starlink train · ${c.count} satellites`,
+  chainDetail: (c) => `Still in a line ${c.altitudeKm} km up`,
+  selectChain: (...a) => selectChainSpy(...a),
 }));
 
 const MARKUP = `
@@ -22,17 +30,32 @@ const MARKUP = `
   </div>
 `;
 
-async function load() {
+async function load({ chains = [] } = {}) {
   document.body.innerHTML = MARKUP;
   vi.resetModules();
   const { state } = await import("../src/state.js");
   state.byId = new Map();
+  state.chains = chains;
   const mod = await import("../src/ui/today-in-space.js");
   return { mod, state };
 }
 
+function chainFixture(over = {}) {
+  return {
+    key: "starlink:26196",
+    cat: "starlink",
+    launch: "26196",
+    launchLabel: "2026-196",
+    ids: ["60001", "60002"],
+    count: 28,
+    altitudeKm: 286,
+    ...over,
+  };
+}
+
 beforeEach(() => {
   selectSpy.mockClear();
+  selectChainSpy.mockClear();
 });
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -179,6 +202,103 @@ describe("refreshEvents / renderEvents", () => {
     const list = document.getElementById("events-list");
     expect(list.innerHTML).not.toContain("<img");
     expect(list.innerHTML).toContain("&lt;img");
+  });
+
+  it("adds a row for a chain no launch event covers, and opens the whole chain on tap", async () => {
+    const chain = chainFixture();
+    const { mod } = await load({ chains: [chain] });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ events: [] }))));
+    await mod.refreshEvents();
+
+    const rows = document.querySelectorAll("#events-list .event-row");
+    expect(rows).toHaveLength(1);
+    expect(rows[0].textContent).toContain("Starlink train · 28 satellites");
+    expect(rows[0].textContent).toContain("Still in a line 286 km up");
+    expect(rows[0].classList.contains("inert")).toBe(false);
+
+    rows[0].click();
+    expect(selectChainSpy).toHaveBeenCalledWith(chain);
+    expect(selectSpy).not.toHaveBeenCalled();
+  });
+
+  it("opens the whole chain from the launch event that delivered it, without a duplicate row", async () => {
+    const chain = chainFixture();
+    const { mod } = await load({ chains: [chain] });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            events: [
+              {
+                type: "launch",
+                // One shared id is enough — the batch and the chain are the
+                // same launch, minus whatever has already dispersed.
+                ids: ["60002", "60003"],
+                count: 28,
+                name: "STARLINK-37828",
+                cat: "starlink",
+                at: new Date().toISOString(),
+              },
+            ],
+          })
+        )
+      )
+    );
+    await mod.refreshEvents();
+
+    const rows = document.querySelectorAll("#events-list .event-row");
+    expect(rows).toHaveLength(1);
+    expect(rows[0].textContent).toContain("Launched · 28 new Starlink satellites");
+    rows[0].click();
+    expect(selectChainSpy).toHaveBeenCalledWith(chain);
+  });
+
+  it("caps chain rows so a run of trains can't push the real events out of the card", async () => {
+    const chains = [1, 2, 3, 4, 5].map((n) =>
+      chainFixture({ key: `starlink:2619${n}`, ids: [`6000${n}`], count: 20 + n })
+    );
+    const { mod } = await load({ chains });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ events: [] }))));
+    await mod.refreshEvents();
+
+    const rows = [...document.querySelectorAll("#events-list .event-row")];
+    expect(rows).toHaveLength(3);
+    // Kept in detectChains()' own order — tightest (most train-like) first.
+    expect(rows[0].textContent).toContain("21 satellites");
+    expect(rows[2].textContent).toContain("23 satellites");
+  });
+
+  it("still selects a single object for a launch that has no chain", async () => {
+    const { mod, state } = await load({ chains: [chainFixture({ ids: ["70001"] })] });
+    const sat = { id: "60001", name: "STARLINK-37828" };
+    state.byId.set("60001", sat);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            events: [
+              {
+                type: "launch",
+                ids: ["60001", "60002"],
+                count: 2,
+                name: "STARLINK-37828",
+                cat: "starlink",
+                at: new Date().toISOString(),
+              },
+            ],
+          })
+        )
+      )
+    );
+    await mod.refreshEvents();
+    // The unrelated chain still gets its own row above this one.
+    const rows = [...document.querySelectorAll(".event-row")];
+    const launchRow = rows.find((r) => r.textContent.includes("Launched"));
+    launchRow.click();
+    expect(selectSpy).toHaveBeenCalledWith(sat);
+    expect(selectChainSpy).not.toHaveBeenCalled();
   });
 
   it("leaves the header/body unchanged on a failed fetch (best-effort)", async () => {

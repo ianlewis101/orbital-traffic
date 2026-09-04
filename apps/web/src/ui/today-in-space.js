@@ -1,6 +1,7 @@
-import { CATS, WORKER_BASE, eventColorHex, eventIconSvg } from "../config.js";
+import { CATS, WORKER_BASE, catColorHex, eventColorHex, eventIconSvg } from "../config.js";
 import { state, $ } from "../state.js";
 import { select } from "./info.js";
+import { chainSummary, chainDetail, selectChain } from "./chain.js";
 import { esc } from "../util/html.js";
 import { formatRelativeTime } from "../util/relative-time.js";
 
@@ -41,16 +42,34 @@ function crewText(e) {
     : `Crew change · ${e.name} departed ${e.craft}`;
 }
 
-/** Row copy (plain, unescaped) + the object this event should select on tap, if any. */
+/**
+ * The detected chain a launch event delivered, if that batch is still flying
+ * as one. A grouped launch row then opens the whole string rather than an
+ * arbitrary one of its satellites — the single most useful thing a "23 new
+ * Starlink satellites" row can do, and the reason a batch row was worth
+ * having before chains existed at all.
+ */
+function chainForLaunch(e) {
+  if (!e.ids || e.ids.length < 2 || !state.chains?.length) return null;
+  const ids = new Set(e.ids);
+  return state.chains.find((c) => c.ids.some((id) => ids.has(id))) || null;
+}
+
+/** Row copy (plain, unescaped) + what this event should open on tap, if anything. */
 function describeEvent(e) {
   switch (e.type) {
+    case "chain":
+      return { text: chainSummary(e.chain), detail: chainDetail(e.chain), open: () => selectChain(e.chain) };
     case "docking":
       return { text: dockingText(e), target: state.byId.get(e.id) || null };
-    case "launch":
+    case "launch": {
+      const chain = chainForLaunch(e);
+      if (chain) return { text: launchText(e), detail: chainDetail(chain), open: () => selectChain(chain) };
       return {
         text: launchText(e),
         target: e.ids?.map((id) => state.byId.get(id)).find(Boolean) || null,
       };
+    }
     case "reentry":
       // The object decayed — it's gone from the live catalog by definition,
       // so there's usually nothing left to select. state.byId is checked
@@ -65,28 +84,64 @@ function describeEvent(e) {
 
 let cachedEvents = [];
 
+/**
+ * Most chain rows this feed will show at once. Constellation launches come
+ * every few days, so several trains are usually up together — but this is a
+ * "what happened in space today" card, and a run of near-identical Starlink
+ * rows would push the dockings, launches and crew changes out of sight.
+ * detectChains() returns tightest-first, so the ones kept are the ones still
+ * most worth looking at.
+ */
+const MAX_CHAIN_ROWS = 3;
+
+/**
+ * Chain rows for trains no launch event already covers.
+ *
+ * A launch event carries the real launch time and only lives for the feed's
+ * 48-hour window; a chain is an ongoing condition with no timestamp of its
+ * own that stays interesting for the week or two the string holds together.
+ * So the launch row wins while it exists (it says more), and these fill the
+ * gap afterwards — which is most of a train's visible life.
+ */
+function chainEvents() {
+  const covered = new Set();
+  for (const e of cachedEvents) {
+    if (e.type !== "launch") continue;
+    const c = chainForLaunch(e);
+    if (c) covered.add(c.key);
+  }
+  return (state.chains || [])
+    .filter((c) => !covered.has(c.key))
+    .slice(0, MAX_CHAIN_ROWS)
+    .map((c) => ({ type: "chain", cat: c.cat, chain: c, at: null }));
+}
+
 export function renderEvents() {
   const box = $("#events-list");
   if (!box) return;
   box.innerHTML = "";
 
-  if (!cachedEvents.length) {
+  // Chains first: they're happening now rather than at a point in the past,
+  // so they have no `at` to sort them into the time-ordered feed below.
+  const rows = [...chainEvents(), ...cachedEvents];
+  if (!rows.length) {
     box.innerHTML = `<div class="events-empty">No major events in the last 48 hours.</div>`;
     return;
   }
 
-  for (const e of cachedEvents) {
-    const { text, target } = describeEvent(e);
-    const hex = eventColorHex(e.type);
+  for (const e of rows) {
+    const { text, detail, target, open } = describeEvent(e);
+    const hex = e.type === "chain" ? catColorHex(e.cat) : eventColorHex(e.type);
     const icon = eventIconSvg(e.type);
-    const rel = formatRelativeTime(new Date(e.at));
+    const sub = detail || formatRelativeTime(new Date(e.at)) || "";
+    const act = open || (target ? () => select(target) : null);
 
     const el = document.createElement("button");
     el.type = "button";
-    el.className = "today-row event-row" + (target ? "" : " inert");
+    el.className = "today-row event-row" + (act ? "" : " inert");
     el.innerHTML = `<span class="badge" style="color:${hex}">${icon}</span>
-      <span class="info"><span class="nm">${esc(text)}</span><span class="reason">${esc(rel || "")}</span></span>`;
-    if (target) el.onclick = () => select(target);
+      <span class="info"><span class="nm">${esc(text)}</span><span class="reason">${esc(sub)}</span></span>`;
+    if (act) el.onclick = act;
     box.appendChild(el);
   }
 }

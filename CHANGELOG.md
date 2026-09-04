@@ -4,6 +4,21 @@
 
 ### Added
 
+- **Starlink chains** — a freshly launched batch flies as one string for its first days
+  or weeks in orbit (the "Starlink train" people photograph from the ground), and the
+  app now finds those strings in the live catalog and tracks them as one thing. Each
+  gets a row in _Today in Space_ — "Starlink train · 28 satellites / still in a line
+  178 mi up · 56s apart" — and tapping it lights **every** satellite in the chain on the
+  globe at once, joined head to tail along their shared orbit, with the camera aimed at
+  the string. A _Tracked Chain_ card names the launch it came from and gives its live
+  numbers (how many are still in the string, how high, how far apart in miles and in
+  seconds, how long the chain is), then lists every member front-of-the-train first;
+  tapping one opens the ordinary object card with the chain still lit behind it. A
+  grouped "Launched · N new Starlink satellites" event now opens the whole chain too,
+  instead of one arbitrary satellite from the batch. Detection is geometric and runs on
+  device from live elements, so a train appears as it launches and fades out on its own
+  as the satellites climb apart — nothing is hand-curated. OneWeb and Kuiper batches
+  qualify on exactly the same terms.
 - **What's Overhead** — a floating button on the globe that lists tracked objects
   currently above 40° elevation, with elevation and compass bearing per row. Tapping a
   row opens the existing object card. Purely geometric (visible to the eye or not).
@@ -42,6 +57,11 @@
 - Observer geometry now rejects non-finite look angles. A malformed satrec propagates to
   a position object full of `NaN` rather than to nothing, and because `NaN` fails every
   comparison it would otherwise have slipped past the horizon filter as a phantom object.
+- The international designator is back on the object card and the share image. Both read
+  it off the parsed satrec, and satellite.js v5 dropped the `intldesg` field its v4 had,
+  so every object silently resolved to "—" and the card's "Launched \<year\>" fallback (used
+  when SATCAT has no record) never rendered at all. It's now read off the TLE at ingest,
+  where the raw line is still in hand.
 
 ## 2.0.0 — 2026-07-01
 

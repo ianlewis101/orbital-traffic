@@ -30,11 +30,16 @@ export function catColorHex(cat) {
 // docking/undocking/launched/landed vehicles ARE cat:"capsules"; a
 // re-entering/decaying object becomes cat:"debris" the same metaphor;
 // crew-change violet already matches capsule-status.js's .crew-today-dot.
+// A chain row is tinted by its constellation instead (catColorHex(e.cat) in
+// ui/today-in-space.js) — Starlink blue, OneWeb blue, Kuiper green — since
+// that is what the highlighted dots on the globe will be; the entry here is
+// the fallback for a chain whose category somehow isn't in CATS.
 export const EVENT_TYPES = {
   docking: { color: CATS.capsules.color },
   launch: { color: CATS.communications.color },
   reentry: { color: CATS.debris.color },
   crew: { color: 0xb39bff },
+  chain: { color: CATS.starlink.color },
 };
 
 export function eventColorHex(type) {
@@ -71,6 +76,15 @@ const EVENT_ICON_SVG = {
     <circle cx="12" cy="10" r="6.6"/>
     <path d="M8.6 8.4c1.1-1.4 2.6-2 4.4-1.6"/>
     <path d="M4.6 20c1.7-3.1 5-4.9 7.4-4.9s5.7 1.8 7.4 4.9"/>
+  </svg>`,
+  // Beads on an arc — the string of pearls itself, which is what the row
+  // opens on the globe.
+  chain: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M2.6 18.4C6.2 11.2 13.4 6.2 21.4 4.9" opacity="0.55"/>
+    <circle cx="4.6" cy="16.2" r="1.45" fill="currentColor" stroke="none"/>
+    <circle cx="9" cy="12.4" r="1.45" fill="currentColor" stroke="none"/>
+    <circle cx="14" cy="9.2" r="1.45" fill="currentColor" stroke="none"/>
+    <circle cx="19.6" cy="6.7" r="1.45" fill="currentColor" stroke="none"/>
   </svg>`,
 };
 

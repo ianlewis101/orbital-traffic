@@ -91,6 +91,29 @@ cross-check those against this document instead.
    phase-aware — that would break the single-source-of-truth
    boundary this rule establishes.
 
+   LAUNCH CHAINS ARE ALSO NOT A CATEGORY: a "Starlink chain"
+   (the string a freshly launched batch flies as for its first
+   days/weeks — the "train" people photograph from the ground)
+   is derived geometry, not classification. detectChains() in
+   packages/catalog/src/chains.js groups the catalog by
+   international-designator launch batch and keeps a group only
+   while it passes four tests, each measured against the real
+   catalog (see the module header — do not re-tune a threshold
+   without re-measuring, the false positives each one removes
+   are specific and documented): recent launch, still below its
+   constellation's operating altitude (read from that category's
+   own median, never hardcoded — Starlink alone has shells at
+   ~360/463/485/546 km), still coplanar, still bunched. Members
+   keep their ordinary category throughout; nothing writes
+   cat:"chain". CHAIN_CATS is restricted to the three batch-
+   launching constellations on purpose — a debris field from one
+   breakup is the tightest, most perfectly coplanar "chain" in
+   the catalog and calling it a launch train would be flatly
+   wrong. Detection runs at boot and after every live sync
+   (apps/web/src/data/chains.js), against real wall-clock time,
+   never state.simNow — the time machine must not invent or
+   erase chains.
+
    Do not add classification logic anywhere else (e.g. inline
    in ingest.js or duplicated in the Worker) — categorize() in
    packages/catalog/src/classify.js is the single source of
@@ -275,13 +298,17 @@ Monorepo (npm workspaces):
 - apps/web/ — the web app itself, built with Vite
   - src/main.js — boot sequence and render loop
   - src/scene/ — Three.js scene, picking, clouds (point-cloud
-    rendering per category), earth, NEOs
+    rendering per category), earth, NEOs, chain.js (the
+    launch-chain highlight: link line, member dots, orbit ring)
   - src/data/ — ingest.js (classification entry point),
-    live.js (Worker fetch), store.js, location.js (geolocation)
+    live.js (Worker fetch), store.js, location.js (geolocation),
+    chains.js (launch-chain detection, boot + every sync)
   - src/astro/ — propagation.js (safeProp), orbital.js, sun.js,
     neo.js, overhead.js (observer/look-angle geometry)
-  - src/ui/ — info card, legend, search, time machine,
-    overhead.js, settings.js, etc.
+  - src/ui/ — info card, chain.js (the "Tracked Chain" card —
+    a whole launch selected at once, parallel to select()'s
+    single object, never a variant of it), legend, search,
+    time machine, overhead.js, settings.js, etc.
   - src/settings.js — user preferences (localStorage)
   - public/ — manifest.json, sw.js, icons, data/*.json
   - Deployed via .github/workflows/deploy-pages.yml, which runs
@@ -289,9 +316,12 @@ Monorepo (npm workspaces):
     automatically on every push to main. No manual step needed.
 
 - packages/catalog/ — shared classification/data-fetch logic
-  (classify.js, groups.js, tle.js), imported by both apps/web
-  and worker as @orbital-traffic/catalog. Single source of
-  truth for categorize().
+  (classify.js, groups.js, tle.js), plus the two derived-state
+  siblings that are deliberately NOT classification
+  (capsules.js — docking phase; chains.js — launch chains),
+  imported by both apps/web and worker as
+  @orbital-traffic/catalog. Single source of truth for
+  categorize().
 
 - worker/ — Cloudflare Worker (worker/src/index.js), proxies
   and edge-caches SEVEN endpoints: /tle, /crew, /today,
@@ -354,6 +384,21 @@ Monorepo (npm workspaces):
   glyphs (⬡▲▼◆) follow the app's one existing icon-on-a-swatch
   precedent (.cat.fav-only .sw::after{content:"★"}) rather than
   introducing an SVG icon set.
+
+  ONE ROW TYPE IN THIS FEED IS NOT THE WORKER'S: launch-chain
+  rows ("Starlink train · 28 satellites") are composed on the
+  client in ui/today-in-space.js from state.chains, and sort
+  above the Worker's events because they describe something
+  happening now rather than at a past instant — they have no
+  `at` at all. They're also deduped against it: while a launch
+  event for the same batch is still in the 48h window that row
+  wins (it carries the real launch time) and opens the chain
+  itself, and the standalone chain row only appears afterwards,
+  which is most of a train's visible life. Don't move this into
+  buildEvents() — chain detection needs the full elset set at
+  request time, which /events (composed from three committed
+  JSON files) doesn't have, and the client already re-derives
+  chains on every sync.
 
 - GitHub Actions also handles daily TLE refresh
   (refresh-tle-data.yml), ISS Today data updates
@@ -548,6 +593,17 @@ they can't be templated:
   is retained for the TLE-shaped data already in
   satellites.json and capsule-status.json — don't delete it, and
   don't point a CelesTrak fetch back at it.
+- The international designator must be read from the object
+  (s.desig, copied off TLE line 1 by ingest()), never from the
+  satrec: satellite.js v5's twoline2satrec() dropped v4's
+  `intldesg` field, so `rec.intldesg` is undefined for every
+  object in this catalog. Reading it from the satrec is what
+  silently blanked the info card's "INT'L" half, its
+  "Launched <year>" fallback and the share card's designation
+  line for months, with no error anywhere — every call site
+  just got "". chains.js groups launches by this field, so a
+  regression here also silently switches launch-chain detection
+  off entirely.
 - Globe flipY: THREE texture flipY must be false — currently
   set correctly in apps/web/src/scene/earth.js (day/night
   texture setup)
