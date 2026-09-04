@@ -2,9 +2,15 @@
   "iss": { "path": "/photos/iss.jpg", "credit": "NASA (STS-132 flyaround, 2010)" },
   "hubble": { "path": "/photos/hubble.jpg", "credit": "NASA (STS-82, flyaround after servicing, 1997)" },
   "jwst": { "path": "/photos/jwst.jpg", "credit": "NASA/GSFC (Webb primary mirror reveal, 2016)" },
-  "dragon": { "path": "/photos/dragon.jpg", "credit": "NASA (Dragon Endurance approaching the ISS, Crew-7, 2023)" },
+  "dragon": { "pool": [
+    { "path": "/photos/dragon.jpg", "credit": "NASA (Dragon Endurance approaching the ISS, Crew-7, 2023)" },
+    { "path": "/photos/dragon_2.jpg", "credit": "Go4Liftoff.com" }
+  ] },
   "soyuz": { "path": "/photos/soyuz.jpg", "credit": "NASA (Soyuz MS-28 docked to the ISS, 2025)" },
-  "progress": { "path": "/photos/progress.jpg", "credit": "NASA (ISS Expedition 14)" },
+  "progress": { "pool": [
+    { "path": "/photos/progress_2.jpg", "credit": "Go4Liftoff.com" },
+    { "path": "/photos/progress.jpg", "credit": "NASA (ISS Expedition 14)" }
+  ] },
   "cygnus": { "path": "/photos/cygnus.jpg", "credit": "NASA (Cygnus XL approaching the ISS, 2025)" },
   "starliner": { "path": "/photos/starliner.jpg", "credit": "NASA (Starliner CFT, 2024)" },
   "shenzhou": { "path": "/photos/shenzhou.jpg", "credit": "Shujianyang, CC BY-SA 4.0 (Shenzhou-1 capsule, China Science and Technology Museum)" },
@@ -17,7 +23,8 @@
   "station_generic": { "pool": [
     { "path": "/photos/station_generic_2.jpg", "credit": "NASA (STS-88, Unity/Zarya docked)" },
     { "path": "/photos/station_generic_3.jpg", "credit": "NASA (ISS Expedition 3 EVA)" },
-    { "path": "/photos/station_generic_4.jpg", "credit": "China Manned Space Engineering Office, CC BY 4.0" }
+    { "path": "/photos/station_generic_4.jpg", "credit": "China Manned Space Engineering Office, CC BY 4.0" },
+    { "path": "/photos/station_generic_5.jpg", "credit": "Go4Liftoff.com" }
   ] },
   "navigation_generic": { "pool": [
     { "path": "/photos/navigation_generic_2.jpg", "credit": "U.S. Air Force, public domain" },
