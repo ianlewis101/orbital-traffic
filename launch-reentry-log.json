@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-05T10:15:05.057Z",
+  "updated": "2026-09-06T10:35:28.567Z",
   "events": [
     {
       "type": "launch",
@@ -129,6 +129,41 @@
       "id": "100238",
       "name": "2026-178B",
       "cat": "other"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-06T10:35:28.537Z",
+      "id": "36423",
+      "name": "COSMOS 2251 DEB",
+      "cat": "debris"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-06T10:35:28.537Z",
+      "id": "36180",
+      "name": "FENGYUN 1C DEB",
+      "cat": "debris"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-06T10:35:28.537Z",
+      "id": "37917",
+      "name": "FENGYUN 1C DEB",
+      "cat": "debris"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-06T10:35:28.537Z",
+      "id": "100244",
+      "name": "ELECTRON KICK STAGE R/B",
+      "cat": "debris"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-06T10:35:28.537Z",
+      "id": "100245",
+      "name": "ELECTRON R/B",
+      "cat": "debris"
     }
   ]
 }
