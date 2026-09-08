@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-07T12:00:02.903Z",
+  "updated": "2026-09-08T10:55:03.717Z",
   "events": [
     {
       "type": "launch",
@@ -282,6 +282,34 @@
       "id": "58925",
       "name": "WEIHAI-1 02",
       "cat": "other"
+    },
+    {
+      "type": "launch",
+      "at": "2026-09-08T10:55:03.699Z",
+      "ids": [
+        "37969"
+      ],
+      "count": 1,
+      "name": "COSMOS 2251 DEB",
+      "cat": "debris"
+    },
+    {
+      "type": "launch",
+      "at": "2026-09-08T10:55:03.699Z",
+      "ids": [
+        "31847",
+        "37920"
+      ],
+      "count": 2,
+      "name": "FENGYUN 1C DEB",
+      "cat": "debris"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-08T10:55:03.699Z",
+      "id": "31268",
+      "name": "FENGYUN 1C DEB",
+      "cat": "debris"
     }
   ]
 }
