@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-08T17:00:07.017Z",
+  "updated": "2026-09-08T19:49:09.480Z",
   "capsules": {
     "67796": {
       "name": "CREW DRAGON 12",
@@ -8,7 +8,7 @@
       "phase": "docked",
       "stationKey": "iss",
       "since": "2026-08-29T10:40:04.605Z",
-      "distanceKm": 0,
+      "distanceKm": 5.5,
       "altitudeKm": 427.2,
       "inclinationDeg": 51.631,
       "l1": "1 67796U 26031A   26250.69200809  .00005759  00000+0  11253-3 0  9996",
@@ -18,14 +18,12 @@
       "name": "PROGRESS-MS 33",
       "kind": "cargo",
       "family": "progress",
-      "phase": "docked",
+      "phase": "landed",
       "stationKey": "iss",
-      "since": "2026-07-10T20:18:26.588Z",
-      "distanceKm": 0.4,
+      "since": "2026-09-08T19:49:09.480Z",
+      "distanceKm": null,
       "altitudeKm": 427.2,
-      "inclinationDeg": 51.631,
-      "l1": "1 68319U 26058A   26250.49846501  .00005306  00000+0  10435-3 0  9999",
-      "l2": "2 68319  51.6306 252.7093 0004983 115.8922 244.2580 15.49018229585475"
+      "inclinationDeg": 51.631
     },
     "68689": {
       "name": "CYGNUS NG-24",
@@ -34,7 +32,7 @@
       "phase": "docked",
       "stationKey": "iss",
       "since": "2026-08-29T10:40:04.605Z",
-      "distanceKm": 0,
+      "distanceKm": 5.5,
       "altitudeKm": 427.2,
       "inclinationDeg": 51.631,
       "l1": "1 68689U 26079A   26250.69200809  .00005759  00000+0  11253-3 0  9990",
@@ -47,7 +45,7 @@
       "phase": "docked",
       "stationKey": "iss",
       "since": "2026-08-29T10:40:04.605Z",
-      "distanceKm": 0,
+      "distanceKm": 5.5,
       "altitudeKm": 427.2,
       "inclinationDeg": 51.631,
       "l1": "1 68837U 26093A   26250.69200809  .00005759  00000+0  11253-3 0  9991",
@@ -88,9 +86,9 @@
       "since": "2026-08-29T10:40:04.605Z",
       "distanceKm": 0,
       "altitudeKm": 427.2,
-      "inclinationDeg": 51.631,
-      "l1": "1 A0057U 26162A   26250.69200809  .00005759  00000+0  11253-3 0  9998",
-      "l2": "2 A0057  51.6306 251.7517 0004980 116.5212 243.6288 15.49021131585280"
+      "inclinationDeg": 51.63,
+      "l1": "1 A0057U 26162A   26251.46617104  .00001902  00000+0  42648-4 0  9993",
+      "l2": "2 A0057  51.6295 247.9233 0004929 112.8116 247.3394 15.49040812585280"
     }
   },
   "events": [
@@ -219,6 +217,15 @@
       "stationKey": "iss",
       "event": "docked",
       "at": "2026-08-29T10:40:04.605Z"
+    },
+    {
+      "id": "68319",
+      "name": "PROGRESS-MS 33",
+      "kind": "cargo",
+      "family": "progress",
+      "stationKey": "iss",
+      "event": "landed",
+      "at": "2026-09-08T19:49:09.480Z"
     }
   ]
 }
