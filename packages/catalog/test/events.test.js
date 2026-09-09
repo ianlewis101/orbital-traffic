@@ -67,6 +67,35 @@ describe("diffLaunchesReentries", () => {
     expect(diffLaunchesReentries(prev2, curr2, NOW)).toEqual([]);
   });
 
+  it("does not report a launch event for newly-appearing debris", () => {
+    const prev = [rec("ISS (ZARYA)", "25544", "stations", "98067A")];
+    const curr = [
+      ...prev,
+      rec("FENGYUN 1C DEB", "70001", "debris", "99025BJ"),
+      rec("FENGYUN 1C DEB", "70002", "debris", "99025BK"),
+    ];
+    expect(diffLaunchesReentries(prev, curr, NOW)).toEqual([]);
+  });
+
+  it("still reports a re-entry when a debris object present yesterday decays today", () => {
+    const prev = [rec("COSMOS 2251 DEB", "70003", "debris", "93036A")];
+    const curr = [];
+    expect(diffLaunchesReentries(prev, curr, NOW)).toEqual([
+      { type: "reentry", at: NOW, id: "70003", name: "COSMOS 2251 DEB", cat: "debris" },
+    ]);
+  });
+
+  it("still reports a launch event for a non-debris batch mixed with new debris in the same run", () => {
+    const prev = [];
+    const curr = [
+      rec("STARLINK-31001", "60001", "starlink", "26142A"),
+      rec("FENGYUN 1C DEB", "70004", "debris", "99025BL"),
+    ];
+    const events = diffLaunchesReentries(prev, curr, NOW);
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ type: "launch", cat: "starlink", count: 1 });
+  });
+
   it("handles a fully empty previous catalog (first run) without treating it as a mass re-entry", () => {
     const curr = [rec("ISS (ZARYA)", "25544", "stations", "98067A")];
     // Diffing against [] on purpose reports every current object as "new" —
