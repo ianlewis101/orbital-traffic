@@ -508,17 +508,21 @@ function catalogAgeText() {
 }
 
 /**
- * Shown only when the most recent sync attempt threw an error the ordinary
- * "both paths failed" handling doesn't cover (state.syncFailed already
- * accounts for that ordinary case via catalogAgeText()'s ·retrying text —
- * see freshness.js). This is specifically for the unexpected case: it makes
- * a real bug's actual error message readable directly off the device,
- * instead of requiring a connected browser console to diagnose a report
- * like "it never finishes loading" with nothing else to go on.
+ * Reads whichever of the two sync-failure states is populated: lastSyncError
+ * (an unexpected throw state.syncFailed's ordinary handling doesn't cover)
+ * or lastSyncFailReason (the ordinary "both paths failed" case itself —
+ * state.syncFailed only tells catalogAgeText()'s ·retrying text *that* it
+ * happened, not *why*). Either way this makes the real failure reason
+ * readable directly off the device, instead of requiring a connected
+ * browser console to diagnose a report like "it never finishes loading" or
+ * "live fetch unavailable every time" with nothing else to go on. The two
+ * are mutually exclusive per sync attempt — a throw that reaches
+ * lastSyncError skips the ordinary branch that sets lastSyncFailReason.
  */
 function lastSyncErrorText() {
-  if (!state.lastSyncError) return null;
-  const { message, at } = state.lastSyncError;
+  const failure = state.lastSyncError || state.lastSyncFailReason;
+  if (!failure) return null;
+  const { message, at } = failure;
   return `Last sync attempt failed: ${message} (${formatRelativeTime(at)})`;
 }
 
