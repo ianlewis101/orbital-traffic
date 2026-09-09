@@ -737,6 +737,20 @@ describe("buildTLERecords", () => {
     expect(recs[0].cat).toBe("stations");
   });
 
+  it("records which group failed and why, not just a bare count", async () => {
+    fetch.mockImplementation((url) => {
+      if (url.includes("GROUP=stations")) return Promise.resolve(textResponse(ISS_GP));
+      if (url.includes("GROUP=starlink")) return Promise.resolve({ ok: false, status: 403 });
+      return Promise.reject(new Error("celestrak flaky"));
+    });
+    const recs = await buildTLERecords();
+    expect(recs.groupErrors).toContain("starlink: http 403");
+    expect(recs.groupErrors.some((e) => e.startsWith("active: ") && e.includes("celestrak flaky"))).toBe(
+      true
+    );
+    expect(recs.groupErrors).toHaveLength(recs.failedGroups);
+  });
+
   it("never has more than a few CelesTrak requests in flight at once", async () => {
     // Regression guard for the real failure this project hit: CelesTrak
     // enforces a low per-IP concurrent-connection ceiling, and firing all 13
@@ -856,6 +870,35 @@ describe("TLE_CACHE (Workers KV warm cache)", () => {
     await expect(refreshTLECache({})).resolves.toBeInstanceOf(Array);
   });
 
+  it("refreshTLECache never overwrites a healthy cache with an implausibly small build", async () => {
+    // Simulates most CelesTrak groups failing the same cron run (e.g. a
+    // transient block against the Worker's egress IPs) — only "stations"
+    // comes back, drastically smaller than the 100 records already cached.
+    fetch.mockImplementation((url) => {
+      if (url.includes("GROUP=stations")) return Promise.resolve(textResponse(ISS_GP));
+      return Promise.resolve(textResponse(""));
+    });
+    const healthyRecs = Array.from({ length: 100 }, (_, i) => ({ name: "SAT " + i, cat: "other" }));
+    const kv = stubKv(JSON.stringify({ recs: healthyRecs, failedGroups: 0, builtAt: 1 }));
+
+    await refreshTLECache({ TLE_CACHE: kv });
+
+    expect(kv.put).not.toHaveBeenCalled();
+    expect(JSON.parse(kv._stored()).recs).toEqual(healthyRecs); // untouched
+  });
+
+  it("refreshTLECache still writes a recovering build that's no longer implausibly small", async () => {
+    fetch.mockImplementation((url) => {
+      if (url.includes("GROUP=stations")) return Promise.resolve(textResponse(ISS_GP));
+      return Promise.resolve(textResponse(""));
+    });
+    const kv = stubKv(JSON.stringify({ recs: [{ name: "X", cat: "other" }], failedGroups: 12, builtAt: 1 }));
+
+    await refreshTLECache({ TLE_CACHE: kv });
+
+    expect(kv.put).toHaveBeenCalledTimes(1);
+  });
+
   it("the /tle route serves the KV-warmed catalog without building live", async () => {
     const kv = stubKv(JSON.stringify({ recs: [{ name: "ISS (ZARYA)", cat: "stations" }], failedGroups: 0 }));
     const res = await worker.fetch(new Request("https://x/tle"), { TLE_CACHE: kv }, ctx);
@@ -878,6 +921,27 @@ describe("TLE_CACHE (Workers KV warm cache)", () => {
     const res = await worker.fetch(new Request("https://x/tle"), {}, ctx);
     expect(res.headers.get("X-TLE-Source")).toBe("live");
     expect(res.headers.get("X-TLE-Built-At")).not.toBe("");
+  });
+
+  it("the /tle route reports which groups failed and why when the build is degraded", async () => {
+    const kv = stubKv(
+      JSON.stringify({
+        recs: [{ name: "ISS (ZARYA)", cat: "stations" }],
+        failedGroups: 1,
+        groupErrors: ["starlink: http 403"],
+        builtAt: 1,
+      })
+    );
+    const res = await worker.fetch(new Request("https://x/tle"), { TLE_CACHE: kv }, ctx);
+    expect(res.headers.get("X-TLE-Failed-Groups")).toBe("starlink: http 403");
+  });
+
+  it("the /tle route omits X-TLE-Failed-Groups entirely on a healthy build", async () => {
+    const kv = stubKv(
+      JSON.stringify({ recs: [{ name: "ISS (ZARYA)", cat: "stations" }], failedGroups: 0, builtAt: 1 })
+    );
+    const res = await worker.fetch(new Request("https://x/tle"), { TLE_CACHE: kv }, ctx);
+    expect(res.headers.has("X-TLE-Failed-Groups")).toBe(false);
   });
 
   it("scheduled() refreshes TLE_CACHE via waitUntil without blocking", async () => {

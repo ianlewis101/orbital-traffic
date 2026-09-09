@@ -140,10 +140,10 @@ async function fetchGroup([group, cat]) {
       cf: { cacheTtl: TLE_TTL, cacheEverything: true },
       signal: controller.signal,
     });
-    if (!res.ok) return { recs: [], ok: false };
+    if (!res.ok) return { recs: [], ok: false, err: group + ": http " + res.status };
     return { recs: parseGp(await res.text(), cat), ok: true };
-  } catch {
-    return { recs: [], ok: false };
+  } catch (e) {
+    return { recs: [], ok: false, err: group + ": " + String(e?.message || e) };
   } finally {
     clearTimeout(timer);
   }
@@ -158,10 +158,18 @@ export async function buildTLERecords() {
   // already claimed by a specific group is never overwritten by a later,
   // more generic one.
   const records = mergeRecords(settled.map((s) => s.recs));
+  const failed = settled.filter((s) => !s.ok);
   // Not serialized to the client (JSON.stringify on an array only emits
   // index-keyed entries) — read by the /tle route's ttlFor below to decide
   // how long this merge is safe to cache. See TLE_PARTIAL_FAIL_TTL.
-  records.failedGroups = settled.filter((s) => !s.ok).length;
+  records.failedGroups = failed.length;
+  // Which groups and why, for the same reason the client's fallback fetch
+  // now records this (apps/web/src/data/live.js) — failedGroups alone says
+  // *that* a cron run was degraded but not which group choked or on what
+  // (an HTTP status vs. a timeout vs. a thrown network error look identical
+  // otherwise), which is exactly what made this run's root cause invisible
+  // without a live device/log session attached.
+  records.groupErrors = failed.map((s) => s.err);
   return records;
 }
 
@@ -188,6 +196,19 @@ const TLE_KV_KEY = "tle";
 const TLE_KV_EXPIRATION_TTL = 30 * 60; // 30 minutes
 
 /**
+ * A cron build that's drastically smaller than what's already cached is
+ * worse than just leaving the last good catalog in place — this only ever
+ * trips when most of the 13 CelesTrak groups failed the same run (e.g. a
+ * transient upstream block/rate-limit against the Worker's shared egress
+ * IPs), never on ordinary single-group flakiness. Mirrors the client's own
+ * isPlausibleCatalog() guard (apps/web/src/data/live.js) against the exact
+ * same failure mode, just on the write side instead of the read side.
+ */
+function isPlausibleTLEBuild(newLen, existingLen) {
+  return newLen > 0 && newLen >= existingLen / 2;
+}
+
+/**
  * Rebuild the merged TLE catalog and store it in TLE_CACHE (Workers KV) —
  * called from scheduled() on a cron, so real user requests almost never
  * pay buildTLERecords()'s ~25s cost. failedGroups rides along explicitly
@@ -195,15 +216,28 @@ const TLE_KV_EXPIRATION_TTL = 30 * 60; // 30 minutes
  * array-with-a-property shape buildTLERecords() returns for direct/
  * in-request use) so getTLERecords() below can still tell a partial merge
  * apart from a complete one after reading it back.
+ *
+ * Skips the write entirely (leaving whatever's already cached in place,
+ * still fresh until its own expirationTtl) when this run's catalog is
+ * implausibly small next to what's already there — see
+ * isPlausibleTLEBuild(). Without this, a single bad cron run persists a
+ * severely degraded /tle for every visitor globally until a later run
+ * happens to recover, for up to TLE_KV_EXPIRATION_TTL.
  */
 export async function refreshTLECache(env) {
   const records = await buildTLERecords();
   if (!env?.TLE_CACHE) return records;
+  const existing = await env.TLE_CACHE.get(TLE_KV_KEY, "json").catch(() => null);
+  const existingLen = Array.isArray(existing?.recs) ? existing.recs.length : 0;
+  if (existingLen > 0 && !isPlausibleTLEBuild(records.length, existingLen)) {
+    return records;
+  }
   await env.TLE_CACHE.put(
     TLE_KV_KEY,
     JSON.stringify({
       recs: records,
       failedGroups: records.failedGroups || 0,
+      groupErrors: records.groupErrors || [],
       builtAt: Date.now(),
     }),
     { expirationTtl: TLE_KV_EXPIRATION_TTL }
@@ -235,6 +269,7 @@ export async function getTLERecords(env) {
       if (stored && Array.isArray(stored.recs)) {
         const recs = stored.recs;
         recs.failedGroups = stored.failedGroups || 0;
+        recs.groupErrors = stored.groupErrors || [];
         recs.source = "kv";
         recs.builtAt = stored.builtAt || null;
         return recs;
@@ -605,6 +640,10 @@ const ROUTES = {
   // for this (a fast response can also just be this same cached()
   // wrapper's per-data-center Cache API layer replaying an earlier live
   // build). `curl -sI .../tle` is now enough to tell which happened.
+  // X-TLE-Failed-Groups (present only when failedGroups > 0) names which
+  // CelesTrak groups didn't make it into this build and why — same
+  // one-`curl`-away diagnosis for a degraded catalog that X-TLE-Source
+  // already gives for cache provenance.
   "/tle": (ctx, request, env) =>
     cached(
       ctx,
@@ -615,6 +654,7 @@ const ROUTES = {
       (d) => ({
         "X-TLE-Source": d.source || "unknown",
         "X-TLE-Built-At": d.builtAt ? new Date(d.builtAt).toISOString() : "",
+        ...(d.failedGroups > 0 ? { "X-TLE-Failed-Groups": (d.groupErrors || []).join(" | ") } : {}),
       })
     ),
   "/crew": (ctx, request, env) =>
