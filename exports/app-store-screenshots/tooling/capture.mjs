@@ -37,6 +37,7 @@ const GEO = { latitude: 34.0522, longitude: -118.2437 };
  * browser trust store), so Worker requests are relayed through curl, which
  * is already configured for it. The payloads are the real live responses.
  */
+let relayActivity = Date.now();
 const relayCache = new Map();
 async function relay(url) {
   if (relayCache.has(url)) return relayCache.get(url);
@@ -46,6 +47,7 @@ async function relay(url) {
     { maxBuffer: 64 * 1024 * 1024 }
   );
   relayCache.set(url, stdout);
+  relayActivity = Date.now();
   return stdout;
 }
 
@@ -101,53 +103,84 @@ async function selectByName(page, name) {
   await settle(page, "#info");
 }
 
-/** Lead globe shot: terminator down the left limb, night-side city lights. */
-async function heroCamera(page) {
-  await zoom(page, 3);
-  for (let i = 0; i < 6; i++) await drag(page, -110, 0);
-  await page.waitForTimeout(1800);
+/** Mean luminance of the frame's middle band, where the globe sits. */
+async function meanLuminance(page, buf) {
+  return page.evaluate(async (b64) => {
+    const img = new Image();
+    img.src = "data:image/png;base64," + b64;
+    await img.decode();
+    const c = document.createElement("canvas");
+    c.width = 220;
+    c.height = 220;
+    const g = c.getContext("2d");
+    g.drawImage(img, 0, img.height * 0.28, img.width, img.width, 0, 0, 220, 220);
+    const d = g.getImageData(0, 0, 220, 220).data;
+    let sum = 0;
+    for (let p = 0; p < d.length; p += 4) sum += d[p] + d[p + 1] + d[p + 2];
+    return sum / (d.length / 4) / 3;
+  }, buf.toString("base64"));
 }
 
 /**
- * Daylight companion: one zoom step further out than the lead shot, rotated on
- * past the terminator so the sunlit hemisphere faces the camera. Which drag
- * count lands on full daylight depends on the sun's longitude at capture time,
- * so this sweeps and keeps the frame with the most lit pixels rather than
- * trusting a fixed number.
+ * Rotate the globe through a series of steps, scoring each frame's luminance,
+ * and return every frame with its score.
+ *
+ * Both globe shots pick their angle this way rather than from a fixed drag
+ * count. Which rotation shows daylight — or the terminator — depends entirely
+ * on where the sun is at capture time, so a hard-coded number produces a
+ * different picture every time the capture runs at a different hour. That is
+ * not hypothetical: a run at 19:55 UTC put the sun over the Americas, and a
+ * fixed six drags landed the lead shot on the same fully-lit hemisphere the
+ * daylight companion was picking, making two of the six frames near-identical.
  */
-async function daylightCamera(page, screenshotPath) {
-  await zoom(page, 4);
-  for (let i = 0; i < 6; i++) await drag(page, -110, 0);
-  let best = null;
-  for (let i = 0; i < 7; i++) {
+async function sweepGlobe(page, { zoomTicks, preDrags, steps }) {
+  await zoom(page, zoomTicks);
+  for (let i = 0; i < preDrags; i++) await drag(page, -110, 0);
+  const frames = [];
+  for (let i = 0; i < steps; i++) {
     await drag(page, -110, 0);
     await page.waitForTimeout(1400);
     const buf = await page.screenshot();
-    // Score by mean luminance over the globe's bounding box: a daylit
-    // hemisphere is far brighter than a night side lit only by cities.
-    const lit = await page.evaluate(async (b64) => {
-      const img = new Image();
-      img.src = "data:image/png;base64," + b64;
-      await img.decode();
-      const c = document.createElement("canvas");
-      c.width = 220;
-      c.height = 220;
-      const g = c.getContext("2d");
-      // sample the middle of the frame, where the globe sits
-      g.drawImage(img, 0, img.height * 0.28, img.width, img.width, 0, 0, 220, 220);
-      const d = g.getImageData(0, 0, 220, 220).data;
-      let sum = 0;
-      for (let p = 0; p < d.length; p += 4) sum += d[p] + d[p + 1] + d[p + 2];
-      return sum / (d.length / 4) / 3;
-    }, buf.toString("base64"));
-    console.log(`   daylight sweep ${i + 7} drags — mean luminance ${lit.toFixed(1)}`);
-    if (!best || lit > best.lit) {
-      best = { lit, buf };
-    }
+    frames.push({ drags: preDrags + i + 1, lit: await meanLuminance(page, buf), buf });
   }
-  const { writeFile } = await import("node:fs/promises");
+  return frames;
+}
+
+/**
+ * Lead globe shot: the terminator across the disc, so the night side and its
+ * city lights are both in frame. A full rotation's brightest frame is all
+ * daylight and its darkest is all night, so the terminator sits between them —
+ * this targets a little above the midpoint, which keeps most of the disc lit
+ * while still showing the boundary and the lights beyond it.
+ */
+async function heroCamera(page, screenshotPath) {
+  const frames = await sweepGlobe(page, { zoomTicks: 3, preDrags: 3, steps: 9 });
+  const lits = frames.map((f) => f.lit);
+  const target = Math.min(...lits) + 0.55 * (Math.max(...lits) - Math.min(...lits));
+  const best = frames.reduce((a, b) =>
+    Math.abs(a.lit - target) <= Math.abs(b.lit - target) ? a : b
+  );
+  for (const f of frames) {
+    console.log(`   hero sweep ${f.drags} drags — mean luminance ${f.lit.toFixed(1)}`);
+  }
+  console.log(`   hero target ${target.toFixed(1)} -> ${best.drags} drags`);
   await writeFile(screenshotPath, best.buf);
-  return best.lit;
+  return Number(best.lit.toFixed(1));
+}
+
+/**
+ * Daylight companion: one zoom step further out than the lead shot, and the
+ * brightest frame of the sweep — the fully sunlit hemisphere.
+ */
+async function daylightCamera(page, screenshotPath) {
+  const frames = await sweepGlobe(page, { zoomTicks: 4, preDrags: 6, steps: 7 });
+  const best = frames.reduce((a, b) => (b.lit > a.lit ? b : a));
+  for (const f of frames) {
+    console.log(`   daylight sweep ${f.drags} drags — mean luminance ${f.lit.toFixed(1)}`);
+  }
+  console.log(`   daylight -> ${best.drags} drags`);
+  await writeFile(screenshotPath, best.buf);
+  return Number(best.lit.toFixed(1));
 }
 
 await mkdir(RAW, { recursive: true });
@@ -189,22 +222,69 @@ await ctx.route(`${WORKER}/**`, async (route) => {
   }
 });
 
+/**
+ * CelesTrak has to be relayed too, not just the Worker. live.js fetches the
+ * Worker's /tle first and falls back to CelesTrak's group feeds when that
+ * fails isPlausibleCatalog() — and as of this writing the production Worker
+ * is serving a badly short catalog, so the fallback is the live path for real
+ * users as well. Relaying both means the capture follows whichever path the
+ * app actually takes rather than quietly booting on bundled data.
+ */
+await ctx.route("**://celestrak.org/**", async (route) => {
+  try {
+    const { stdout } = await execFileP(
+      "curl",
+      ["-sS", "-m", "90", "-H", "Accept: text/plain", route.request().url()],
+      { maxBuffer: 128 * 1024 * 1024 }
+    );
+    relayActivity = Date.now();
+    await route.fulfill({
+      status: 200,
+      contentType: "text/csv",
+      headers: { "access-control-allow-origin": "*" },
+      body: stdout,
+    });
+  } catch (e) {
+    console.log("celestrak relay failed:", String(e).slice(0, 120));
+    await route.abort();
+  }
+});
+
 const page = await ctx.newPage();
 page.on("console", (m) => {
   if (m.type() === "error") console.log("PAGE ERROR:", m.text().slice(0, 160));
 });
 
-/** Wait out the splash and the +2s live sync. */
+/**
+ * Wait out the splash and the live sync.
+ *
+ * Deliberately does NOT key off any on-screen status wording. This used to
+ * wait for "Live positions" in #freshness-line and silently broke when that
+ * element stopped carrying its status as text — a capture that hangs for 90s
+ * and then dies is the good outcome; the bad one is a run that quietly
+ * screenshots a half-synced app. Instead it waits for the relay itself to go
+ * quiet, which holds whichever path the sync takes.
+ */
 async function ready(page) {
   await page.waitForSelector("#splash", { state: "detached", timeout: 60000 });
-  await page.waitForFunction(
-    () => {
-      const t = document.querySelector("#freshness-line")?.textContent || "";
-      return /live positions/i.test(t) && !/syncing/i.test(t);
-    },
-    null,
-    { timeout: 90000 }
-  );
+  const started = Date.now();
+  const MIN_WAIT = 9000;
+  const QUIET_MS = 5000;
+  const MAX_WAIT = 180000;
+  for (;;) {
+    await page.waitForTimeout(1000);
+    const elapsed = Date.now() - started;
+    if (elapsed > MAX_WAIT) {
+      console.log("  sync wait: hit max, continuing");
+      break;
+    }
+    if (elapsed > MIN_WAIT && Date.now() - relayActivity > QUIET_MS) break;
+  }
+  // The catalog total is the one signal that is a value rather than a phrase:
+  // it renders "…" while ingest runs and a formatted count once it lands.
+  await page.waitForFunction(() => /\d/.test(document.querySelector("#legend-tot")?.textContent || ""), null, {
+    timeout: 60000,
+  });
   await page.waitForTimeout(2500);
 }
 
@@ -222,8 +302,7 @@ const facts = {
 };
 
 // ── 1. Hero globe ──────────────────────────────────────────────────────────
-await heroCamera(page);
-await page.screenshot({ path: `${RAW}/01-globe.png` });
+facts.heroLuminance = await heroCamera(page, `${RAW}/01-globe.png`);
 facts.total = (await page.$eval("#legend-tot", (e) => e.textContent)).trim();
 console.log("01 globe —", facts.total, "objects");
 

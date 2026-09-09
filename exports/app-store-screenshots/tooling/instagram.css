@@ -1,0 +1,118 @@
+/* Instagram 4:5 feed variant — 1080x1350.
+   Loaded AFTER poster.css and device.css, and overrides only what the new
+   aspect forces to change. The background treatment, the type stack, the
+   accent hairline and the entire phone mockup are inherited, not re-declared,
+   so this variant cannot drift from the App Store set's look.
+
+   Why the layout is two columns rather than the App Store set's stacked one:
+   the captured screen is 1:2.17 and this canvas is 1:1.25. Standing the phone
+   at full height is the only arrangement that shows the whole screen — the
+   brief was that nothing gets cropped — and a full-height phone happens to
+   occupy just over half the width, which leaves a real column for the copy
+   rather than a gutter. */
+
+html,
+body {
+  width: 1080px;
+  height: 1350px;
+}
+
+.poster {
+  width: 1080px;
+  height: 1350px;
+
+  /* Device geometry, same derivation as device.css, re-solved for a phone
+     that stands 1150px tall instead of 1975px. */
+  --device-w: 553px;
+  --bezel: 22px; /* 4% of --device-w */
+  --screen-w: 509px; /* --device-w - 2 * --bezel */
+  --screen-h: 1106px; /* --screen-w * 2868/1320 */
+  --screen-r: 64px; /* 12.5% of --screen-w */
+  --body-r: 86px; /* --screen-r + --bezel */
+  --island-scale: 1.1568; /* --screen-w / 440pt */
+}
+
+/* Softer than the App Store canvas: the glows are anchored to the corners, and
+   at 1080x1350 the same percentages would wash across the whole frame. */
+.scan {
+  background:
+    radial-gradient(46% 30% at 8% 92%, rgba(94, 234, 212, 0.13), transparent 70%),
+    radial-gradient(44% 28% at 94% 6%, rgba(167, 139, 250, 0.16), transparent 70%);
+}
+
+.vig {
+  background: radial-gradient(
+    ellipse 118% 112% at 50% 50%,
+    transparent 42%,
+    rgba(4, 4, 12, 0.4) 84%,
+    rgba(3, 3, 9, 0.8) 100%
+  );
+}
+
+/* Phone stands full height against the right edge. */
+.device {
+  top: 100px; /* (1350 - 1150) / 2 — optically centred */
+  left: auto;
+  right: 48px;
+  transform: none;
+}
+
+.ticks span {
+  width: 34px;
+  height: 34px;
+}
+.ticks .tl,
+.ticks .tr {
+  top: 30px;
+}
+.ticks .bl,
+.ticks .br {
+  bottom: 30px;
+}
+.ticks .tl,
+.ticks .bl {
+  left: 30px;
+}
+.ticks .tr,
+.ticks .br {
+  right: 30px;
+}
+
+/* Copy column: vertically centred against the phone rather than pinned to the
+   top, because the headline runs to anywhere between two and four lines at
+   this measure and a top-pinned block would sit at a different height in
+   every frame. */
+.copy {
+  top: 50%;
+  left: 56px;
+  right: auto;
+  width: 387px;
+  transform: translateY(-50%);
+}
+
+.eyebrow {
+  font-size: 20px;
+  letter-spacing: 0.26em;
+  gap: 12px;
+}
+.eyebrow::before {
+  width: 22px;
+}
+
+h1 {
+  margin-top: 22px;
+  font-size: 56px;
+  line-height: 1.04;
+  letter-spacing: -0.028em;
+}
+
+.rule {
+  margin-top: 26px;
+}
+
+.sub {
+  margin-top: 22px;
+  font-size: 22px;
+  line-height: 1.45;
+  max-width: none;
+}

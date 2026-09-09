@@ -2,16 +2,17 @@
 
 Six upload-ready screenshots at 1320×2868 — the App Store's 6.9" display size
 — built from real captures of the live app in `raw/`, by the scripts in
-`tooling/`. Two presentation variants of the same six frames exist side by
-side so they can be compared:
+`tooling/`. Three presentation variants of the same six frames exist side by
+side — two sized for the App Store, one for Instagram:
 
 | Folder | Treatment | Built by |
 |---|---|---|
 | `composed/` | Full-bleed — the app screen runs to the canvas edges, no phone | `render.mjs` |
 | `composed-device/` | The same frames inside a realistic iPhone mockup | `render-device.mjs` |
+| `composed-instagram/` | The same frames re-laid-out for an Instagram 4:5 feed carousel, 1080×1350 | `render-instagram.mjs` |
 
-Both read their shot list, copy and figures from `tooling/shots.mjs`, and both
-load `tooling/poster.css` for the background and type. Copy is defined once, in
+All three read their shot list, copy and figures from `tooling/shots.mjs`, and
+all three load `tooling/poster.css` for the background and type. Copy is defined once, in
 one file: a headline that had to be edited in two places would quietly drift
 between the variants, which is the one thing a side-by-side comparison must not
 have. The only intended difference between the two outputs is the framing.
@@ -48,10 +49,15 @@ sky it draws is visibly, alarmingly crowded.
 | 5 | `05-crew.png` | Seven people **live up there.** | The ISS card: photo, live crew, expedition, today's activity |
 | 6 | `06-daylight.png` | Real sunlight, **real shadow.** | The daylight companion to shot 1 — one zoom step further out, sunlit hemisphere facing the camera |
 
-Shot 6 is captured by sweeping the camera past the terminator and keeping the
-frame with the highest mean luminance, rather than by a fixed rotation: which
-angle lands on full daylight depends on where the sun is at capture time, so a
-hard-coded drag count would silently produce a night shot on a later re-run.
+**Both globe frames pick their camera angle by sweeping and scoring, never
+from a fixed drag count.** Which rotation shows daylight — or the terminator —
+depends entirely on where the sun is when the capture runs. Shot 6 keeps the
+brightest frame of its sweep; shot 1 targets 55% of the way between the
+sweep's darkest and brightest, which is where the terminator crosses the disc
+with the night side and its city lights still in frame. This is not
+theoretical: an earlier fixed six drags, run at 19:55 UTC with the sun over the
+Americas, landed shot 1 on the same fully-lit hemisphere shot 6 was choosing
+and made two of the six frames near-identical.
 
 Shot 2 is the conversion shot. A globe is impressive; *your* sky is personal.
 
@@ -89,6 +95,42 @@ The corner ticks are the `#bezel` motif. Worth knowing: the app itself retired
 that element in the Aurora pass (`#bezel{display:none}`), so this is a
 deliberate revival for the poster frame, not a live element.
 
+### Instagram 4:5 (`composed-instagram/`)
+
+1080×1350, six frames, so it posts as one carousel. 1080 wide is Instagram's
+native upload width — anything wider is resampled on their side.
+
+The captured screen is 1:2.17 and this canvas is 1:1.25, so this is a
+re-layout, not a resize: cropping the App Store frame to 4:5 would throw away
+about 42% of its height, and scaling it to fit would leave it a narrow strip
+between dead margins. Instead the phone stands at full height on the right
+showing the **entire** screen, and the copy takes the column beside it. The
+background bleeds to all four edges, so there are no bars anywhere.
+
+That layout is what the "nothing cropped" requirement forces. On a 4:5 canvas
+"full-bleed" and "nothing cropped" are mutually exclusive — the screen is
+simply much taller than the frame — so this variant is device-framed, reusing
+`device.css` unchanged with its geometry variables re-solved for a 1150px-tall
+phone.
+
+Two details specific to this measure:
+
+- **Headlines are re-typeset, not rewritten.** The App Store copy carries hard
+  `<br>` breaks tuned to a 1128px column; at 387px the interior ones land
+  mid-phrase, so they are dropped and the text flows. The break immediately
+  before the gradient `<em>` is kept — without it you get "Look up. It's /
+  crowded.", splitting the gradient across two lines. The words, and which of
+  them sit in the gradient, are identical to the App Store set.
+- **`render-instagram.mjs` asserts the layout fits** before each screenshot:
+  the copy column must not overlap the phone, and the phone must sit wholly
+  inside the canvas. A silent overflow would be precisely the cropping this
+  variant exists to avoid, so it throws instead.
+
+Composition is checked against Instagram's profile grid, which centre-crops a
+4:5 post to 1:1 and takes roughly 12.5% off the top and bottom — the same role
+the 150px search thumbnail plays for the App Store set. All six keep their
+headline inside that square-safe band.
+
 ### Device-framed (`composed-device/`)
 
 Identical background, copy and type; the app screen sits in an iPhone instead
@@ -123,6 +165,7 @@ npm run preview -w @orbital-traffic/web -- --port 4173 --strictPort
 node exports/app-store-screenshots/tooling/capture.mjs   # -> raw/ + raw/facts.json
 node exports/app-store-screenshots/tooling/render.mjs         # -> composed/
 node exports/app-store-screenshots/tooling/render-device.mjs  # -> composed-device/
+node exports/app-store-screenshots/tooling/render-instagram.mjs # -> composed-instagram/
 ```
 
 `capture.mjs` needs `playwright` importable (install to a scratch dir and
@@ -157,37 +200,23 @@ retired orbit ring.
 1080×1350. It isn't in the final five — the set was stronger with the crew shot
 — but it's the cleanest single asset for social or a press kit.
 
-## Photo provenance
+## Photo provenance — resolved upstream
 
-Every object photo in this set is a NASA public-domain image with a verifiable
-ID, sourced from `images-api.nasa.gov`. None contains an identifiable person.
+An earlier version of this branch replaced three images the app was shipping
+under the credit "Source unconfirmed — pre-existing image", so the credit line
+the app draws over each photo would name a real source.
 
-| Slot | NASA ID | Subject |
-|---|---|---|
-| `iss` | `iss066e081189` | ISS from Crew Dragon Endeavour's flyaround, 8 Nov 2021 |
-| `dragon` | `iss073e0505071` | Crew-11 Dragon approaching the ISS, 2 Aug 2025 |
-| `science_generic` pool[1] | `s82e5937` | Hubble separating from Discovery after release, STS-82, Feb 1997 |
-
-This replaced three images the app was shipping under the credit "Source
-unconfirmed — pre-existing image" (`iss`, `dragon`) and a NASA Landsat 9 press
-photo of two identifiable people (`science_generic` pool[1], which is the entry
-LINK's ID hashes to). The credit line the app draws over each photo now names a
-real source, so the "source unconfirmed" text is absent from these screenshots
-because it is no longer true — not because it was hidden.
-
-**These are app-data changes, not screenshot-only ones**
-(`apps/web/public/data/photos.json` plus three files in
-`apps/web/public/photos/`), so they only reach users once merged. They are
-separable from the screenshots if you would rather land them on their own.
+That work is now obsolete and has been dropped. Main has since replaced the
+unconfirmed imagery across the board and restructured the generic pools, and
+`photos.json` carries **zero** "Source unconfirmed" credits — a more complete
+job than the three entries fixed here. Merging main into this branch takes
+main's version of every photo file wholesale; keeping this branch's would have
+reverted it.
 
 ## Known issues these screenshots had to work around
 
-1. **14 photo entries elsewhere in the app are still unconfirmed.** `hubble`,
-   `jwst`, `soyuz`, `cygnus`, all five asteroids, and index 0 of each of the
-   five generic pools still carry "Source unconfirmed — pre-existing image".
-   None of them appears in this screenshot set, but each is the same rights
-   question, and any of them can surface in the app the moment a user taps the
-   wrong object. The three above show the pattern for fixing the rest.
+1. ~~Unconfirmed photo credits.~~ Fixed on main — see above. Nothing in
+   `photos.json` carries an unconfirmed credit any more.
 2. **The mobile clock reads 12-hour with no meridiem.** `clock.js` renders
    `.utc-compact` as `6:44 UTC` when it is 18:44 UTC (the share card's own
    timestamp correctly says `18:44 UTC`). It's deliberate CSS, but it sits in

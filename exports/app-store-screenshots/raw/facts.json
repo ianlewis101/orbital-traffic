@@ -1,11 +1,12 @@
 {
-  "capturedAt": "2026-08-05T18:52:39.918Z",
+  "capturedAt": "2026-09-09T20:02:23.983Z",
   "brandMark": {
     "rects": 8,
     "ellipse": false
   },
-  "total": "18,951",
-  "overhead": "127",
+  "heroLuminance": 60.9,
+  "total": "19,190",
+  "overhead": "132",
   "crew": {
     "aboard": "7",
     "names": [
@@ -18,8 +19,8 @@
       "Dubrov"
     ],
     "today": [
-      "Thursday Spacewalk Preps Continue, Crew Installs Advanced Earth Imaging Gear",
-      "Spacewalk Preps, Health Research on Station as NASA Introduces SpaceX Crew-13"
+      "Astronaut Health, Lunar and Earth Photography Fill Crew’s Research Schedule",
+      "Roscosmos Progress Cargo Spacecraft Departs Space Station"
     ]
   },
   "dragon": {
@@ -28,10 +29,9 @@
     "chips": [
       "Low Earth Orbit",
       "In Earth’s shadow",
-      "Over Australia",
-      "United States",
+      "Over Europe",
       "≈15.5 orbits / day"
     ]
   },
-  "daylightLuminance": 72.6
+  "daylightLuminance": 71.1
 }

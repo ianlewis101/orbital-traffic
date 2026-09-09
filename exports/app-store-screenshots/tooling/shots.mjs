@@ -46,6 +46,10 @@ const SHOTS = [
     // so the type drops a step and the panel starts lower to keep the same air
     // under the copy.
     h1Size: 96,
+    // Instagram's 387px column is far narrower than the App Store's 1128px,
+    // so the longest headline needs its own step down to avoid orphaning the
+    // last word onto a sixth line.
+    igH1Size: 44,
     shotTop: 800,
     cropY: 450,
     eyebrow: "What's overhead",
@@ -70,6 +74,7 @@ const SHOTS = [
   {
     file: "04-capsules.png",
     img: "06-crew-dragon.png",
+    igH1Size: 47,
     shotTop: 764,
     cropY: 450,
     eyebrow: "Crew & cargo",
