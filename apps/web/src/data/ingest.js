@@ -1,5 +1,5 @@
 import * as satellite from "satellite.js";
-import { categorize, satrecAgeDays } from "@orbital-traffic/catalog";
+import { categorize, satrecAgeDays, noradId, intlDesignator } from "@orbital-traffic/catalog";
 import { CATS } from "../config.js";
 import { state } from "../state.js";
 
@@ -53,19 +53,50 @@ export async function ingest(records, { prune = false } = {}) {
         continue;
       }
       if (!rec || rec.error) continue;
-      const id = String(rec.satnum);
-      const cat = categorize(id, r.name, r.cat);
-      const ex = state.byId.get(id);
-      if (ex) {
-        ex.rec = rec;
-        ex.name = r.name || ex.name;
-        ex.cat = cat;
-      } else {
-        const s = { id, name: (r.name || "OBJ " + id).trim(), cat, rec, alive: true };
-        state.sats.push(s);
-        state.byId.set(id, s);
+      // Everything past this point (id decoding, classification) is normal
+      // catalog data doing normal-data things — no throw has ever been
+      // observed against the real catalog — but a malformed CSV row or an
+      // unanticipated shape from a future catalog change must never be able
+      // to take the rest of a 19,000-record batch down with it the way an
+      // uncaught exception here would: ingest() is one async function, so
+      // one throw aborts the whole loop, mid-batch, silently (nothing
+      // downstream awaits it with a try/catch) — the user would just see
+      // however many records happened to process before the crash point,
+      // forever, with no error and no retry. Skipping the one bad record is
+      // strictly safer than that.
+      try {
+        // satellite.js's own satrec.satnum is the raw, undecoded TLE field
+        // (e.g. "A0057") — it doesn't know about Alpha-5. Every other
+        // consumer of this ID (capsule-status.json, SATCAT,
+        // descriptions.json) is keyed by noradId()'s decoded canonical form
+        // ("100057"), so deriving `id` from the raw satnum instead silently
+        // breaks every lookup for any object whose catalog number is >=
+        // 100000.
+        const id = noradId(r.l1);
+        const cat = categorize(id, r.name, r.cat);
+        // International designator, kept per object because satellite.js v5's
+        // twoline2satrec() does not carry one (its v4 `intldesg` field is
+        // gone), so it can only be read off the raw line here — after this
+        // point the records array is released. It identifies the launch, which
+        // is what groups a batch into one chain (packages/catalog's
+        // detectChains()) and what the info card and share card print as
+        // "INT'L".
+        const desig = intlDesignator(r.l1);
+        const ex = state.byId.get(id);
+        if (ex) {
+          ex.rec = rec;
+          ex.name = r.name || ex.name;
+          ex.cat = cat;
+          ex.desig = desig;
+        } else {
+          const s = { id, name: (r.name || "OBJ " + id).trim(), cat, desig, rec, alive: true };
+          state.sats.push(s);
+          state.byId.set(id, s);
+        }
+        if (seen) seen.add(id);
+      } catch {
+        continue;
       }
-      if (seen) seen.add(id);
     }
     // No point yielding after the final batch — let prune/recompute run now.
     if (end < records.length) await new Promise(requestAnimationFrame);

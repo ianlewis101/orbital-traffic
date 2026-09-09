@@ -106,8 +106,8 @@
   .lab{font-size:9px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);font-weight:500}
 
   /* ---------- wordmark ---------- */
-  #brand{top:22px;left:24px;animation:rise .8s both .05s;display:flex;align-items:center;gap:12px}
-  #brand .mark{width:34px;height:34px;flex-shrink:0}
+  #brand{top:22px;left:24px;animation:rise .8s both .05s;display:flex;align-items:center;gap:6px}
+  #brand .mark{width:68px;height:68px;flex-shrink:0}
   #brand .wm{font-family:var(--logo);font-weight:800;font-size:28px;line-height:0.92;letter-spacing:0.01em;
     background:linear-gradient(95deg,#eef1f8 12%,#5eead4 55%,#a78bfa 92%);-webkit-background-clip:text;
     background-clip:text;color:transparent}
@@ -147,12 +147,33 @@
   .res .cd{width:6px;height:6px;flex:0 0 auto;box-shadow:0 0 6px currentColor}
   .res .nm{flex:1;font-size:12px;letter-spacing:0.04em;color:var(--ink)}
   .res .meta{font-size:10px;color:var(--ink-faint);letter-spacing:0.06em;font-variant-numeric:tabular-nums}
+  /* Empty-results state — deliberately not a .res: it is a status line, not a
+     pickable option, so it takes no hover/active treatment and no pointer. */
+  .res-empty{padding:11px 14px;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;
+    color:var(--ink-faint)}
+
+  /* Search icon is a real button (keyboard/AT route to the mobile search bar,
+     which is display:none until #search-wrap.expanded) — stripped back to look
+     exactly like the bare <svg> it replaced. */
+  #search-toggle{display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+    background:none;border:0;padding:0;margin:0;color:var(--ink-faint);cursor:pointer;
+    -webkit-tap-highlight-color:transparent}
+  #search-toggle svg{display:block}
 
   /* ---------- legend ---------- */
   #leftstack{position:fixed;left:24px;bottom:24px;width:214px;display:flex;flex-direction:column;gap:12px;animation:rise .8s both .2s}
-  #legend{position:static;width:100%}
+  /* min-height:0 overrides the flex item's default min-height:auto, which
+     otherwise lets #leftstack's column stretch this item to its content's
+     full intrinsic height on some WebKit versions (iOS Safari/Capacitor),
+     ignoring the descendant .body's own max-height/overflow-y cap below —
+     same fix idiom .today-row .info already uses on the row axis. */
+  #legend{position:static;width:100%;min-height:0}
   #legend .ph{cursor:pointer}
-  #legend .body{padding:5px 7px 7px}
+  /* max-height/overflow-y unconditional (not mobile-only): #leftstack is
+     position:fixed at every width, so an uncapped body here grows past the
+     viewport on desktop too, clipped off both top and bottom with no way
+     to scroll it — confirmed at 1440x900 with a long catalog. */
+  #legend .body{padding:5px 7px 7px;max-height:38vh;overflow-y:auto}
   .cat{display:flex;align-items:center;gap:10px;padding:6px 7px;cursor:pointer;user-select:none;transition:background .12s}
   .cat:hover{background:var(--amber-soft)}
   .cat.off{opacity:0.3}
@@ -161,9 +182,9 @@
   .cat .ct{font-size:10px;color:var(--ink-dim);font-variant-numeric:tabular-nums;letter-spacing:0.04em}
 
   /* ---------- today's objects ---------- */
-  #today{position:static;width:100%}
+  #today{position:static;width:100%;min-height:0}
   #today .ph{cursor:pointer}
-  #today .body{padding:5px 7px 7px}
+  #today .body{padding:5px 7px 7px;max-height:34vh;overflow-y:auto}
   .today-row{display:flex;align-items:flex-start;gap:10px;padding:6px 7px;cursor:pointer;user-select:none;
     border-radius:7px;transition:background .12s}
   .today-row:hover{background:var(--amber-soft)}
@@ -171,6 +192,34 @@
   .today-row .info{flex:1;min-width:0;display:flex;flex-direction:column}
   .today-row .nm{font-size:11.5px;letter-spacing:0.04em;color:var(--ink);text-transform:uppercase;font-weight:500}
   .today-row .reason{font-size:10px;color:var(--ink-faint);letter-spacing:0.02em;line-height:1.35;margin-top:2px}
+
+  /* ---------- today in space (event feed) ---------- */
+  #events{position:static;width:100%;min-height:0}
+  #events .ph{cursor:pointer}
+  /* Capped to ~5 rows (measured .event-row height ~35px single-line, plus
+     this padding) rather than a viewport-relative max-height — the feed can
+     hold a dozen+ events in one 48h window, and a vh-based cap let a tall
+     phone show far more than a short one. Rows with wrapped 2-line reason/
+     detail text (e.g. a chain row) are taller, so the exact count dips
+     slightly for those — expected, not a bug; overflow-y still reaches the
+     rest either way. */
+  #events .body{padding:5px 7px 7px;max-height:188px;overflow-y:auto}
+  .events-empty{padding:12px 7px;font-size:10px;color:var(--ink-faint);letter-spacing:0.03em;text-align:center;line-height:1.4}
+  /* event-row extends .today-row's layout/hover/typography as-is; only the
+     icon badge and the non-selectable ("inert") state are new. */
+  .event-row.inert{cursor:default}
+  .event-row.inert:hover{background:none}
+  /* Icon-first badge: a real SVG (config.js's eventIconSvg()) tinted via
+     inline color + the app's existing glow-on-currentColor idiom (same as
+     .today-row .sw / .cat .sw), sized for a touch-friendly tap target
+     instead of the old 8px dot-plus-glyph. */
+  .event-row .badge{
+    width:22px;height:22px;flex:0 0 auto;border-radius:7px;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,0.05);border:1px solid var(--line);
+    box-shadow:0 0 9px currentColor;
+  }
+  .event-row .badge svg{width:13px;height:13px}
 
   /* ---------- time machine (minimal) ---------- */
   #time{position:static;width:100%}
@@ -199,7 +248,17 @@
   .gbtn.on{color:#06122a;background:var(--amber);border-color:var(--amber);font-weight:700}
 
   /* ---------- specimen / object card ---------- */
-  #info{top:104px;right:24px;width:300px;overflow:hidden;display:none}
+  /* z-index:5 — #info and #meta are both children of .hud with no stacking
+     context of their own, so without this they paint in DOM order and #meta
+     (which comes after #info in index.html) renders on top of the open card
+     everywhere, not just near its footer — most visibly on mobile, where
+     #info becomes a full-width bottom sheet sitting exactly where #meta is
+     anchored (bottom:10px), so the "Privacy" text showed through the sheet
+     at any scroll position. Below #sel-marker(8)/#hint(10)/#mini-card(11)/
+     the openers(12)/#tip(13)/#overhead,#settings(15), so this doesn't
+     reorder anything else in the .hud stack — it only lifts #info above
+     #meta's implicit auto(0) level. */
+  #info{top:104px;right:24px;width:300px;overflow:hidden;display:none;z-index:5}
   #info.show{display:block;animation:slidein .32s cubic-bezier(.2,.7,.2,1)}
   /* mobile-only swipe-to-collapse handle + mini-card — hidden on desktop */
   #info-drag,#mini-card{display:none}
@@ -216,9 +275,9 @@
   #info .grid{padding:10px 15px;display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
   #info .grid.full{grid-template-columns:1fr}
   .stat .k{font-size:8px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-faint);font-weight:500}
-  .stat .v{font-family:var(--mono);font-size:14px;font-weight:500;color:var(--ink);margin-top:3px;
+  .stat .v{font-family:var(--mono);font-size:13.5px;font-weight:500;color:var(--ink);margin-top:3px;
     letter-spacing:0.01em;font-variant-numeric:tabular-nums}
-  .stat .v small{font-size:9.5px;color:var(--ink-dim);font-weight:400;letter-spacing:0.04em}
+  .stat .v small{font-size:9px;color:var(--ink-dim);font-weight:400;letter-spacing:0.04em}
   #info .bar{height:1px;background:var(--line)}
   #info .foot{padding:9px 15px 12px;display:flex;flex-direction:column;gap:7px}
   #info-track,#info-share{width:100%;text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:0.18em;padding:9px 0;text-transform:uppercase;
@@ -243,26 +302,15 @@
     border-radius:8px;cursor:pointer}
   #info-attr{font-family:var(--mono);font-size:10px;letter-spacing:0.03em;color:var(--ink-faint);opacity:0.5;padding:0 15px 12px;text-align:center}
   #info-attr a{color:inherit;text-decoration:underline}
-  /* "other" category — uncurated objects get a frosted veil over everything
-     below the header (lead → attribution). pointer-events:none keeps the
-     underlying controls (Center on Globe, scroll, close) usable. */
-  #info-body{position:relative}
-  #info-veil{display:none;position:absolute;inset:0;z-index:4;pointer-events:none;padding-top:84px;
-    background:rgba(10,13,24,0.55);
-    backdrop-filter:blur(10.8px) saturate(1.15);-webkit-backdrop-filter:blur(10.8px) saturate(1.15)}
-  #info.veiled #info-veil{display:block}
-  /* sticky keeps the lock in the card's visible area even when the veiled
-     region is taller than the fold and the card is scrolled */
-  #info-veil .veil-tag{position:sticky;top:45%;display:flex;flex-direction:column;
-    align-items:center;gap:11px;padding:0 22px;text-align:center}
-  #info-veil svg{color:var(--ink-dim);filter:drop-shadow(0 0 7px rgba(125,211,252,0.3))}
-  #info-veil .veil-lbl{font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:0.24em;
-    text-transform:uppercase;color:var(--ink-dim);text-shadow:0 1px 8px rgba(0,0,0,0.8)}
 
   /* ---------- meta ---------- */
   #meta{bottom:14px;left:50%;transform:translateX(-50%);text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;animation:rise .8s both .34s;pointer-events:none}
   #attr{font-size:8.5px;letter-spacing:0.08em;color:var(--ink-faint);opacity:0.35}
-  #attr a{pointer-events:auto}
+  /* Hit area expanded to the 44pt minimum (the text itself is 33x9). Padding
+     grows the box; the matching negative margin keeps the rendered position
+     of the label identical, so this buys the tap target without moving the
+     attribution line or resizing its type. */
+  #attr a{pointer-events:auto;display:inline-block;padding:18px 12px;margin:-18px -12px}
   /* Desktop: #info's max-height (calc(100vh - 132px), see the "object card"
      rule below) leaves only ~4px of vertical clearance under the card
      before #meta's own box begins — and #meta paints after #info in DOM
@@ -280,16 +328,17 @@
   @media (min-width:769px){
     #info.show ~ #meta{left:auto;right:348px;transform:none;width:auto}
   }
-  /* Freshness line now lives in the clock card (replacing the old "Simulation
-     Time" caption), so it inherits #clock .cap's small uppercase look. flex +
-     min-width:0 lets a long "updated N minutes ago" wrap to a second line
-     instead of widening the card; the 2-line clamp bounds the card's height so
-     even the longest state ("cached elements … retrying automatically") can't
-     grow tall enough to collide with the Globe Style card below it (see the
-     #clock max-width, which forces the wrap rather than a wider card).
-     pointer-events:auto surfaces the title tooltip on hover. */
-  #freshness-line{flex:1;min-width:0;line-height:1.4;pointer-events:auto;
-    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+  /* Freshness line lives in the clock card (replacing the old "Simulation
+     Time" caption), so it inherits #clock .cap's small uppercase look. Text
+     is now a fixed, short "Orbital elements ·" label — LIVE comes entirely
+     from the pulsing #clock-mode badge next to it, so this never needs to
+     wrap; ellipsis is just a defensive fallback for extremely narrow/zoomed
+     viewports rather than something normal layouts should ever hit. The real
+     per-state freshness detail (updated Xm ago / cached & retrying / etc.,
+     see freshness.js) lives in the title tooltip instead — pointer-events:auto
+     surfaces it on hover/long-press. */
+  #freshness-line{flex:1;min-width:0;pointer-events:auto;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
   /* ---------- hint ---------- */
   #hint{position:fixed;bottom:78px;left:50%;transform:translateX(-50%);z-index:10;font-family:var(--mono);font-size:10px;
@@ -311,8 +360,8 @@
   #splash{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;
     align-items:center;justify-content:center;gap:26px;transition:opacity .9s}
   #splash.gone{opacity:0;pointer-events:none}
-  #splash .splash-brand{display:flex;flex-direction:column;align-items:center;gap:14px}
-  #splash .splash-brand .mark{width:56px;height:56px}
+  #splash .splash-brand{display:flex;flex-direction:column;align-items:center;gap:2px}
+  #splash .splash-brand .mark{width:96px;height:96px}
   #splash .ttl{font-family:var(--logo);font-weight:800;font-size:36px;letter-spacing:0.01em;
     background:linear-gradient(95deg,#eef1f8 12%,#5eead4 55%,#a78bfa 92%);-webkit-background-clip:text;
     background-clip:text;color:transparent}
@@ -380,19 +429,48 @@
   .crew-today-hd{background:rgba(179,155,255,0.07);padding:7px 13px;border-bottom:1px solid rgba(179,155,255,0.12);display:flex;justify-content:space-between;align-items:center}
   .crew-today-lbl{font-size:9px;letter-spacing:0.2em;color:#b39bff;text-transform:uppercase}
   .crew-today-dt{font-size:8px;color:var(--ink-faint);letter-spacing:0.06em}
+  /* Replaces the date when the log has stopped updating — this is the one
+     case where the header is a warning, not a caption. */
+  .crew-today-dt.stale{color:var(--warn,#e0a33a)}
   .crew-today-body{padding:9px 13px;display:flex;flex-direction:column;gap:7px}
   .crew-today-item{display:flex;gap:8px;align-items:flex-start}
   .crew-today-dot{width:6px;height:6px;border-radius:50%;background:#b39bff;margin-top:4px;flex-shrink:0}
   .crew-today-txt{font-size:10.5px;color:var(--ink-dim);line-height:1.55}
+  /* Docked capsules — collapsed-by-default, styled like the crew-today/
+     crew-mission nested blocks above but accented with the capsules
+     category's own teal (config.js CATS.capsules), since every row here
+     is by definition a cat:"capsules" vehicle. Rows reuse .today-row/.sw
+     for layout/hover/dot, but their .nm gets a quieter treatment here than
+     #today/#events' rows — full-size bold uppercase names read too loud
+     packed this densely inside an already-busy detail card. */
+  .crew-docked{border:1px solid rgba(45,212,191,0.2);border-radius:10px;overflow:hidden;margin-top:8px}
+  .crew-docked-hd{width:100%;background:rgba(45,212,191,0.07);padding:7px 13px;border:none;
+    display:flex;justify-content:space-between;align-items:center;cursor:pointer;
+    font:inherit;color:inherit;text-align:left;-webkit-tap-highlight-color:transparent}
+  .crew-docked-hd:hover{background:rgba(45,212,191,0.12)}
+  .crew-docked-lbl{font-size:9px;letter-spacing:0.2em;color:#2dd4bf;text-transform:uppercase}
+  .crew-docked-chev{font-size:9px;color:var(--ink-faint)}
+  .crew-docked-body{padding:4px 6px;border-top:1px solid rgba(45,212,191,0.12)}
+  /* #info .nm (the object-title style, 20px/700/serif) otherwise wins here
+     on specificity alone (#info ID beats a class-only selector) regardless
+     of source order — match its specificity to actually override it. */
+  #info .crew-docked-row .nm{font-family:var(--mono);font-size:10px;font-weight:400;
+    letter-spacing:0.02em;color:var(--ink-dim)}
   .chip{display:inline-flex;align-items:center;gap:6px;font-size:10px;letter-spacing:0.09em;text-transform:uppercase;
     font-weight:500;padding:4px 9px;border:1px solid var(--line);color:var(--ink-dim);white-space:nowrap}
   .chip i{width:5px;height:5px;border-radius:50%;background:var(--ink-faint);box-shadow:0 0 6px currentColor}
   .chip.lit{color:var(--amber);border-color:rgba(231,164,78,0.32)}.chip.lit i{background:var(--amber)}
   .chip.shad{color:var(--ink-faint)}.chip.shad i{background:var(--ink-faint)}
+  /* Structural gap above the chips row: it must never depend on whatever
+     happens to precede it (.lead's description text, or the optional
+     #info-crew block on stations) — without an explicit top padding here,
+     objects with no #info-crew block collide text straight into the first
+     chip on desktop widths (0-1px gap measured), while stations only looked
+     fine by accident because the crew block's own box height stood in for
+     real spacing. */
+  #info .chips{padding-top:13px;text-align:center}
   #info .tele-h{padding:14px 16px 0;color:var(--ink-faint)}
   #info .grid{padding:9px 16px 14px;grid-template-columns:1fr 1fr;gap:12px 16px}
-  #info .stat .v{font-size:13.5px;color:var(--ink)}
-  #info .stat .v small{font-size:9px}
 
   /* clock readouts */
   #clock .cap{font-size:8px;letter-spacing:0.1em;color:var(--ink-faint);text-transform:uppercase}
@@ -454,31 +532,32 @@
      explicitly, ahead of any generic UI font, fixes it on every platform. */
   #info .flagline .fl{font-size:13px;letter-spacing:1px;line-height:1;
     font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif}
-  /* ---------- what's overhead + settings ----------
-     Two sheets sharing one shell. On desktop they're ordinary right-hand
-     plates; on mobile both become the same bottom sheet the info card uses.
-     Only one is ever open at a time (each opener closes the other), so they
-     can share the bottom:0 slot without fighting over it. */
+  /* ---------- what's overhead + settings + tracked chain ----------
+     Three sheets sharing one shell. On desktop they're ordinary right-hand
+     plates; on mobile all become the same bottom sheet the info card uses.
+     Only one is ever open at a time (ui/sheets.js's closeOtherSheets()), so
+     they can share the bottom:0 slot without fighting over it. */
   /* Above #hint (10), #mini-card (11), the openers (12) and #tip (13), but
      below toast (30) so a "catalog refreshed" message still reads over the
      top. Without this the boot hint prints straight through the panel header
      and the openers float over the list rows. */
-  #overhead,#settings{top:104px;right:24px;width:320px;max-height:calc(100vh - 150px);
+  #overhead,#settings,#chain{top:104px;right:24px;width:320px;max-height:calc(100vh - 150px);
     z-index:15;display:none;flex-direction:column;overflow:hidden}
-  #overhead.show,#settings.show{display:flex}
+  #overhead.show,#settings.show,#chain.show{display:flex}
   /* An open sheet covers the area both openers sit in, at every breakpoint,
      so hide them rather than let them overlap the content. Relies on the
-     openers following both sheets in index.html. ✕ and Escape close. */
+     openers following all three sheets in index.html. ✕ and Escape close. */
   #overhead.show ~ #overhead-fab,#overhead.show ~ #settings-btn,
-  #settings.show ~ #overhead-fab,#settings.show ~ #settings-btn{display:none}
+  #settings.show ~ #overhead-fab,#settings.show ~ #settings-btn,
+  #chain.show ~ #overhead-fab,#chain.show ~ #settings-btn{display:none}
   .sheet-drag{display:none}
   .sheet-body{overflow-y:auto;overflow-x:hidden;padding:0 15px 14px}
   .sheet-attr{font-size:9px;letter-spacing:0.06em;color:var(--ink-faint);opacity:0.6;
     padding-top:12px;text-align:center;line-height:1.5}
-  #overhead .ph .x,#settings .ph .x{cursor:pointer;color:var(--ink-faint);font-size:11px;line-height:1;
+  #overhead .ph .x,#settings .ph .x,#chain .ph .x{cursor:pointer;color:var(--ink-faint);font-size:11px;line-height:1;
     padding:2px 4px;border:1px solid transparent;border-radius:5px;background:none}
-  #overhead .ph .x:hover,#settings .ph .x:hover{color:var(--ink);border-color:var(--line)}
-  #overhead .ph-r,#settings .ph-r{display:flex;align-items:center;gap:9px}
+  #overhead .ph .x:hover,#settings .ph .x:hover,#chain .ph .x:hover{color:var(--ink);border-color:var(--line)}
+  #overhead .ph-r,#settings .ph-r,#chain .ph-r{display:flex;align-items:center;gap:9px}
 
   /* Floating openers. The mobile bottom-right column is already stacked
      (#meta at 10px, #mini-card at 44px), so these sit above both. */
@@ -500,7 +579,7 @@
   .oh-status.bad{color:var(--bad)}
   #overhead-filters{display:flex;flex-wrap:wrap;gap:6px;padding:9px 0 4px}
   #overhead-filters:empty{display:none}
-  .oh-chip{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;font-weight:500;
+  .oh-chip{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;font-weight:500;
     letter-spacing:0.06em;text-transform:uppercase;padding:4px 8px;color:var(--ink-dim);
     background:rgba(255,255,255,0.04);border:1px solid var(--line);border-radius:20px;cursor:pointer;
     transition:opacity .12s,border-color .12s;touch-action:manipulation}
@@ -519,6 +598,36 @@
   .ohrow .nm{flex:1;color:var(--ink);letter-spacing:0.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .ohrow .el{color:var(--ink-dim);font-variant-numeric:tabular-nums;flex:none}
 
+  /* ---------- tracked chain ----------
+     Borrows the sheet shell above and the object card's type scale, so a
+     chain reads as the same kind of thing as a tracked object — one launch
+     instead of one satellite. Member rows are .ohrow, unchanged, exactly as
+     What's Overhead uses them: same list, same tap-to-select behaviour. */
+  #chain .chain-top{padding:12px 0 11px;border-bottom:1px solid var(--line)}
+  #chain .cat-tag{display:inline-flex;align-items:center;gap:7px;font-size:8.5px;letter-spacing:0.2em;
+    text-transform:uppercase;color:var(--ink-dim);margin-bottom:9px;font-weight:600}
+  #chain .cat-tag .d{width:7px;height:7px;box-shadow:0 0 7px currentColor}
+  #chain .chain-nm{font-family:var(--serif);font-weight:700;font-size:19px;line-height:1.1;
+    letter-spacing:-0.01em;color:var(--ink);word-break:break-word}
+  #chain .chain-sub{font-size:9.5px;color:var(--ink-faint);margin-top:6px;letter-spacing:0.1em;
+    text-transform:uppercase;font-variant-numeric:tabular-nums}
+  #chain .chain-lead{padding:12px 0 0;font-size:11.5px;line-height:1.68;color:var(--ink-dim);letter-spacing:0.005em}
+  #chain .chips{padding-top:12px;display:flex;flex-wrap:wrap;gap:6px}
+  #chain .tele-h{padding:15px 0 0;color:var(--ink-faint)}
+  #chain .grid{padding:10px 0 4px;display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+  /* Long lists stay inside the sheet's own scroll on desktop rather than
+     pushing the attribution line past the bottom of a 320px-wide plate. */
+  #chain-list{margin-top:8px}
+  /* "Stop tracking" is the one control that lets go of the chain — ✕ and a
+     swipe only put the card away — so it gets the same quiet, full-width
+     treatment as the object card's secondary action rather than a warning
+     colour it doesn't deserve. */
+  #chain .foot{padding:14px 0 4px}
+  #chain-stop{width:100%;text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:0.18em;
+    padding:11px 0;text-transform:uppercase;color:var(--ink-dim);background:none;border:1px solid var(--line);
+    border-radius:8px;cursor:pointer;transition:all .12s;touch-action:manipulation}
+  #chain-stop:hover{background:rgba(255,255,255,0.05);color:var(--ink)}
+
   /* ---------- settings sections ----------
      Each section is its own raised card, not a run of divs separated by a
      single 1px border-top — on the translucent, busy backdrop the hairline
@@ -526,7 +635,7 @@
      dense block. Cards give real boundaries; a per-section icon + accent
      color gives quick wayfinding without adding new tokens (reuses
      --signal/--amber/--violet, already meaningful elsewhere in the app). */
-  #settings-body{display:flex;flex-direction:column;gap:13px;padding-top:2px}
+  #settings-body{display:flex;flex-direction:column;gap:13px;padding-top:13px}
   .set-card{background:rgba(255,255,255,0.035);border:1px solid var(--line);
     border-radius:14px;padding:14px 15px 15px;animation:rise .5s both}
   .set-card:nth-child(1){animation-delay:.02s}
@@ -599,8 +708,13 @@
   .set-row.on .set-sw::after{transform:translateX(16px);background:var(--amber)}
 
   .set-seg{display:flex;gap:6px}
+  /* text-align:center overrides the button{text-align:inherit} reset above —
+     without it this full-width pill inherits the page's left alignment and
+     its label sits flush against the left edge instead of centered like
+     every other pill control in the app (.gbtn, .tbtn, .jbtn all set this
+     explicitly for the same reason). */
   .set-action{width:100%;font-family:var(--mono);font-size:10.5px;letter-spacing:0.12em;text-transform:uppercase;
-    padding:11px 0;margin-top:10px;color:var(--signal);background:rgba(174,227,255,0.07);
+    text-align:center;padding:11px 0;margin-top:10px;color:var(--signal);background:rgba(174,227,255,0.07);
     border:1px solid rgba(174,227,255,0.3);border-radius:9px;cursor:pointer;touch-action:manipulation;font-weight:500}
   .set-action:hover{background:rgba(174,227,255,0.13)}
   .set-action:disabled{opacity:0.5;cursor:default}
@@ -629,48 +743,64 @@
        whole card, shrink to roughly match the compact content. */
     #clock{top:10px;right:10px;width:fit-content;min-width:0;max-width:200px;animation:none}
     #clock .body{padding:7px 11px 8px}
-    #clock .utc{font-size:20px;letter-spacing:0.01em;text-align:center;margin-top:4px}
+    #clock .utc{font-size:26px;letter-spacing:0.01em;text-align:center;margin-top:4px}
     #clock .utc small{font-size:10px}
     #clock .date{font-size:8.5px;text-align:center}
     #clock .row{display:none}
     .utc-full{display:none!important}
     .utc-compact{display:inline!important}
-    #clock .utc{font-size:26px}
 
     /* Search — collapses to an icon button; tap slides it open
        #search inherits position:fixed from .plate, which on desktop is anchored to
        #search-wrap only because #search-wrap has a transform (containing block trick).
        Mobile sets transform:none, so #search must be pinned to the wrap explicitly via
        position:absolute + inset:0, or it sizes itself by content instead of by the wrap. */
-    #search-wrap{top:10px;left:10px;right:auto;transform:none;width:44px;height:44px;max-width:none;animation:none;
+    /* 46px, not 44: #search sits at inset:0 with a 1px border, so its content
+       box — and therefore the toggle button filling it — is 2px smaller than
+       the wrap. 46 makes the actual tappable button measure a true 44x44. */
+    #search-wrap{top:10px;left:10px;right:auto;transform:none;width:46px;height:46px;max-width:none;animation:none;
       transition:width .28s cubic-bezier(.22,.7,.2,1)}
     #search-wrap.expanded{width:calc(100vw - 220px);max-width:520px}
     #search{position:absolute;inset:0;padding:0;justify-content:center;border-radius:50%;overflow:hidden;
       touch-action:manipulation;-webkit-tap-highlight-color:transparent;
       transition:padding .22s ease,border-radius .22s ease}
     #search-wrap.expanded #search{padding:0 14px;justify-content:flex-start;border-radius:16px}
-    #search svg{cursor:pointer}
+    /* Collapsed, the toggle IS the 44x44 circle, so the whole control is the
+       tap target rather than just the 14px glyph. Expanded, it returns to
+       being the leading icon beside the input. */
+    #search-toggle{position:absolute;inset:0;width:100%;height:100%}
+    #search-wrap.expanded #search-toggle{position:static;width:auto;height:auto;min-width:24px}
     #search input,#search .slash{display:none}
     #search-wrap.expanded input{display:block}
-    #search input{min-height:44px}
+    /* 16px, not the desktop 12px: iOS Safari/WKWebView auto-zooms the
+       viewport on focus for any text input with a computed font-size under
+       16px, and never reliably un-zooms afterward since selecting a result
+       only blurs the field rather than resetting page scale. Keeping this
+       at/above 16px stops the zoom from triggering at all. */
+    #search input{min-height:44px;font-size:16px}
     #results{top:52px;left:10px;right:10px;width:auto;max-width:none;transform:none}
 
     /* Left stack — repositioned, no time machine */
     #leftstack{left:10px;bottom:10px;width:185px;gap:8px;animation:none}
     #time{display:none!important}
-    #legend .body{max-height:38vh;overflow-y:auto}
     #legend .hd{padding:5px 10px}
+    /* Reverted 2026-08-19: two enlargement passes (44px, then 36px) both
+       shipped and both read as wrong on a real device — denser was what the
+       design wanted here, not a bigger tap target. Back to the original,
+       pre-audit density. This does reopen audit finding 7.4 (legend rows
+       measure ~94x17, under WCAG 2.5.8's 24x24 minimum) — a deliberate,
+       informed tradeoff for this list specifically, not an oversight. */
     .cat{padding:3px 7px;gap:6px}
     #legend .nm{font-size:9px;letter-spacing:0.08em}
     #legend .ct{font-size:9px}
     #legend .sw{width:8px;height:8px;border-radius:2px;flex-shrink:0}
 
-    /* Today's objects — collapsible, capped height so it never crowds the legend below it */
+    /* Today's objects — collapsible; the height cap itself is unconditional
+       (see #today .body above), only the tighter row density is mobile-only */
     #today .ph{padding:5px 10px}
-    #today .body{max-height:34vh;overflow-y:auto}
     .today-row{padding:5px 7px;gap:7px}
     .today-row .nm{font-size:9px;letter-spacing:0.08em}
-    .today-row .reason{font-size:8.5px}
+    .today-row .reason{font-size:9px}
     .today-row .sw{width:7px;height:7px}
 
     /* Brand — smaller */
@@ -734,50 +864,88 @@
        swiped down; tapping it restores the full card without deselecting.
        bottom:44px (not 10px) keeps it clear of the #meta attribution line,
        which is anchored at bottom:10px in this same media block — both
-       sharing bottom:10px used to let the mini-card cover the "Privacy" link */
+       sharing bottom:10px used to let the mini-card cover the "Privacy" link.
+       max-width used to be min(70vw,300px), sized purely off the viewport
+       with no awareness of #leftstack (fixed at left:10px, width:185px, so
+       its right edge sits at a constant 195px regardless of screen width).
+       On every phone narrower than ~730px wide, 70vw alone left the pill
+       free to grow wide enough to overlap #leftstack's right edge before
+       the .nm ellipsis (below) ever kicked in — e.g. a 23-char name like
+       "COSMOS 2477 [GLONASS-M]" ran ~25px into "POPULAR OBJECTS" on a
+       402px-wide screen, and the smaller the phone the worse the overlap.
+       The calc() term reserves #leftstack's 195px zone plus a 14px clean
+       gap (right:10 + 195 + 14 = 219) so the pill's max width always stops
+       clear of it; the pre-existing 70vw/300px caps are kept via the outer
+       min() so very wide "mobile" viewports (tablets up to this 768px
+       breakpoint) aren't forced needlessly wide. */
     #mini-card{display:none;position:fixed;right:10px;bottom:44px;z-index:11;
       align-items:center;gap:9px;min-height:44px;padding:8px 14px 8px 12px;
       background:rgba(17,22,42,0.88);backdrop-filter:blur(18px) saturate(1.2);
       -webkit-backdrop-filter:blur(18px) saturate(1.2);
       border:1px solid rgba(94,234,212,0.22);border-radius:22px;
       box-shadow:0 10px 30px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,255,255,0.08);
-      max-width:min(70vw,300px);cursor:pointer;-webkit-tap-highlight-color:transparent;
-      touch-action:manipulation}
+      max-width:min(70vw,300px,calc(100vw - 219px));cursor:pointer;
+      -webkit-tap-highlight-color:transparent;touch-action:manipulation}
     #mini-card.show{display:flex;animation:popin .26s cubic-bezier(.34,1.56,.64,1) both}
 
-    /* Overhead + Settings → the same bottom sheet as the info card. */
-    #overhead,#settings{
+    /* Overhead + Settings + Chain → the same bottom sheet as the info card. */
+    #overhead,#settings,#chain{
       top:auto;bottom:0;left:0;right:0;
       width:100%;max-width:100%;max-height:82vh;
       border-radius:18px 18px 0 0;animation:none;
     }
-    #overhead.show,#settings.show{animation:slideup .3s cubic-bezier(.22,.7,.2,1)}
-    /* Grab handle, matching #info-drag. Purely a visual affordance here —
-       these sheets close with the ✕ or Escape rather than a swipe, so it
-       carries no touch handler and needs no touch-action override. */
+    #overhead.show,#settings.show,#chain.show{animation:slideup .3s cubic-bezier(.22,.7,.2,1)}
+    /* The chain card takes deliberately less of the screen than its two
+       siblings: it exists to explain a string of satellites drawn on the
+       globe, so the globe has to stay visible above it. Its own body
+       scrolls, so nothing is lost — the list just starts further down. */
+    #chain{max-height:52vh}
+    /* Grab handle, matching #info-drag. Settings now closes on a downward
+       swipe too (ui/settings.js's onSheetTouchStart/Move/End, bound to the
+       whole #settings panel so a drag can start from the handle, header, or
+       list once it's scrolled to the top — same shape as #info's own
+       swipe-to-collapse). Overhead still relies on ✕/Escape only; it has no
+       touch handler here and needs no touch-action override. */
     .sheet-drag{display:block;position:sticky;top:0;z-index:3;width:100%;padding:10px 0 8px;
       background:rgba(17,22,42,0.92);backdrop-filter:blur(12px);border-radius:18px 18px 0 0}
     .sheet-drag::before{content:"";display:block;margin:0 auto;width:38px;height:4px;border-radius:2px;
       background:rgba(255,255,255,0.22)}
-    #overhead .ph,#settings .ph{position:sticky;top:24px;z-index:2;
+    #overhead .ph,#settings .ph,#chain .ph{position:sticky;top:24px;z-index:2;
       background:rgba(17,22,42,0.92);backdrop-filter:blur(12px)}
     /* The ✕ stays on mobile here (unlike #info, which has the mini-card and
        swipe-down to fall back on — these sheets have neither). */
-    #overhead .ph .x,#settings .ph .x{display:block;padding:6px 8px;font-size:13px}
+    #overhead .ph .x,#settings .ph .x,#chain .ph .x{display:block;padding:6px 8px;font-size:13px}
+    /* Chain rows are a real tap target on a phone, same as .ohrow's own
+       mobile bump — they open the object card. */
+    #chain .ohrow{padding:11px 0;font-size:11px;min-height:44px}
+    #chain .ohrow .nm{font-size:11px}
+    #chain .chain-nm{font-size:22px}
 
     /* Openers move above #mini-card (44px) and #meta (10px). */
     #overhead-fab{right:10px;bottom:96px;width:48px;height:48px}
     #settings-btn{right:10px;bottom:152px;width:44px;height:44px}
+    /* The info card is a bottom sheet here too (up to 82vh tall), so an open
+       one sits directly under these two fabs (z-index 12 vs the card's 5) —
+       same overlap problem #overhead.show/#settings.show already solve for
+       each other above. Hide both openers while a detail card is open rather
+       than let them float over its footer content, forcing a scroll to read
+       what's underneath. Relies on #info preceding both openers in index.html. */
+    #info.show ~ #overhead-fab,#info.show ~ #settings-btn{display:none}
 
     /* Comfortable touch targets in the lists. Settings rows are already
        46px min-height at the base size, so no mobile override is needed
        there — unlike .ohrow, which is smaller on desktop. */
     .ohrow{padding:11px 0;font-size:11px;min-height:44px}
     .ohrow .nm{font-size:11px}
-    .oh-chip{padding:6px 10px;font-size:9.5px}
+    .oh-chip{padding:6px 10px}
     #mini-card .d{width:9px;height:9px;border-radius:50%;flex:none;box-shadow:0 0 8px currentColor}
+    /* min-width:0 overrides the flex-item default of min-width:auto, which
+       — combined with white-space:nowrap below — would otherwise resolve
+       to the full unwrapped text width and block this item from ever
+       shrinking, silently defeating text-overflow:ellipsis and letting the
+       name spill past #mini-card's max-width instead of truncating. */
     #mini-card .nm{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:0.03em;
-      color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
     #mini-card .chev{color:var(--amber);flex:none}
     @keyframes popin{from{opacity:0;transform:translateY(10px) scale(.92)}to{opacity:1;transform:translateY(0) scale(1)}}
   }

@@ -4,7 +4,10 @@ import {
   formatSimOffset,
   isTimeShifted,
   shouldSyncOnVisible,
+  stalenessNote,
   SIM_SHIFT_THRESHOLD_MS,
+  CAPSULE_STALE_MS,
+  ISS_TODAY_STALE_MS,
 } from "../src/util/freshness.js";
 
 function ago(ms) {
@@ -90,34 +93,85 @@ describe("freshnessText", () => {
   });
 
   it("shows the live-synced age once a sync has succeeded", () => {
-    expect(freshnessText({ srcTime: ago(3 * MIN) })).toBe("Live positions · updated 3m ago");
-    expect(freshnessText({ srcTime: ago(0) })).toBe("Live positions · updated just now");
+    expect(freshnessText({ srcTime: ago(3 * MIN) })).toBe("Live · updated 3m ago");
+    expect(freshnessText({ srcTime: ago(0) })).toBe("Live · updated just now");
   });
 
   it("keeps showing the live age even if a later refresh failed (data on screen is still live)", () => {
     expect(freshnessText({ srcTime: ago(8 * MIN), syncFailed: true })).toBe(
-      "Live positions · updated 8m ago"
+      "Live · updated 8m ago"
     );
   });
 
   it("shows the bundled catalog's real age before the first sync, never a bare 'syncing…'", () => {
     expect(freshnessText({ srcTime: null, bootTime: ago(8 * HOUR) })).toBe(
-      "Live positions · catalog from 8h ago"
+      "Live · catalog 8h ago"
     );
   });
 
   it("says cached-and-retrying when the sync failed before any success", () => {
     expect(freshnessText({ srcTime: null, syncFailed: true, bootTime: ago(2 * HOUR) })).toBe(
-      "Cached elements from 2h ago · retrying automatically"
+      "Cached · 2h ago · retrying"
     );
   });
 
   it("still degrades gracefully when the bundled age is unavailable", () => {
     expect(freshnessText({ srcTime: null, syncFailed: true, bootTime: null })).toBe(
-      "Cached elements shown · retrying automatically"
+      "Cached · retrying"
     );
     expect(freshnessText({ srcTime: null, syncFailed: false, bootTime: null })).toBe(
-      "Live positions · syncing…"
+      "Live · syncing…"
+    );
+  });
+});
+
+/**
+ * capsule-status.json and iss-today.json both carry an `updated` timestamp
+ * that nothing compared against a limit. If either scheduled job silently
+ * stopped, the app would present months-old capsule phases and activity logs
+ * as current — the date was shown, but a date alone doesn't read as a warning.
+ */
+describe("stalenessNote", () => {
+  const NOW = Date.parse("2026-08-18T12:00:00Z");
+  const agoMs = (ms) => new Date(NOW - ms).toISOString();
+  const HOURS = 3600000;
+
+  it("says nothing at all while the data is fresh", () => {
+    expect(stalenessNote(agoMs(1 * HOURS), CAPSULE_STALE_MS, NOW)).toBeNull();
+    expect(stalenessNote(agoMs(5 * HOURS), CAPSULE_STALE_MS, NOW)).toBeNull();
+  });
+
+  it("tolerates a few missed runs before warning", () => {
+    // The capsule job runs hourly; 6 misses is the limit, so 6h is still fine.
+    expect(stalenessNote(agoMs(6 * HOURS), CAPSULE_STALE_MS, NOW)).toBeNull();
+    expect(stalenessNote(agoMs(7 * HOURS), CAPSULE_STALE_MS, NOW)).toBe(
+      "Not updated in 7h — may be out of date"
+    );
+  });
+
+  it("switches to days once the gap is large", () => {
+    expect(stalenessNote(agoMs(60 * 24 * HOURS), ISS_TODAY_STALE_MS, NOW)).toBe(
+      "Not updated in 60d — may be out of date"
+    );
+  });
+
+  it("applies the ISS Today threshold in days, not hours", () => {
+    expect(stalenessNote(agoMs(2 * 24 * HOURS), ISS_TODAY_STALE_MS, NOW)).toBeNull();
+    expect(stalenessNote(agoMs(4 * 24 * HOURS), ISS_TODAY_STALE_MS, NOW)).toBe(
+      "Not updated in 4d — may be out of date"
+    );
+  });
+
+  it("treats an unknown age as stale, never as fresh", () => {
+    // Not knowing how old data is, is not evidence that it is current.
+    for (const bad of [null, undefined, "", "not a date", NaN]) {
+      expect(stalenessNote(bad, CAPSULE_STALE_MS, NOW)).toBe("Age unknown — may be out of date");
+    }
+  });
+
+  it("accepts a Date as well as an ISO string", () => {
+    expect(stalenessNote(new Date(NOW - 30 * HOURS), CAPSULE_STALE_MS, NOW)).toBe(
+      "Not updated in 30h — may be out of date"
     );
   });
 });

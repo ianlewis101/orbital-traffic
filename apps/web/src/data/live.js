@@ -1,10 +1,19 @@
-import { parseGp, mergeRecords, GROUPS, CELESTRAK_BASE } from "@orbital-traffic/catalog";
+import {
+  parseGp,
+  mergeRecords,
+  GROUPS,
+  CELESTRAK_BASE,
+  mapWithConcurrency,
+} from "@orbital-traffic/catalog";
 import { WORKER_BASE } from "../config.js";
 import { state, $ } from "../state.js";
 import { ingest, removeSats } from "./ingest.js";
+import { refreshChains } from "./chains.js";
 import { buildClouds } from "../scene/clouds.js";
 import { rebuildLegend } from "../ui/legend.js";
 import { renderToday } from "../ui/today.js";
+import { refreshEvents, renderEvents } from "../ui/today-in-space.js";
+import { resyncChain } from "../ui/chain.js";
 import { updateCount, flash, toast } from "../ui/status.js";
 import { select } from "../ui/info.js";
 import { shouldSyncOnVisible } from "../util/freshness.js";
@@ -20,6 +29,70 @@ const REFRESH_JITTER_MS = 2 * 60 * 1000;
 // than this (or never happened) — a tab left open all evening catches up the
 // moment the user looks back at it, without waiting out the interval.
 const VISIBILITY_STALE_MS = 20 * 60 * 1000;
+
+// A stalled connection to the Worker or to CelesTrak otherwise hangs fetch()
+// indefinitely (no browser-default timeout) — the primary /tle fetch would
+// sit unresolved instead of falling back. Bounding every request lets a
+// stuck one fail fast, mirroring the Worker's own per-group timeout
+// (worker/src/index.js's fetchGroup()).
+const FETCH_TIMEOUT_MS = 12000;
+
+// The Worker's own /tle route legitimately takes far longer than 12s on a
+// cache miss: buildTLERecords() fetches all 13 CelesTrak groups at
+// GROUP_FETCH_CONCURRENCY=3 (worker/src/index.js), which serializes into
+// ~5 batches — measured 23-27s end to end against the live Worker after the
+// 2026-09-01 concurrency fix (d6562e4) traded speed for correctness there.
+// Timing this request out at the same 12s used for individual CelesTrak
+// group requests below was aborting almost every cache-miss sync
+// prematurely (TLE_TTL is 20 minutes, and with a single regular user the
+// cache routinely goes cold between sessions) and dropping into the
+// CelesTrak-direct fallback — strictly worse, since that fallback repeats
+// the same concurrency-bounded 13-group fetch directly from the client's
+// (often mobile) connection instead of Cloudflare's network, which is what
+// produced the "Orbit Classes total never resolves" reports. Give the
+// Worker request enough headroom to actually finish its cold path rather
+// than raced into that slower fallback.
+const WORKER_FETCH_TIMEOUT_MS = 35000;
+
+// CelesTrak enforces a low per-IP concurrent-connection ceiling — measured
+// directly against the real endpoint, firing all 13 GROUPS requests at once
+// left 9 of 13 stalled past a 15s timeout, even though each resolves in 1-2s
+// issued alone. This fallback used to fire all 13 simultaneously
+// (Promise.allSettled(GROUPS.map(...))), which is the real reason a category
+// could vanish or undercount on a real (especially mobile) connection, not
+// per-request slowness. Same fix and same reasoning as the Worker's
+// buildTLERecords() — see GROUP_FETCH_CONCURRENCY there.
+const GROUP_FETCH_CONCURRENCY = 3;
+
+function fetchWithTimeout(url, opts, timeoutMs = FETCH_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...opts, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
+/** One CelesTrak group for the fallback merge — mirrors the Worker's fetchGroup(). */
+async function fetchGroupRecords([grp, cat]) {
+  try {
+    const r = await fetchWithTimeout(CELESTRAK_BASE + grp, { cache: "no-store" });
+    if (!r.ok) return { recs: [], ok: false, err: grp + ": http " + r.status };
+    return { recs: parseGp(await r.text(), cat), ok: true };
+  } catch (e) {
+    return { recs: [], ok: false, err: grp + ": " + String(e?.message || e) };
+  }
+}
+
+// A "successful" response that's drastically smaller than the catalog
+// already on screen is worse than an honest failure — applying it would
+// replace a complete globe with a visibly broken one. Half of whatever's
+// currently loaded is a generous floor: a real CelesTrak/Worker hiccup drops
+// at most a handful of the 13 fetched groups, nowhere close to half the
+// catalog, so this only ever trips on a response that's actually broken —
+// and it only ever blocks a regression, never a correction (a genuinely
+// small current count, e.g. from a prior bad sync, still accepts a full
+// recovery fetch because that raises the count, not lowers it).
+export function isPlausibleCatalog(recs) {
+  return recs.length > 0 && recs.length >= state.sats.length / 2;
+}
 
 // A single in-flight sync, shared by every caller. ingest() yields to the
 // browser between batches, so two overlapping syncs would interleave their
@@ -68,42 +141,102 @@ export function initLiveRefresh() {
 
 async function runLiveSync() {
   const totEl = $("#legend-tot");
+  // Deliberately never blanks the number to "…" here. It already shows the
+  // real, correct boot-catalog count before this ever runs (main.js's boot()
+  // calls ingest()/updateCount() first, and this only fires 2s later) — a
+  // background refresh has no reason to hide a number that's already right
+  // just because a newer one might arrive shortly. The previous behavior
+  // (blank + pulse for the sync's full duration) is exactly what read as
+  // "the app won't load" even after the underlying fetch got fast: a user
+  // has no way to tell "silently updating in the background" apart from
+  // "still loading" if the visible number disappears either way. The pulse
+  // alone, over the still-correct digits, is enough of a "syncing" cue.
   totEl.classList.add("loading");
-  totEl.textContent = "…";
   // Capsule phase data rides along with every live sync so de-orbited
   // capsules leave the globe and missing active ones get injected.
   const capsulesPromise = fetchCapsuleStatus();
+  // "Today in Space" rides along the same periodic + on-visibility cadence
+  // rather than its own scheduler — /events changes on an hourly/daily
+  // cadence at most, so this loop's ~15-minute interval is already frequent
+  // enough. Deliberately not awaited: refreshEvents() is self-contained and
+  // already swallows its own failures (same shape as refreshTodayLiveFacts()
+  // at boot), so it must never block or fail the satellite catalog sync.
+  refreshEvents();
+  // Everything below is wrapped in one outer try/finally on top of the
+  // primary→fallback try/catch that was already here. Without it, an
+  // unexpected throw from deep inside applyLive() (ingest/rebuildLegend/
+  // etc. — not the ordinary "both paths failed" case just below, which is
+  // caught and handled explicitly) would propagate straight out of this
+  // async function as an unhandled rejection: fetchLive() is called via a
+  // bare setTimeout with no .catch(), so nothing would ever see it. The
+  // visible result would be the "loading" pulse left on forever with no
+  // error, no toast, nothing distinguishable from a slow network from the
+  // outside — exactly the kind of report this app has no way to diagnose
+  // without a connected browser console. lastSyncError makes that reason
+  // readable in Settings instead.
+  //
+  // applyLive() is deliberately called once, outside the inner try/catch
+  // below rather than inside it: that inner block's only job is picking
+  // which dataset to use (primary vs. CelesTrak fallback vs. neither), by
+  // catching *fetch/parse/plausibility* failures specifically. Calling
+  // applyLive() from inside it (the original shape) meant a throw from
+  // applyLive() itself — ingest(), buildClouds(), a real bug — looked
+  // exactly like "the fetch failed" and silently triggered a pointless
+  // fallback retry instead of surfacing as the error it actually was.
   try {
-    const res = await fetch(WORKER_BASE + "/tle", { cache: "no-store" });
-    if (!res.ok) throw new Error("worker " + res.status);
-    const recs = await res.json();
-    if (!recs.length) throw new Error("empty");
-    await applyLive(recs, await capsulesPromise);
-  } catch {
-    const results = await Promise.allSettled(
-      GROUPS.map(async ([grp, cat]) => {
-        const r = await fetch(CELESTRAK_BASE + grp, { cache: "no-store" });
-        if (!r.ok) return [];
-        return parseGp(await r.text(), cat);
-      })
-    );
-    // Merge in GROUPS order (not fetch-completion order) so a satellite
-    // already claimed by a specific group is never overwritten by a later,
-    // more generic one — results is in GROUPS order since Promise.allSettled
-    // preserves input order. Mirrors the Worker's buildTLERecords() merge.
-    const recs = mergeRecords(results.map((r) => (r.status === "fulfilled" ? r.value : [])));
-    if (recs.length) {
-      await applyLive(recs, await capsulesPromise);
-    } else {
-      // Both paths failed. Leave an honest state behind so the freshness
-      // line reads "cached elements · retrying" rather than a permanent
-      // "syncing…" — the periodic policy will retry on its own.
-      state.syncFailed = true;
-      toast("Live fetch unavailable — showing cached elements");
-      updateCount();
+    let recs = null;
+    let primaryErr = null;
+    try {
+      const res = await fetchWithTimeout(
+        WORKER_BASE + "/tle",
+        { cache: "no-store" },
+        WORKER_FETCH_TIMEOUT_MS
+      );
+      if (!res.ok) throw new Error("worker " + res.status);
+      const primaryRecs = await res.json();
+      if (!isPlausibleCatalog(primaryRecs)) {
+        throw new Error("implausible catalog size: " + primaryRecs.length);
+      }
+      recs = primaryRecs;
+    } catch (e) {
+      primaryErr = String(e?.message || e);
+      const settled = await mapWithConcurrency(GROUPS, GROUP_FETCH_CONCURRENCY, fetchGroupRecords);
+      for (let i = 0; i < GROUPS.length; i++) {
+        if (!settled[i].ok) settled[i] = await fetchGroupRecords(GROUPS[i]);
+      }
+      // Merge in GROUPS order (not fetch-completion order) so a satellite
+      // already claimed by a specific group is never overwritten by a later,
+      // more generic one — settled is in GROUPS order since
+      // mapWithConcurrency preserves input order. Mirrors the Worker's
+      // buildTLERecords() merge.
+      const fallbackRecs = mergeRecords(settled.map((s) => s.recs));
+      if (isPlausibleCatalog(fallbackRecs)) {
+        recs = fallbackRecs;
+      } else {
+        // Both paths failed, or the fallback merge came back implausibly
+        // small (see isPlausibleCatalog) — either way, never apply it.
+        // Leave an honest state behind so the freshness line reads "cached
+        // elements · retrying" rather than a permanent "syncing…" — the
+        // periodic policy will retry on its own.
+        state.syncFailed = true;
+        const failed = settled.filter((s) => !s.ok);
+        const fallbackErr = failed.length
+          ? `${failed.length}/${GROUPS.length} groups failed, e.g. ${failed[0].err}`
+          : "implausible catalog size: " + fallbackRecs.length;
+        state.lastSyncFailReason = {
+          message: `worker: ${primaryErr}; fallback: ${fallbackErr}`,
+          at: new Date(),
+        };
+        toast("Live fetch unavailable — showing cached elements", "error");
+        updateCount();
+      }
     }
+    if (recs) await applyLive(recs, await capsulesPromise);
+  } catch (e) {
+    state.lastSyncError = { message: String(e?.message || e), at: new Date() };
+  } finally {
+    totEl.classList.remove("loading");
   }
-  totEl.classList.remove("loading");
 }
 
 async function fetchCapsuleStatus() {
@@ -153,9 +286,19 @@ async function applyLive(recs, capsules) {
   state.source = "live";
   state.srcTime = new Date();
   state.syncFailed = false;
+  state.lastSyncError = null;
+  state.lastSyncFailReason = null;
+  // Chains are re-derived from the elements that just landed, then any lit
+  // one is re-pointed at its fresh snapshot (or dropped, if the string has
+  // finally dispersed). renderEvents() repaints the feed's chain rows off the
+  // new list — refreshEvents() above only repaints when /events itself
+  // answers, and a chain row must not go stale waiting on that.
+  refreshChains();
+  resyncChain();
   rebuildLegend();
   updateCount();
   renderToday();
+  renderEvents();
   // Flash the visible total, not the old hidden #count-n mirror, so a live
   // count change is actually seen.
   flash($("#legend-tot"));

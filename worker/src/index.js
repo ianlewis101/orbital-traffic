@@ -13,6 +13,7 @@
  *   GET /capsules  — crewed-capsule/cargo-vehicle phase (docked/free-flying/landed) + event log
  *   GET /satcat    — per-object SATCAT metadata (launch date, owner, launch site)
  *   GET /astronaut — one crew member's public profile (bio, photo, flight stats)
+ *   GET /events    — "Today in Space" feed: docking/undocking, launches, reentries, crew changes
  *
  * TLE parsing lives in @orbital-traffic/catalog (shared with the web
  * app). parseGp() runs the full categorize() pipeline on every record,
@@ -27,12 +28,29 @@ import {
   GROUPS,
   CELESTRAK_BASE,
   FETCH_HEADERS,
+  mapWithConcurrency,
 } from "@orbital-traffic/catalog";
 
 export const TLE_TTL = 20 * 60; // 20 minutes
+// One CelesTrak group failing (timeout, transient 5xx) shouldn't poison the
+// merged catalog for the full 20-minute TLE_TTL — that's how a single flaky
+// moment made an entire category (e.g. geostationary) vanish from every
+// visitor's feed for up to 20 minutes. Same rationale and value as
+// CREW_FAIL_TTL: short enough for a real retry soon, long enough to collapse
+// a stampede of visitors into ~one retry attempt.
+export const TLE_PARTIAL_FAIL_TTL = 90;
 export const CREW_TTL = 60 * 60; // 1 hour
 export const TODAY_TTL = 5 * 60; // 5 minutes
 export const CAPSULES_TTL = 10 * 60; // 10 minutes — source refreshes every 4h, so this just bounds edge staleness
+export const EVENTS_TTL = 10 * 60; // 10 minutes — same spirit as /capsules; underlying sources refresh hourly/daily
+// "Today in Space" display window — events older than this are dropped by
+// buildEvents() itself rather than left for the client to filter, matching
+// how /capsules already relies on its own count cap (MAX_EVENTS) rather
+// than the client re-deriving a cutoff. 48h (not the spec's lower 24h
+// bound) because two of the three sources only refresh once a day —
+// a 24h window would let a fresh event go stale before most visitors
+// see it.
+export const EVENTS_WINDOW_HOURS = 48;
 
 // Launch Library 2 (LL2) — replaced Open Notify entirely 2026-07-21 after
 // Open Notify was found to be serving a crew roster ~18 months stale (see
@@ -91,26 +109,144 @@ const TODAY_URL =
   "https://raw.githubusercontent.com/ianlewis101/orbital-traffic/main/iss-today.json";
 const CAPSULES_URL =
   "https://raw.githubusercontent.com/ianlewis101/orbital-traffic/main/capsule-status.json";
+const LAUNCH_REENTRY_URL =
+  "https://raw.githubusercontent.com/ianlewis101/orbital-traffic/main/launch-reentry-log.json";
+
+// Belt-and-suspenders against a single stalled connection: aborts a group
+// fetch that's taking unreasonably long so it can fail fast and fall out of
+// the merge, rather than hold up the response indefinitely. This alone does
+// NOT fix the real failure mode below — see GROUP_FETCH_CONCURRENCY.
+const GROUP_FETCH_TIMEOUT_MS = 10000;
+
+// CelesTrak enforces a low per-IP concurrent-connection ceiling. Measured
+// directly against the real endpoint: firing all 13 GROUPS requests at once
+// (this function's original design, one Promise.allSettled(GROUPS.map(...)))
+// left 9 of the 13 stalled past a 15s timeout — even though each of those
+// same 13 requests, issued alone, resolved in 1-2s. That's what was actually
+// causing categories to vanish or undercount (Starlink reading 0, debris
+// reading 115 instead of ~2,600, etc.) — not slow individual requests. Fetch
+// with bounded concurrency instead; a request that still doesn't make it
+// through gets one sequential retry below, which is reliable precisely
+// because a lone request isn't contending with a dozen siblings for the same
+// connection ceiling.
+const GROUP_FETCH_CONCURRENCY = 3;
 
 async function fetchGroup([group, cat]) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), GROUP_FETCH_TIMEOUT_MS);
   try {
     const res = await fetch(CELESTRAK_BASE + group, {
       headers: FETCH_HEADERS,
       cf: { cacheTtl: TLE_TTL, cacheEverything: true },
+      signal: controller.signal,
     });
-    if (!res.ok) return [];
-    return parseGp(await res.text(), cat);
+    if (!res.ok) return { recs: [], ok: false };
+    return { recs: parseGp(await res.text(), cat), ok: true };
   } catch {
-    return [];
+    return { recs: [], ok: false };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
 export async function buildTLERecords() {
-  const results = await Promise.allSettled(GROUPS.map(fetchGroup));
+  const settled = await mapWithConcurrency(GROUPS, GROUP_FETCH_CONCURRENCY, fetchGroup);
+  for (let i = 0; i < GROUPS.length; i++) {
+    if (!settled[i].ok) settled[i] = await fetchGroup(GROUPS[i]);
+  }
   // Merge in GROUPS order (not fetch-completion order) so a satellite
   // already claimed by a specific group is never overwritten by a later,
   // more generic one.
-  return mergeRecords(results.map((r) => (r.status === "fulfilled" ? r.value : [])));
+  const records = mergeRecords(settled.map((s) => s.recs));
+  // Not serialized to the client (JSON.stringify on an array only emits
+  // index-keyed entries) — read by the /tle route's ttlFor below to decide
+  // how long this merge is safe to cache. See TLE_PARTIAL_FAIL_TTL.
+  records.failedGroups = settled.filter((s) => !s.ok).length;
+  return records;
+}
+
+// buildTLERecords() at GROUP_FETCH_CONCURRENCY=3 legitimately takes ~25s
+// (measured live: 23-27s) — necessary to stay under CelesTrak's per-IP
+// connection ceiling (see GROUP_FETCH_CONCURRENCY above), but too slow to
+// build on demand inside a user's request. The `cached()` wrapper below
+// only helps once a request has already paid that cost once — and it can't
+// help across data centers: the Cache API (`caches.default`) is local to
+// the data center that handled the request and never replicates elsewhere
+// (see https://developers.cloudflare.com/workers/reference/how-the-cache-works/),
+// so every Cloudflare PoP a visitor happens to land on pays this cold-build
+// cost independently. With one regular user whose requests don't reliably
+// hit the same PoP twice, that's not a rare edge case — it's close to every
+// session. TLE_CACHE (Workers KV) fixes that: it replicates globally and
+// reads back in tens of milliseconds from any PoP, so `scheduled()` below
+// keeps it warm on a cron well inside TLE_TTL, and getTLERecords() reads
+// from it instead of ever running the slow path in the common case.
+const TLE_KV_KEY = "tle";
+// Comfortably longer than the cron interval (CRON_TRIGGERS in
+// wrangler.toml, currently every 10 minutes) so one missed run doesn't
+// expire the entry — expiry here is a dead-man's-switch, not the normal
+// refresh path.
+const TLE_KV_EXPIRATION_TTL = 30 * 60; // 30 minutes
+
+/**
+ * Rebuild the merged TLE catalog and store it in TLE_CACHE (Workers KV) —
+ * called from scheduled() on a cron, so real user requests almost never
+ * pay buildTLERecords()'s ~25s cost. failedGroups rides along explicitly
+ * (a plain KV-stored object survives JSON round-trips fully, unlike the
+ * array-with-a-property shape buildTLERecords() returns for direct/
+ * in-request use) so getTLERecords() below can still tell a partial merge
+ * apart from a complete one after reading it back.
+ */
+export async function refreshTLECache(env) {
+  const records = await buildTLERecords();
+  if (!env?.TLE_CACHE) return records;
+  await env.TLE_CACHE.put(
+    TLE_KV_KEY,
+    JSON.stringify({
+      recs: records,
+      failedGroups: records.failedGroups || 0,
+      builtAt: Date.now(),
+    }),
+    { expirationTtl: TLE_KV_EXPIRATION_TTL }
+  );
+  return records;
+}
+
+/**
+ * The /tle route's data source: prefer the KV-warmed catalog (fast from
+ * any data center) and only fall back to a live, on-demand
+ * buildTLERecords() if KV has nothing yet (first deploy before the cron's
+ * first run) or is unreachable — same "never worse than before" shape as
+ * every other fallback in this codebase, just slower rather than absent.
+ *
+ * `source` ("kv" | "live") and `builtAt` ride along the same
+ * non-enumerable-to-JSON way `failedGroups` already does — the /tle route
+ * below surfaces them as response headers (X-TLE-Source / X-TLE-Built-At)
+ * so whether a given response actually came from the warm cache is a
+ * one-line `curl -I` check instead of an inference from response timing,
+ * which turned out to be ambiguous in practice (a fast response can also
+ * come from the per-data-center Cache API layer replaying an earlier live
+ * build, not necessarily from TLE_CACHE).
+ */
+export async function getTLERecords(env) {
+  const kv = env?.TLE_CACHE;
+  if (kv) {
+    try {
+      const stored = await kv.get(TLE_KV_KEY, "json");
+      if (stored && Array.isArray(stored.recs)) {
+        const recs = stored.recs;
+        recs.failedGroups = stored.failedGroups || 0;
+        recs.source = "kv";
+        recs.builtAt = stored.builtAt || null;
+        return recs;
+      }
+    } catch {
+      // KV read failed — fall through to a live build rather than error out.
+    }
+  }
+  const records = await buildTLERecords();
+  records.source = "live";
+  records.builtAt = Date.now();
+  return records;
 }
 
 /**
@@ -307,6 +443,77 @@ export async function buildCapsules() {
   return { updated: null, capsules: {}, events: [] };
 }
 
+/** One committed-JSON source's event array, degrading to [] on any failure — same shape as buildToday()/buildCapsules(). */
+async function fetchEventSource(url, ttl, pick) {
+  try {
+    const r = await fetch(url, { cf: { cacheTtl: ttl, cacheEverything: true } });
+    if (!r.ok) return [];
+    const data = await r.json();
+    const arr = pick(data);
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * "Today in Space" — composes the three independently-owned event sources
+ * into one feed, at request time, rather than any one of them being a
+ * shared file three different scheduled jobs write to. Each job (hourly
+ * capsule-status, daily satellites, daily iss-today) keeps committing only
+ * the single file it already owns; merging happens here instead, the same
+ * "committed JSON, no live upstream computation" shape buildToday() and
+ * buildCapsules() already use, just fed from three raw URLs instead of one.
+ * This sidesteps the concurrent-commit collision class F13 had to fix once
+ * (docs/audit-status.md) — no rebase-retry dance needed here, since no two
+ * of these jobs ever write to the same file.
+ *
+ * Docking/undocking/launched/landed already comes from capsule-status.json's
+ * own event log (advanceCapsuleLog() in @orbital-traffic/catalog) — no new
+ * source needed for that type. Launch/reentry and crew-change events come
+ * from launch-reentry-log.json and iss-today.json's crewEvents
+ * respectively, both written by tools/ scripts alongside data they already
+ * fetch (see CLAUDE.md).
+ */
+export async function buildEvents() {
+  const [capsuleEvents, launchReentryEvents, crewEvents] = await Promise.all([
+    fetchEventSource(CAPSULES_URL, CAPSULES_TTL, (d) => d.events),
+    fetchEventSource(LAUNCH_REENTRY_URL, EVENTS_TTL, (d) => d.events),
+    fetchEventSource(TODAY_URL, TODAY_TTL, (d) => d.crewEvents),
+  ]);
+
+  const docking = capsuleEvents.map((e) => ({
+    type: "docking",
+    subtype: e.event, // "launched" | "docked" | "undocked" | "landed"
+    at: e.at,
+    id: e.id,
+    name: e.name,
+    kind: e.kind,
+    family: e.family,
+    stationKey: e.stationKey,
+  }));
+  const launchReentry = launchReentryEvents.map((e) =>
+    e.type === "launch"
+      ? { type: "launch", at: e.at, ids: e.ids, count: e.count, name: e.name, cat: e.cat }
+      : { type: "reentry", at: e.at, id: e.id, name: e.name, cat: e.cat }
+  );
+  const crew = crewEvents.map((e) => ({
+    type: "crew",
+    at: e.at,
+    id: e.id,
+    name: e.name,
+    craft: e.craft,
+    direction: e.direction,
+  }));
+
+  const cutoffMs = Date.now() - EVENTS_WINDOW_HOURS * 60 * 60 * 1000;
+  const events = [...docking, ...launchReentry, ...crew]
+    .filter((e) => e.at && new Date(e.at).getTime() >= cutoffMs)
+    .sort((a, b) => new Date(b.at) - new Date(a.at));
+
+  return { generatedAt: new Date().toISOString(), windowHours: EVENTS_WINDOW_HOURS, events };
+}
+
 const SATCAT_URL = "https://celestrak.org/satcat/records.php?FORMAT=JSON&CATNR=";
 export const SATCAT_TTL = 7 * 24 * 60 * 60; // 7 days — launch date/owner/site are effectively permanent once catalogued
 
@@ -329,6 +536,15 @@ export async function fetchSatcat(catnr) {
   }
 }
 
+// A null fetchSatcat()/fetchAstronaut() result can mean "confirmed no
+// record" (permanent, fine to cache for the full TTL) or a transient
+// upstream hiccup (CelesTrak/LL2 error, timeout) — the two are
+// indistinguishable from here, so treat every null as short-lived rather
+// than risk caching a transient failure for the full SATCAT_TTL (7 days) /
+// ASTRONAUT_TTL (24h). Same rationale and value as CREW_FAIL_TTL.
+export const SATCAT_FAIL_TTL = 90;
+export const ASTRONAUT_FAIL_TTL = 90;
+
 function badRequest(message) {
   return new Response(JSON.stringify({ error: message }), {
     status: 400,
@@ -336,12 +552,13 @@ function badRequest(message) {
   });
 }
 
-function jsonResponse(data, ttl) {
+function jsonResponse(data, ttl, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
       "Cache-Control": `public, max-age=${ttl}`,
+      ...extraHeaders,
     },
   });
 }
@@ -367,7 +584,7 @@ export const CREW_FAIL_TTL = 90;
  * the response's Cache-Control header, which cache.put honors — so the
  * same value also keeps browsers from sitting on a failure.
  */
-async function cached(ctx, path, ttl, build, ttlFor = () => ttl) {
+async function cached(ctx, path, ttl, build, ttlFor = () => ttl, headersFor = () => ({})) {
   const cache = typeof caches !== "undefined" ? caches.default : null;
   const cacheKey = new Request(`https://orbital-traffic.internal${path}`, { method: "GET" });
   if (cache) {
@@ -375,13 +592,31 @@ async function cached(ctx, path, ttl, build, ttlFor = () => ttl) {
     if (hit) return hit;
   }
   const data = await build();
-  const res = jsonResponse(data, ttlFor(data));
+  const res = jsonResponse(data, ttlFor(data), headersFor(data));
   if (cache) ctx.waitUntil(cache.put(cacheKey, res.clone()));
   return res;
 }
 
 const ROUTES = {
-  "/tle": (ctx) => cached(ctx, "/tle", TLE_TTL, buildTLERecords),
+  // X-TLE-Source ("kv" | "live") and X-TLE-Built-At let anyone verify
+  // whether a given response actually came from the warm TLE_CACHE (fast
+  // from any data center) versus a live on-demand buildTLERecords() —
+  // added after response-timing alone turned out to be an ambiguous signal
+  // for this (a fast response can also just be this same cached()
+  // wrapper's per-data-center Cache API layer replaying an earlier live
+  // build). `curl -sI .../tle` is now enough to tell which happened.
+  "/tle": (ctx, request, env) =>
+    cached(
+      ctx,
+      "/tle",
+      TLE_TTL,
+      () => getTLERecords(env),
+      (d) => (d.failedGroups > 0 ? TLE_PARTIAL_FAIL_TTL : TLE_TTL),
+      (d) => ({
+        "X-TLE-Source": d.source || "unknown",
+        "X-TLE-Built-At": d.builtAt ? new Date(d.builtAt).toISOString() : "",
+      })
+    ),
   "/crew": (ctx, request, env) =>
     cached(
       ctx,
@@ -392,11 +627,25 @@ const ROUTES = {
     ),
   "/today": (ctx) => cached(ctx, "/today", TODAY_TTL, buildToday),
   "/capsules": (ctx) => cached(ctx, "/capsules", CAPSULES_TTL, buildCapsules),
+  "/events": (ctx) => cached(ctx, "/events", EVENTS_TTL, buildEvents),
   "/satcat": (ctx, request) => {
     const url = new URL(request.url);
     const catnr = url.searchParams.get("id");
     if (!catnr) return badRequest("id query param is required");
-    return cached(ctx, `/satcat?id=${catnr}`, SATCAT_TTL, () => fetchSatcat(catnr));
+    // Numeric-only: NORAD catalog numbers are always digit strings (leading
+    // zeros included — see noradId() in @orbital-traffic/catalog), and
+    // requiring this is what stops an unvalidated id (e.g. one with a
+    // trailing space or other character the URL/cache-key machinery could
+    // normalize away) from colliding with a different, legitimate id's
+    // cache slot — the same reasoning /astronaut already applies below.
+    if (!/^\d+$/.test(catnr)) return badRequest("id must be numeric");
+    return cached(
+      ctx,
+      `/satcat?id=${catnr}`,
+      SATCAT_TTL,
+      () => fetchSatcat(catnr),
+      (d) => (d === null ? SATCAT_FAIL_TTL : SATCAT_TTL)
+    );
   },
   "/astronaut": (ctx, request, env) => {
     const url = new URL(request.url);
@@ -406,7 +655,13 @@ const ROUTES = {
     // an arbitrary caller from steering the upstream URL path or minting
     // unbounded distinct cache keys.
     if (!/^\d+$/.test(id)) return badRequest("id must be numeric");
-    return cached(ctx, `/astronaut?id=${id}`, ASTRONAUT_TTL, () => fetchAstronaut(id, env));
+    return cached(
+      ctx,
+      `/astronaut?id=${id}`,
+      ASTRONAUT_TTL,
+      () => fetchAstronaut(id, env),
+      (d) => (d === null ? ASTRONAUT_FAIL_TTL : ASTRONAUT_TTL)
+    );
   },
 };
 
@@ -427,5 +682,12 @@ export default {
     // env rides along so /crew can see the optional LL2_API_KEY binding;
     // routes that don't need it just ignore the extra argument.
     return route(ctx, request, env);
+  },
+  // Cron trigger (see wrangler.toml's [triggers]) — keeps TLE_CACHE (Workers
+  // KV) warm well within TLE_TTL so a real visitor's /tle request almost
+  // never pays buildTLERecords()'s ~25s cold-build cost. waitUntil() lets
+  // the invocation return immediately without blocking on the ~25s build.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(refreshTLECache(env));
   },
 };

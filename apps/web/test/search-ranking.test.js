@@ -116,7 +116,7 @@ describe("searchCatalog", () => {
 function setupDom() {
   document.body.innerHTML = `
     <div id="search-wrap">
-      <div id="search"><svg></svg>
+      <div id="search"><button type="button" id="search-toggle" aria-label="Search catalog"><svg></svg></button>
         <input id="search-in" type="text">
       </div>
       <div id="results"></div>
@@ -134,6 +134,9 @@ const rowIds = () =>
 
 describe("search panel ranking (rendered results)", () => {
   beforeEach(() => {
+    // jsdom ships no matchMedia; initSearch() now reads it at init to decide
+    // whether the search toggle is acting as a mobile disclosure. Stub desktop.
+    window.matchMedia = vi.fn().mockReturnValue({ matches: false });
     setupDom();
     state.sats = CATALOG;
     initSearch();

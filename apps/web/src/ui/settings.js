@@ -35,6 +35,7 @@ import { savedIds } from "./favorites.js";
 import { refreshInfo, select } from "./info.js";
 import { toast, flash } from "./status.js";
 import { closeOtherSheets } from "./sheets.js";
+import { attachSheetSwipe } from "./sheet-swipe.js";
 
 const GITHUB = "https://github.com/ianlewis101/orbital-traffic";
 
@@ -56,6 +57,8 @@ const ICONS = {
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16.2"/><circle cx="12" cy="7.6" r="0.9" fill="currentColor" stroke="none"/></svg>',
   changelog:
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="13" y2="18"/></svg>',
+  support:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.4 9.3a2.7 2.7 0 0 1 5.2 1c0 1.9-2.6 2.1-2.6 3.7"/><circle cx="12" cy="16.3" r="0.9" fill="currentColor" stroke="none"/></svg>',
   issue:
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="7.5" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.9" fill="currentColor" stroke="none"/></svg>',
 };
@@ -84,8 +87,21 @@ function isOpen() {
   return panel()?.classList.contains("show");
 }
 
+// Swipe-down-to-close lives in ui/sheet-swipe.js, shared with the Tracked
+// Chain card — same drag physics as the object card's swipe-to-collapse,
+// committing to a close rather than a collapse. Wired in initSettings(),
+// which fills in this reset (see attachSheetSwipe's return value); until
+// then, and in tests that never call initSettings(), it is a no-op.
+let resetSheetDrag = () => {};
+
 export function closeSettings() {
-  panel()?.classList.remove("show");
+  resetSheetDrag(); // abandon any in-flight drag animation
+  const p = panel();
+  p?.classList.remove("show");
+  if (p) {
+    p.style.transition = "";
+    p.style.transform = "";
+  }
   $("#settings-btn")?.setAttribute("aria-expanded", "false");
 }
 
@@ -328,9 +344,19 @@ function savedRow(id) {
   return b;
 }
 
+/**
+ * Rows shown per Saved list before a "Show all" tap reveals the rest — same
+ * cap-then-expand idiom as Overhead's PAGE/oh-more, needed for the same
+ * reason: an unbounded list of rows was the single biggest thing pushing the
+ * rest of Settings out of easy reach.
+ */
+const SAVED_PAGE = 3;
+
 /** One list within the Saved card: its label, then its rows or its empty state. */
 function savedList(body, list, label, empty) {
-  const ids = savedIds(list);
+  // Newest first — the object you just saved is the one you're most likely
+  // reaching for. savedIds() hands them back oldest-first (insertion order).
+  const ids = [...savedIds(list)].reverse();
   const sub = document.createElement("div");
   sub.className = "set-sub";
   sub.textContent = ids.length ? `${label} (${ids.length})` : label;
@@ -340,12 +366,29 @@ function savedList(body, list, label, empty) {
     body.appendChild(note(empty));
     return 0;
   }
+
   const wrap = document.createElement("div");
-  wrap.className = "set-saved";
-  // Newest first — the object you just saved is the one you're most likely
-  // reaching for. savedIds() hands them back oldest-first (insertion order).
-  for (const id of [...ids].reverse()) wrap.appendChild(savedRow(id));
-  body.appendChild(wrap);
+  const foot = document.createElement("div");
+  body.append(wrap, foot);
+
+  let shown = SAVED_PAGE;
+  const paint = () => {
+    wrap.className = "set-saved";
+    wrap.innerHTML = "";
+    for (const id of ids.slice(0, shown)) wrap.appendChild(savedRow(id));
+    foot.innerHTML = "";
+    if (ids.length > shown) {
+      const remaining = ids.length - shown;
+      foot.appendChild(
+        actionButton(`Show all (${remaining} more)`, () => {
+          shown = ids.length;
+          paint();
+        })
+      );
+    }
+  };
+  paint();
+
   return ids.length;
 }
 
@@ -464,12 +507,39 @@ function catalogAgeText() {
   return "Catalog last updated: not yet synced";
 }
 
+/**
+ * Reads whichever of the two sync-failure states is populated: lastSyncError
+ * (an unexpected throw state.syncFailed's ordinary handling doesn't cover)
+ * or lastSyncFailReason (the ordinary "both paths failed" case itself —
+ * state.syncFailed only tells catalogAgeText()'s ·retrying text *that* it
+ * happened, not *why*). Either way this makes the real failure reason
+ * readable directly off the device, instead of requiring a connected
+ * browser console to diagnose a report like "it never finishes loading" or
+ * "live fetch unavailable every time" with nothing else to go on. The two
+ * are mutually exclusive per sync attempt — a throw that reaches
+ * lastSyncError skips the ordinary branch that sets lastSyncFailReason.
+ */
+function lastSyncErrorText() {
+  const failure = state.lastSyncError || state.lastSyncFailReason;
+  if (!failure) return null;
+  const { message, at } = failure;
+  return `Last sync attempt failed: ${message} (${formatRelativeTime(at)})`;
+}
+
 function buildData() {
   const { el, body } = card("Data", "data", "data");
   const age = document.createElement("div");
   age.className = "set-status";
   age.textContent = catalogAgeText();
   body.appendChild(age);
+
+  const errLine = document.createElement("div");
+  errLine.className = "set-status bad";
+  const errText = lastSyncErrorText();
+  errLine.textContent = errText || "";
+  errLine.hidden = !errText;
+  body.appendChild(errLine);
+
   body.appendChild(
     note(
       "Orbital elements refresh automatically every 15 minutes while the app is " +
@@ -483,8 +553,16 @@ function buildData() {
     try {
       await fetchLive();
       age.textContent = catalogAgeText();
+      const nowErr = lastSyncErrorText();
+      errLine.textContent = nowErr || "";
+      errLine.hidden = !nowErr;
       flash($("#legend-tot"));
-      toast("Catalog refreshed");
+      // state.syncFailed's own "Live fetch unavailable" toast already fired
+      // from inside fetchLive() for the ordinary failure case — only speak
+      // up here for the two cases it doesn't cover: genuine success, or the
+      // unexpected-error case lastSyncError exists for.
+      if (nowErr) toast("Sync failed — see error below", "error");
+      else if (!state.syncFailed) toast("Catalog refreshed");
     } finally {
       btn.disabled = false;
       btn.textContent = "Refresh catalog now";
@@ -506,6 +584,7 @@ function buildAbout() {
   links.className = "set-links";
   links.append(
     linkChip(`${GITHUB}/blob/main/CHANGELOG.md`, "changelog", "What's new"),
+    linkChip("/support.html", "support", "Get Support"),
     linkChip(`${GITHUB}/issues/new`, "issue", "Report an issue"),
     linkChip("/privacy.html", "privacy", "Privacy")
   );
@@ -552,6 +631,9 @@ export function openSettings() {
   const p = panel();
   if (!p) return;
   closeOtherSheets("settings");
+  resetSheetDrag(); // abandon any leftover drag animation from the last close
+  p.style.transition = "";
+  p.style.transform = "";
   p.classList.add("show");
   p.scrollTop = 0;
   $("#settings-btn")?.setAttribute("aria-expanded", "true");
@@ -561,10 +643,12 @@ export function openSettings() {
 export function initSettings() {
   const btn = $("#settings-btn");
   const x = $("#settings-x");
+  const p = panel();
   if (x) x.onclick = () => closeSettings();
   if (btn) {
     btn.onclick = () => (isOpen() ? closeSettings() : openSettings());
   }
+  if (p) resetSheetDrag = attachSheetSwipe("settings", "settings-body", closeSettings);
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && isOpen()) closeSettings();
   });
@@ -578,4 +662,5 @@ export const _test = {
   buildData,
   buildAbout,
   buildPrivacy,
+  SAVED_PAGE,
 };

@@ -117,6 +117,18 @@ function updateMiniCard(s) {
 // =====================================================================
 // SELECTION + INFO
 // =====================================================================
+/**
+ * Turn off "Center on Globe" follow mode. Called when the user manually
+ * drags/zooms the globe — otherwise frameSelected() keeps re-locking the
+ * camera onto the tracked object every frame (main.js's loop), silently
+ * overriding the gesture the user just made and making the globe feel
+ * stuck after the initial center animation finishes.
+ */
+export function stopTracking() {
+  state.tracking = false;
+  $("#info-track").style.color = "";
+}
+
 export function select(s) {
   state.selected = s;
   const info = $("#info");
@@ -130,8 +142,7 @@ export function select(s) {
   if (!s) {
     info.classList.remove("show");
     subDot.visible = false;
-    state.tracking = false;
-    $("#info-track").style.color = "";
+    stopTracking();
     clearTrail();
     return;
   }
@@ -142,27 +153,12 @@ export function select(s) {
   info.scrollTop = 0;
   updateSavedButtons(s);
   updateShareButton(s);
-  // "other"-category objects with no curated description get a frosted veil
-  // over the detail sections (see #info-veil in index.html) — header, figure
-  // and flag stay visible. Content-based within "other", not purely
-  // category-based: plenty of "other" objects (CubeSats, imaging sats) have
-  // real descriptions and shouldn't be veiled. Deliberately scoped to
-  // cat === "other" only — every other category (stations, capsules,
-  // starlink, navigation, debris, ...) falls back to a quality generic
-  // description from describe.js's name-pattern/classify() matching rather
-  // than a per-object descriptions.json entry, so checking descs[id].d alone
-  // across all categories would wrongly veil the ISS and every megaconstellation
-  // satellite (confirmed against real catalog data, 2026-07-17).
-  info.classList.toggle(
-    "veiled",
-    !s._neo && s.cat === "other" && !(DATA.descs[s.id] && DATA.descs[s.id].d)
-  );
   const hex = catColorHex(s.cat);
   $("#info-cat").querySelector(".d").style.cssText = `background:${hex};color:${hex}`;
   $("#info-cat").querySelector("span:last-child").textContent = (CATS[s.cat] || CATS.other).label;
   $("#info-nm").textContent = s.name;
   $("#info-figure").innerHTML = figureHTML(s);
-  const li = launchInfo(s.rec);
+  const li = launchInfo(s);
   $("#info-nid").textContent = "NORAD " + s.id + (li.desig !== "—" ? "  ·  INT'L " + li.desig : "");
   setLaunchLine(s, li);
   setFlagLine(s);
@@ -176,8 +172,17 @@ export function select(s) {
   enrichSatcat(s);
 }
 
-function launchInfo(rec) {
-  const d = ((rec && rec.intldesg) || "").trim();
+/**
+ * International designator + implied launch year for an object.
+ *
+ * Reads the designator ingest() copied off TLE line 1 (s.desig) rather than
+ * the satrec: satellite.js v5's twoline2satrec() dropped v4's `intldesg`
+ * field, so this returned "—" for every object in the catalog and the card's
+ * INT'L half and its "Launched <year>" fallback silently never rendered. The
+ * satrec is still checked second for any caller whose parser does provide it.
+ */
+function launchInfo(s) {
+  const d = ((s && (s.desig || (s.rec && s.rec.intldesg))) || "").trim();
   let year = null,
     desig = "—";
   if (/^\d{5}/.test(d)) {
@@ -472,7 +477,7 @@ export function enrichSatcat(s) {
       }
       if (r.LAUNCH_SITE) s.launchSite = SITES[r.LAUNCH_SITE] || null;
       if (state.selected === s) {
-        setLaunchLine(s, launchInfo(s.rec));
+        setLaunchLine(s, launchInfo(s));
         setFlagLine(s);
         $("#info-lead").textContent = describe(s);
         $("#info-figure").innerHTML = figureHTML(s);
@@ -515,7 +520,7 @@ export function refreshInfo() {
   if (!sp) {
     chips.innerHTML = "";
     grid.className = "grid full";
-    grid.innerHTML = `<div class="stat"><div class="k">Status</div><div class="v" style="color:var(--bad);font-size:13px">No current position — this object may have re-entered the atmosphere.</div></div>`;
+    grid.innerHTML = `<div class="stat"><div class="k">Status</div><div class="v" style="color:var(--bad)">No current position — this object may have re-entered the atmosphere.</div></div>`;
     subDot.visible = false;
     return;
   }
@@ -535,7 +540,6 @@ export function refreshInfo() {
     `<span class="chip" title="${oc.note}">${oc.name}</span>` +
     `<span class="chip ${lit ? "lit" : "shad"}"><i></i>${lit ? "In sunlight" : "In Earth&rsquo;s shadow"}</span>` +
     `<span class="chip">Over ${regionName(lat, lon)}</span>` +
-    (s.ownerName ? `<span class="chip">${esc(s.ownerName)}</span>` : ``) +
     `<span class="chip">&asymp;${orbits.toFixed(1)} orbits / day</span>`;
   const ns = lat >= 0 ? "N" : "S",
     ew = lon >= 0 ? "E" : "W";

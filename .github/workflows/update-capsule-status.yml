@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # commits the updated capsule-status.json
+      actions: write # dispatches deploy-pages.yml — see the rebuild step below
 
     steps:
       - name: Checkout repository
@@ -30,16 +31,46 @@ jobs:
         run: node tools/update-capsule-status.mjs
 
       - name: Commit updated capsule-status.json (if changed)
+        id: commit
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add capsule-status.json
-          git diff --cached --quiet || git commit -m "chore: update capsule status $(date -u +'%Y-%m-%d %H:%M UTC')"
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Capsule status unchanged — nothing to commit."
+            exit 0
+          fi
+          git commit -m "chore: update capsule status $(date -u +'%Y-%m-%d %H:%M UTC')"
 
           # Rebase onto whatever another scheduled job may have just pushed
+          # onto the branch this run is on ($GITHUB_REF_NAME — main for the
+          # scheduled runs; it was hardcoded to main, which made a manual
+          # dispatch from any other branch fail on an unrelated rebase)
           # (e.g. update-iss-today.yml) and retry, instead of failing outright
           # on a losing push.
+          #
+          # `pushed` is not decoration: without it the trailing $GITHUB_OUTPUT
+          # write becomes the step's last command, so five failed pushes would
+          # exit 0 and report success. The loop has to be the last thing that
+          # decides the exit status, or an explicit check has to replace it.
+          pushed=false
           for i in 1 2 3 4 5; do
-            git pull --rebase origin main
-            git push && break
+            git pull --rebase origin "$GITHUB_REF_NAME" || break
+            if git push; then pushed=true; break; fi
           done
+          if [ "$pushed" != true ]; then
+            echo "Could not push after 5 attempts — not requesting a rebuild." >&2
+            exit 1
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      # See refresh-tle-data.yml's equivalent step for the full reasoning: a
+      # GITHUB_TOKEN push starts no workflow, and workflow_dispatch is one of
+      # the two events exempt from that rule — so the rebuild is requested
+      # explicitly, with no long-lived credential involved.
+      - name: Rebuild and redeploy the site with the new data
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run deploy-pages.yml --ref main

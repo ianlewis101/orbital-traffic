@@ -24,7 +24,6 @@ export const CATEGORY_IDS = [
   "classified",
   "debris",
   "hazardous",
-  "cool",
 ];
 const CATEGORY_SET = new Set(CATEGORY_IDS);
 
@@ -37,21 +36,32 @@ const CATEGORY_SET = new Set(CATEGORY_IDS);
  * else demotes to "other".
  */
 export const STATION_CORE_IDS = new Set([
-  "25544",
-  "49044",
-  "27386",
-  "28654",
-  "37224",
-  "37820",
-  "36086", // ISS modules
+  // ISS modules. Every ID here has been resolved against SATCAT and confirmed
+  // to be a permanent structural module — see the removal note below for why
+  // that verification is not optional.
+  "25544", // ISS (Zarya)
+  "49044", // ISS (Nauka)
+  "36086", // Poisk
   // 25575/26400/26700 added 2026-07-16 — found hidden under "other" during
   // PR #93's verification; see docs/audit-status.md.
   "25575", // ISS (Unity)
   "26400", // ISS (Zvezda)
   "26700", // ISS (Destiny)
-  "48274",
-  "53239",
-  "54216", // CSS Tiangong modules
+  // CSS Tiangong modules
+  "48274", // CSS (Tianhe)
+  "53239", // CSS (Wentian)
+  "54216", // CSS (Mengtian)
+  // REMOVED 2026-08-17 (pre-submission audit) — 27386, 28654, 37224 and 37820
+  // were in this set for months but are not station modules at all. Resolved
+  // against SATCAT: 27386 = ENVISAT (ESA Earth-observation, derelict since
+  // 2012), 28654 = NOAA 18 (weather satellite), 37224 = O/OREOS (USA 219)
+  // (a NASA 3U cubesat), 37820 = TIANGONG-1 (decayed 2018-04-02). They appear
+  // to be mistaken guesses at the IDs for Unity/Harmony/Tranquility. O/OREOS
+  // was live in production rendering as a space station because of this.
+  // Harmony (Node 2) and Tranquility (Node 3) have no catalog entry of their
+  // own to substitute — they were Shuttle-delivered and are tracked as part of
+  // ISS (25544) — so there is nothing to add back in their place. Do not
+  // re-add an ID here without resolving it through /satcat first.
 ]);
 
 export const CREW_VEHICLE_RE = /\bCREW\b/;
@@ -78,25 +88,31 @@ export function normalizeVehicleName(name) {
  * dragon: deliberately not a bare DRAGON pattern — that also matches
  * uncrewed cargo Dragon ("DRAGON CRS-29"), which must never be tracked as
  * a crewed capsule (see CARGO_VEHICLE_PATTERNS' separate dragon-cargo entry
- * for that). CREW DRAGON (the generic bus name at launch) and the
- * individually-named reusable crew airframes are the only safe anchors.
- * GRACE excludes the GRACE-FO science pair ("GRACE FO 1" once normalized).
+ * for that). Every airframe name must carry its DRAGON prefix: the bare
+ * alternative was removed 2026-08-18 because those words belong to real,
+ * unrelated catalogued objects — RESILIENCE is ispace's HAKUTO-R M2 lunar
+ * lander (62717), FREEDOM is a 1998 Japanese payload (41930), and bare
+ * GRACE swept up GRACE-1/GRACE-2 and NUSAT-20 (GRACE) since the (?! FO)
+ * guard only ever excluded the GRACE-FO pair. ENDEAVOUR and ENDURANCE have
+ * never appeared in SATCAT in any form, so nothing is lost. CelesTrak names
+ * the real vehicles "CREW DRAGON n" anyway.
  * shenzhou: SHENZHOU only, never bare SZ-\d+ — jettisoned "SZ-nn MODULE"
  * hardware must keep falling through to the debris backstop.
- * mengzhou/gaganyaan/orion: upcoming crewed vehicles, inert until they
- * appear in the catalog.
+ * orion: Artemis's capsule is catalogued as bare "ORION" (54257) and
+ * "ORION EFT-1" (40329), while the unrelated commercial comsats are
+ * "ORION 3" and "TELSTAR 11/12 (ORION 1/2)" — so a trailing digit is
+ * exactly what separates them, and the pattern refuses it.
+ * mengzhou/gaganyaan: upcoming crewed vehicles, inert until they appear in
+ * the catalog.
  */
 export const CREW_VEHICLE_PATTERNS = [
-  [
-    "dragon",
-    /\bCREW DRAGON\b|\bDRAGON (?:ENDEAVOUR|ENDURANCE|RESILIENCE|FREEDOM|GRACE)\b|\b(?:ENDEAVOUR|ENDURANCE|RESILIENCE|FREEDOM)\b|\bGRACE\b(?! FO\b)/,
-  ],
+  ["dragon", /\bCREW DRAGON\b|\bDRAGON (?:ENDEAVOUR|ENDURANCE|RESILIENCE|FREEDOM|GRACE)\b/],
   ["soyuz", /\bSOYUZ MS\b/],
   ["starliner", /STARLINER|\bCST 100\b/],
   ["shenzhou", /SHENZHOU/],
   ["mengzhou", /MENGZHOU/],
   ["gaganyaan", /GAGANYAAN/],
-  ["orion", /\bORION\b/],
+  ["orion", /\bORION\b(?!\s*\d)/],
 ];
 
 export function isDockedCrewVehicle(name) {
@@ -208,9 +224,22 @@ export function correctStarlinkCat(name, cat) {
  * Feeds tag these inconsistently — some have dedicated debris groups,
  * others bury stragglers under "active" — so names are matched regardless
  * of which group a record arrived under.
+ *
+ * Launcher names (DELTA, ATLAS, TITAN) and the bare ROCKET/STAGE tokens
+ * were removed 2026-08-18: they classified by who launched a thing rather
+ * than what it is, so every payload sharing a launcher's name was filed as
+ * debris. In SATCAT that is the six crewed MERCURY ATLAS capsules, the
+ * ATLAS AGENA D payloads, and NABEO-1 & KICK STAGE — all OBJECT_TYPE=PAY.
+ *
+ * They looked load-bearing because 348 genuine rocket bodies are named
+ * "DELTA 1 R/B(2)" / "TITAN 3C R/B(1)", whose parenthesis defeated the
+ * space-padded " R/B " token, leaving the launcher name as the only thing
+ * catching them. Matching \bR\/B\b instead catches those directly, which is
+ * what makes dropping the launcher names safe — verified against the live
+ * catalog and the full 70,292-row SATCAT.
  */
 const DEBRIS_NAME_RE =
-  / DEB | DEBRIS | FRAGMENT | FRAG | R\/B | ROCKET BODY | ROCKET | STAGE | ARIANE | DELTA | ATLAS | TITAN /;
+  / DEB | DEBRIS | FRAGMENT | FRAG |\bR\/B\b| ROCKET BODY | ARIANE /;
 /**
  * Hardware released or jettisoned from a crewed station (cameras, experiment
  * housings, unidentified ISS-origin objects, Shenzhou orbital modules left
@@ -233,7 +262,6 @@ export function isDebrisName(name) {
 }
 
 export function correctDebrisCat(name, cat) {
-  if (cat === "cool") return cat; // never override hand-curated hero objects
   return isDebrisName(name) ? "debris" : cat;
 }
 
@@ -250,6 +278,21 @@ export function correctDebrisCat(name, cat) {
  * false-positive risk.
  */
 export const NAV_NAME_RE = /GPS|NAVSTAR|GALILEO|GLONASS|BEIDOU|CENTISPACE/;
+/**
+ * Starlink normally arrives already tagged "starlink" via its own dedicated
+ * CelesTrak group (groups.js), so this rescue is dormant in the healthy
+ * case. It exists for when that group's fetch fails while the generic
+ * "active"/"last-30-days" catch-alls still succeed (a real, observed
+ * failure mode — see GROUP_FETCH_CONCURRENCY's comment in the Worker):
+ * every Starlink satellite still shows up via those catch-alls, tagged
+ * "other", and without this rescue there was nothing to route it back —
+ * unlike OneWeb (correctStarlinkCat()'s ONEWEB_NAME_RE) and Kuiper
+ * (KUIPER_NAME_RE below), which both already had one. Confirmed live
+ * 2026-09-03: a starlink-group fetch failure left ~11,000 Starlink
+ * satellites merged into "other" (13,378 vs. a normal ~2,300) with no way
+ * back until the next successful fetch.
+ */
+export const STARLINK_NAME_RE = /STARLINK/;
 /** Amazon's Kuiper broadband constellation ("KUIPER-00008"); no dedicated CelesTrak group yet. */
 export const KUIPER_NAME_RE = /KUIPER/;
 export const WEATHER_NAME_RE = /GOES|METEOSAT|HIMAWARI|NOAA|METOP|METEOR|DMSP|ELEKTRO|FENGYUN/;
@@ -335,13 +378,74 @@ export const SCIENCE_IDS = new Set([
   // no name pattern to rescue by, so without this ID it falls through to
   // "other" (hidden by default) despite being a genuinely notable object.
   "69792", // LINK
+  // 2026-08-19: MARAFON-D GVM (59072) — moved here from COMMS_IDS. It is not
+  // a communications satellite at all: it's an inert dimensional-mass mockup
+  // (GVM) launched in place of the real Marafon-D technology satellite,
+  // which was pulled from the manifest shortly before liftoff. Ian's
+  // decision, made with that fact in front of him — the object has no
+  // instruments, no power system and no ongoing mission, so this is not the
+  // same shape as SCIENCE_IDS's other inert entries (LAGEOS/STARLETTE/
+  // STELLA/AJISAI), whose entire orbital life IS an active geodesy role.
+  // MARAFON-D GVM's only function ended at deployment.
+  "59072", // MARAFON-D GVM
+  // 2026-09-02: Popular Objects rotation-pool research batch — individually
+  // verified against public sources (launch dates, program declassification
+  // records, mission status), not just carried over from descriptions.json.
+  "00900", // CALSPHERE 1 (radar calibration sphere)
+  "02874", // OPS 5712 (P/L 153) — actually SURCAL 153, a calibration
+  // satellite, not the classified SIGINT payload its "OPS" cover name and
+  // sibling P/L 160 (02826, correctly classified below) might suggest.
+  "54227", // MATS (Swedish noctilucent-cloud science satellite)
+  "58992", // ADRAS-J — commercial debris-inspection tech demonstrator, not
+  // military-owned; see CLASSIFIED_IDS's comment for the alternative case.
+  "47486", // CELESTIS-17 & SHERPA-FX1 — commercial orbital transfer vehicle
+  // (Sherpa-FX1) hosting a passive memorial-spaceflight payload; same OTV
+  // precedent as Vigoride-3. Description corrected 2026-09-02.
+  // 2026-09-02: second Popular Objects rotation-pool batch.
+  "24920", // FORTE (nuclear-test-detection research disguised as lightning study)
+  "26113", // IMAGE (declared lost 2005, found still transmitting 2018)
+  "33498", // STARS (KUKAI) — tethered-satellite demonstrator
+  "39090", // STRAND-1 — ran on an unmodified smartphone
+  "40021", // DUCHIFAT-1 — Israeli high-school-built satellite
+  "41896", // ARASE (ERG) — Van Allen radiation belt research
+  "43016", // MAKERSAT 0 — 3D-printed structural components test
+  "43815", // FALCONSAT-6 — US Air Force Academy cadet-built satellite
 ]);
 /** Cataloged fragments/sub-payloads with no name DEBRIS_NAME_RE can match. */
 export const DEBRIS_IDS = new Set(["51950", "69320"]);
 /** One-off comms/data-relay satellites with no shared constellation name (see COMMS_NAME_RE for those that do). */
-export const COMMS_IDS = new Set(["23439", "59072"]);
+export const COMMS_IDS = new Set([
+  "23439",
+  "07530", // AO-7 / AMSAT-OSCAR 7 (amateur radio relay)
+  "42826", // NORSAT-1 (AIS ship-tracking + solar science hybrid)
+]);
 /** One-off military satellites identified by individual codename rather than a recognizable scheme (see CLASSIFIED_NAME_RE). */
-export const CLASSIFIED_IDS = new Set(["57757"]);
+export const CLASSIFIED_IDS = new Set([
+  "57757",
+  // 2026-09-02: same research batch as SCIENCE_IDS above.
+  "02826", // OPS 5712 (P/L 160) — Poppy 5A naval SIGINT satellite (NRO)
+  "58400", // MALLIGYONG-1 (North Korean reconnaissance satellite)
+  "46396", // GAOFEN-11 02 — assessed military reconnaissance; deliberately
+  // an ID rather than a GAOFEN name pattern, since most Gaofen-series
+  // satellites are genuinely civilian Earth-observation missions.
+  "58955", // HBTSS-SV2 (US Missile Defense Agency hypersonic tracker)
+  // 2026-09-02: second Popular Objects rotation-pool batch — known
+  // military/intelligence satellites with no shared, safe name pattern.
+  "28470", // JB-3 3 (ZY 2C) — Chinese reconnaissance, civilian cover name
+  "31797", // SAR-LUPE 2 (German military SAR reconnaissance)
+  "36088", // SJ-11-01 — assessed Chinese military/missile-warning satellite;
+  // abbreviated "SJ" catalog name, so CLASSIFIED_NAME_RE's SHIJIAN pattern
+  // (which needs the name spelled out) does not catch this one.
+  "43215", // PAZ (Spanish military SAR reconnaissance)
+  "41032", // COSMOS 2510 (EKS 1) — assessed Russian surveillance satellite
+  "42921", // ORS-5 SENSORSAT (US Air Force GEO-belt surveillance)
+  "44233", // RISAT-2B (Indian military SAR reconnaissance)
+  "44078", // EMISAT (Indian electronic intelligence satellite)
+  "44552", // COSMOS 2541 (EKS 3) — Russian nuclear early-warning satellite
+  "44857", // RISAT-2BR1 (Indian military SAR reconnaissance)
+  "48907", // MANDRAKE 2 ABLE (US Space Force/DARPA laser-comms demonstrator)
+  "53370", // KHAYYAM — Iranian reconnaissance satellite, Russian-built
+]);
 
 /**
  * Rescues records still tagged "other" after the station allowlist and the
@@ -387,6 +491,7 @@ export function correctOtherCat(id, name, cat) {
   if (WEATHER_NAME_RE.test(n) || EO_NAME_RE.test(n) || SCI_CONSTELLATION_RE.test(n))
     return "science";
   if (CLASSIFIED_NAME_RE.test(n)) return "classified";
+  if (STARLINK_NAME_RE.test(n)) return "starlink";
   if (KUIPER_NAME_RE.test(n)) return "kuiper";
   return "other";
 }
@@ -399,7 +504,7 @@ export function correctOtherCat(id, name, cat) {
  *   3. debris name backstop
  *   4. name-pattern rescue for whatever is still "other" (crew/cargo vehicle
  *      promotion to "capsules" first, then nav/comms/science/classified/
- *      kuiper)
+ *      starlink/kuiper)
  * Unknown input categories normalize to "other" first.
  */
 export function categorize(id, name, cat) {

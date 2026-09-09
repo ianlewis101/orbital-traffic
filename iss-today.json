@@ -1,9 +1,61 @@
 {
-  "updated": "2026-08-03",
-  "expedition": "Expedition 74",
+  "updated": "2026-09-09",
+  "expedition": "Expedition 75",
   "activities": [
-    "Crew Ends Week with Spacesuit Checks and Science, Lab Hardware Maintenance",
-    "Spacewalk Preps, Bioprinting, and Exercise Research Top Station Schedule",
-    "Crew Conducts Futuristic Workouts, Advanced Eye Exams During Spacewalk Preps"
-  ]
+    "Astronaut Health, Lunar and Earth Photography Fill Crew’s Research Schedule",
+    "Roscosmos Progress Cargo Spacecraft Departs Space Station"
+  ],
+  "crew": [
+    {
+      "id": 573,
+      "name": "Jessica Meir",
+      "craft": "ISS"
+    },
+    {
+      "id": 713,
+      "name": "Anil Menon",
+      "craft": "ISS"
+    },
+    {
+      "id": 712,
+      "name": "Jack Hathaway",
+      "craft": "ISS"
+    },
+    {
+      "id": 747,
+      "name": "Sophie Adenot",
+      "craft": "ISS"
+    },
+    {
+      "id": 732,
+      "name": "Andrei Fedyaev",
+      "craft": "ISS"
+    },
+    {
+      "id": 649,
+      "name": "Anna Kikina",
+      "craft": "ISS"
+    },
+    {
+      "id": 650,
+      "name": "Pyotr Dubrov",
+      "craft": "ISS"
+    },
+    {
+      "id": 764,
+      "name": "Zhu Yangzhu",
+      "craft": "Tiangong"
+    },
+    {
+      "id": 917,
+      "name": "Lai Ka-ying",
+      "craft": "Tiangong"
+    },
+    {
+      "id": 916,
+      "name": "Zhang Zhiyuan",
+      "craft": "Tiangong"
+    }
+  ],
+  "crewEvents": []
 }

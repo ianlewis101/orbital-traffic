@@ -162,6 +162,16 @@ describe("saved card", () => {
       ? [...list.querySelectorAll(".today-row")]
       : [];
   };
+  // The "Show all" control (if any) sits in its own div right after the
+  // rows div — mirrors #overhead-foot's .oh-more one level up.
+  const moreButtonUnder = (label) => {
+    const card = savedCard();
+    const kids = [...card.querySelector(".set-card-b").children];
+    const start = kids.findIndex(
+      (k) => k.classList.contains("set-sub") && k.textContent.startsWith(label)
+    );
+    return kids[start + 2]?.querySelector(".set-action") || null;
+  };
 
   it("shows both lists, each with an empty state saying what it's for", async () => {
     await load();
@@ -245,6 +255,136 @@ describe("saved card", () => {
     expect(rowsUnder("Favourites").map((r) => r.querySelector(".nm").textContent)).toEqual([
       "ISS (ZARYA)",
     ]);
+  });
+
+  // A long Saved list used to render as one fully-open column, pushing every
+  // other card out of easy reach. Same cap-then-expand shape as Overhead's
+  // PAGE/oh-more (overhead-ui.test.js), applied per-list.
+  describe("paging", () => {
+    const many = Array.from({ length: 5 }, (_, i) => ({
+      id: String(30000 + i),
+      name: `SAT ${i}`,
+      cat: "other",
+    }));
+
+    it("caps each list at SAVED_PAGE and offers 'Show all' for the rest", async () => {
+      const { ui } = await load({ saved: { favorites: many.map((s) => s.id) } }, many);
+      expect(ui._test.SAVED_PAGE).toBe(3);
+      expect(rowsUnder("Favourites")).toHaveLength(3);
+      const more = moreButtonUnder("Favourites");
+      expect(more).not.toBeNull();
+      expect(more.textContent).toMatch(/show all/i);
+      expect(more.textContent).toMatch(/2 more/);
+      // The honest total stays visible in the label even though rows are capped.
+      expect(savedCard().querySelector(".set-sub").textContent).toBe("Favourites (5)");
+    });
+
+    it("reveals every remaining row in one tap, still newest first", async () => {
+      await load({ saved: { favorites: many.map((s) => s.id) } }, many);
+      moreButtonUnder("Favourites").click();
+      const names = rowsUnder("Favourites").map((r) => r.querySelector(".nm").textContent);
+      expect(names).toEqual([...many].reverse().map((s) => s.name));
+      expect(moreButtonUnder("Favourites")).toBeNull();
+    });
+
+    it("doesn't show 'Show all' when a list already fits within the cap", async () => {
+      await load({ saved: { favorites: ["25544"] } }, [ISS]);
+      expect(moreButtonUnder("Favourites")).toBeNull();
+    });
+
+    it("pages Favourites and Watchlist independently", async () => {
+      const ids = many.map((s) => s.id);
+      await load({ saved: { favorites: ids, watchlist: ids } }, many);
+      expect(rowsUnder("Favourites")).toHaveLength(3);
+      expect(rowsUnder("Watchlist")).toHaveLength(3);
+      moreButtonUnder("Favourites").click();
+      expect(rowsUnder("Favourites")).toHaveLength(5);
+      expect(rowsUnder("Watchlist")).toHaveLength(3); // untouched by the other list's expand
+    });
+  });
+});
+
+/**
+ * Swipe-down-to-close, mirroring the object card's swipe-to-collapse
+ * (ui/info.js): a downward drag that clears the 6px "grab" threshold starts
+ * tracking the finger; releasing past an 80px drag or a fast-enough flick
+ * closes the sheet, anything short of that snaps it back open. Unlike the
+ * info card there's no mini-card to fall back to, so "commit" here means
+ * closeSettings() rather than a collapse.
+ */
+describe("swipe-down-to-close (mobile)", () => {
+  function touchEvent(type, y) {
+    const ev = new Event(type, { bubbles: true, cancelable: true });
+    ev.touches = [{ clientY: y }];
+    return ev;
+  }
+  const touchEnd = () => new Event("touchend", { bubbles: true, cancelable: true });
+
+  beforeEach(() => {
+    // jsdom ships no matchMedia — stub mobile so the swipe path isn't gated
+    // behind isMobileLayout().
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+  });
+
+  it("closes the sheet on a drag past the 80px commit threshold", async () => {
+    const { ui } = await load();
+    ui.initSettings();
+    const panel = document.getElementById("settings");
+    panel.classList.add("show");
+
+    panel.dispatchEvent(touchEvent("touchstart", 100));
+    panel.dispatchEvent(touchEvent("touchmove", 120)); // clears the 6px "grab" threshold
+    panel.dispatchEvent(touchEvent("touchmove", 250)); // 130px total, past the 80px line
+    panel.dispatchEvent(touchEnd());
+
+    await vi.waitFor(() => expect(panel.classList.contains("show")).toBe(false));
+    expect(document.getElementById("settings-btn").getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("snaps back open on a short, slow drag that clears neither threshold", async () => {
+    const { ui } = await load();
+    ui.initSettings();
+    const panel = document.getElementById("settings");
+    panel.classList.add("show");
+
+    panel.dispatchEvent(touchEvent("touchstart", 100));
+    panel.dispatchEvent(touchEvent("touchmove", 120));
+    panel.dispatchEvent(touchEvent("touchmove", 130)); // 10px total — well under the 80px line
+    // A real gap so the release isn't also read as a fast flick (dy/elapsed > 0.5).
+    await new Promise((r) => setTimeout(r, 100));
+    panel.dispatchEvent(touchEnd());
+
+    // Give the snap-back timeout a chance to run; the sheet never closes.
+    await new Promise((r) => setTimeout(r, 400));
+    expect(panel.classList.contains("show")).toBe(true);
+  });
+
+  it("ignores touches entirely on desktop layout", async () => {
+    window.matchMedia = vi.fn().mockReturnValue({ matches: false });
+    const { ui } = await load();
+    ui.initSettings();
+    const panel = document.getElementById("settings");
+    panel.classList.add("show");
+
+    panel.dispatchEvent(touchEvent("touchstart", 100));
+    panel.dispatchEvent(touchEvent("touchmove", 250));
+    panel.dispatchEvent(touchEnd());
+
+    await new Promise((r) => setTimeout(r, 400));
+    expect(panel.classList.contains("show")).toBe(true);
+  });
+
+  it("a plain tap with no movement never starts a drag", async () => {
+    const { ui } = await load();
+    ui.initSettings();
+    const panel = document.getElementById("settings");
+    panel.classList.add("show");
+
+    panel.dispatchEvent(touchEvent("touchstart", 100));
+    panel.dispatchEvent(touchEnd());
+
+    await new Promise((r) => setTimeout(r, 50));
+    expect(panel.classList.contains("show")).toBe(true);
   });
 });
 

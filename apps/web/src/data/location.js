@@ -14,7 +14,17 @@
  *
  * Deliberately NOT a resurrection of any part of Pass Alerts: no prediction,
  * no notifications, no background access, no Worker round-trip.
+ *
+ * Goes through @capacitor/geolocation rather than calling
+ * navigator.geolocation directly. On the web/PWA build its web
+ * implementation IS navigator.geolocation, byte-for-byte the same calls and
+ * error shapes as before — but inside the iOS app it routes to CoreLocation
+ * instead, which shows the native "Orbital Traffic Would Like to Use Your
+ * Location" prompt (NSLocationWhenInUseUsageDescription, below) rather than
+ * WKWebView's own per-origin permission dialog, which identifies the app by
+ * its WKWebView origin ("localhost") instead of its name.
  */
+import { Geolocation } from "@capacitor/geolocation";
 import { settings, saveSettings } from "../settings.js";
 
 const TIMEOUT_MS = 10000;
@@ -61,9 +71,10 @@ function supported() {
  * Best-available permission state for the Settings display:
  * "granted" | "denied" | "prompt" | "unsupported".
  *
- * Prefers the Permissions API, which can distinguish "already granted" from
- * "never asked" without triggering a prompt. Support is uneven — older Safari
- * has no navigator.permissions at all, and some engines reject the
+ * checkPermissions() never itself triggers a prompt — on the web build it's
+ * backed by the Permissions API (same as before), and on iOS it reads
+ * CoreLocation's current authorization status. Support is uneven — older
+ * Safari has no Permissions API at all, and some engines reject the
  * geolocation descriptor — so every failure path falls back to what we
  * persisted ourselves, which is always available and never lies about a
  * denial.
@@ -72,15 +83,21 @@ export async function locationStatus() {
   if (!supported()) return "unsupported";
   if (locationDenied()) return "denied";
   try {
-    const res = await navigator.permissions?.query({ name: "geolocation" });
-    if (res && (res.state === "granted" || res.state === "denied" || res.state === "prompt")) {
-      return res.state;
-    }
+    const res = await Geolocation.checkPermissions();
+    if (res.location === "granted" || res.location === "denied") return res.location;
+    if (res.location === "prompt" || res.location === "prompt-with-rationale") return "prompt";
   } catch {
-    // No Permissions API, or the geolocation descriptor isn't recognised.
+    // No Permissions API, geolocation descriptor isn't recognised, or (iOS)
+    // system location services are off.
   }
   return "prompt";
 }
+
+// Permission-denied markers across both error shapes getCurrentPosition can
+// reject with: the browser's GeolocationPositionError.code (1 ==
+// PERMISSION_DENIED) on the web build, or the plugin's own error code on iOS.
+const DENIED_ERROR_CODE = 1;
+const DENIED_NATIVE_CODE = "OS-PLUG-GLOC-0003";
 
 /**
  * One-shot position fix. Resolves {lat, lon}; rejects with a LocationError
@@ -91,36 +108,31 @@ export async function locationStatus() {
  * hundreds of kilometres across, so a coarse network fix puts every object in
  * the same list a precise one would.
  */
-export function requestLocation() {
+export async function requestLocation() {
   if (!supported()) {
-    return Promise.reject(
-      new LocationError(LOCATION_ERRORS.UNSUPPORTED, "Location isn't available on this device")
-    );
+    throw new LocationError(LOCATION_ERRORS.UNSUPPORTED, "Location isn't available on this device");
   }
   // Short-circuit a known refusal: calling getCurrentPosition here would sit
   // silently until it times out on most browsers, which reads as a bug.
   if (locationDenied()) {
-    return Promise.reject(
-      new LocationError(LOCATION_ERRORS.DENIED, "Location access was previously denied")
-    );
+    throw new LocationError(LOCATION_ERRORS.DENIED, "Location access was previously denied");
   }
 
-  return new Promise((resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-      (err) => {
-        // Code 1 (PERMISSION_DENIED) is a decision and is remembered. Codes 2
-        // (POSITION_UNAVAILABLE) and 3 (TIMEOUT) are transient conditions —
-        // flagging those would lock a user out of the feature because their
-        // GPS happened to be cold once.
-        if (err && err.code === 1) {
-          saveSettings({ locationPermissionDenied: true });
-          reject(new LocationError(LOCATION_ERRORS.DENIED, "Location access denied"));
-          return;
-        }
-        reject(new LocationError(LOCATION_ERRORS.UNAVAILABLE, "Couldn't get your location"));
-      },
-      { enableHighAccuracy: false, timeout: TIMEOUT_MS, maximumAge: 0 }
-    );
-  });
+  try {
+    const pos = await Geolocation.getCurrentPosition({
+      enableHighAccuracy: false,
+      timeout: TIMEOUT_MS,
+      maximumAge: 0,
+    });
+    return { lat: pos.coords.latitude, lon: pos.coords.longitude };
+  } catch (err) {
+    // A denial is a decision and is remembered. Anything else (position
+    // unavailable, timeout, a cold GPS) is transient — flagging those would
+    // lock a user out of the feature over a one-off hiccup.
+    if (err && (err.code === DENIED_ERROR_CODE || err.code === DENIED_NATIVE_CODE)) {
+      saveSettings({ locationPermissionDenied: true });
+      throw new LocationError(LOCATION_ERRORS.DENIED, "Location access denied");
+    }
+    throw new LocationError(LOCATION_ERRORS.UNAVAILABLE, "Couldn't get your location");
+  }
 }

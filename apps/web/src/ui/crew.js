@@ -1,9 +1,12 @@
-import { WORKER_BASE } from "../config.js";
+import { WORKER_BASE, catColorHex } from "../config.js";
 import { $, state } from "../state.js";
 import { vehicleFamily, CREW_SEATS_BY_FAMILY } from "@orbital-traffic/catalog";
 import { renderCapsuleStatus } from "./capsule-status.js";
+import { select } from "./info.js";
 import { esc } from "../util/html.js";
 import { formatRelativeTime } from "../util/relative-time.js";
+import { stalenessNote, ISS_TODAY_STALE_MS } from "../util/freshness.js";
+import { setInfoFreshness } from "./info-attr.js";
 
 function initials(name) {
   const p = name.trim().split(/\s+/);
@@ -26,7 +29,9 @@ const profileCache = new Map();
  */
 export function formatDuration(iso) {
   if (typeof iso !== "string") return null;
-  const m = /^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:[\d.]+S)?)?$/.exec(iso);
+  const m = /^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:[\d.]+S)?)?$/.exec(
+    iso
+  );
   if (!m) return null;
   const [, y, mo, d, h, min] = m.map((v) => (v == null ? v : Number(v)));
   // Years/months are folded into an approximate day count only when LL2
@@ -65,7 +70,9 @@ function renderProfile(p) {
   const inSpace = formatDuration(p.timeInSpace);
   if (inSpace) stats.push(stat(inSpace, "in space"));
   const links = [
-    p.wiki ? `<a href="${esc(p.wiki)}" target="_blank" rel="noopener noreferrer">Wikipedia</a>` : "",
+    p.wiki
+      ? `<a href="${esc(p.wiki)}" target="_blank" rel="noopener noreferrer">Wikipedia</a>`
+      : "",
     p.twitter ? `<a href="${esc(p.twitter)}" target="_blank" rel="noopener noreferrer">X</a>` : "",
     p.instagram
       ? `<a href="${esc(p.instagram)}" target="_blank" rel="noopener noreferrer">Instagram</a>`
@@ -133,7 +140,85 @@ function wireCrewAvatars(root) {
 // "Today aboard" is sourced from iss-today.json via the worker's /today
 // endpoint — it's ISS-specific, so only ISS modules should show it. Other
 // stations (e.g. Tiangong) still show live crew, just not this feed.
-const ISS_TODAY_IDS = new Set(["25544", "49044", "27386", "28654", "37224", "37820"]);
+// NOTE: only 25544 can actually reach this today — fetchAndRenderCrew() gates
+// on `s.id === "25544"` before this set is consulted (audit F23, still open).
+// The IDs are kept correct regardless: this set previously listed 27386, 28654,
+// 37224 and 37820, which are ENVISAT, NOAA 18, O/OREOS and the de-orbited
+// Tiangong-1 — so whenever F23 is fixed, those four would have started serving
+// "Today aboard the ISS" for unrelated satellites.
+const ISS_TODAY_IDS = new Set([
+  "25544", // ISS (Zarya)
+  "49044", // ISS (Nauka)
+  "25575", // ISS (Unity)
+  "26400", // ISS (Zvezda)
+  "26700", // ISS (Destiny)
+  "36086", // Poisk
+]);
+
+/**
+ * Vehicles physically docked at this station right now, per
+ * capsule-status.json (state.capsulesData) — the same source the roster
+ * plausibility check above reads seat counts from. Docked crew and cargo
+ * vehicles alike render at their host station's own position (they share
+ * its TLE — see the "7 vs 2 capsules" investigation in docs/audit-status.md),
+ * so this is the only way to select one specific docked vehicle directly
+ * rather than whichever one happens to render on top on the globe. Each
+ * capsule-status entry is resolved to its live state.byId object; an entry
+ * with no match yet (a live sync hasn't injected it) is skipped rather than
+ * shown as a dead row. General across any station key, not ISS-specific.
+ */
+function dockedVehicles(stationKey) {
+  if (!state.capsulesData) return [];
+  const list = [];
+  for (const [id, c] of Object.entries(state.capsulesData)) {
+    if (c.phase !== "docked" || c.stationKey !== stationKey) continue;
+    const sat = state.byId.get(id);
+    if (sat) list.push(sat);
+  }
+  return list;
+}
+
+/** Collapsed-by-default "Docked capsules · N" block — "" (no block) when there's nothing docked yet. */
+function dockedVehiclesHTML(vehicles) {
+  if (!vehicles.length) return "";
+  const rows = vehicles
+    .map((v) => {
+      const hex = catColorHex(v.cat);
+      return `<button type="button" class="today-row crew-docked-row" data-id="${esc(v.id)}">
+        <span class="sw" style="background:${hex};color:${hex}"></span>
+        <span class="info"><span class="nm">${esc(v.name)}</span></span>
+      </button>`;
+    })
+    .join("");
+  return `
+    <div class="crew-docked">
+      <button type="button" class="crew-docked-hd" aria-expanded="false">
+        <span class="crew-docked-lbl">Docked capsules &middot; ${vehicles.length}</span>
+        <span class="crew-docked-chev">▸</span>
+      </button>
+      <div class="crew-docked-body" style="display:none">${rows}</div>
+    </div>`;
+}
+
+/** Wires the docked-vehicles collapse toggle and per-row selection. No-op if the block wasn't rendered. */
+function wireDockedVehicles(root) {
+  const hd = root.querySelector(".crew-docked-hd");
+  const body = root.querySelector(".crew-docked-body");
+  if (!hd || !body) return;
+  const chev = hd.querySelector(".crew-docked-chev");
+  hd.onclick = () => {
+    const open = body.style.display !== "none";
+    body.style.display = open ? "none" : "block";
+    if (chev) chev.textContent = open ? "▸" : "▾";
+    hd.setAttribute("aria-expanded", String(!open));
+  };
+  for (const row of root.querySelectorAll(".crew-docked-row")) {
+    row.onclick = () => {
+      const v = state.byId.get(row.dataset.id);
+      if (v) select(v);
+    };
+  }
+}
 
 export async function fetchAndRenderCrew(s) {
   const el = $("#info-crew");
@@ -147,12 +232,15 @@ export async function fetchAndRenderCrew(s) {
     if (family) return renderCapsuleStatus(s, el);
     el.style.display = "none";
     el.innerHTML = "";
+    setInfoFreshness(null);
     return;
   }
   const showToday = ISS_TODAY_IDS.has(s.id);
   const craft = isISS ? "ISS" : "Tiangong";
+  const stationKey = isISS ? "iss" : "css";
   el.style.display = "block";
   el.innerHTML = `<div class="crew-block"><div style="padding:14px;text-align:center;font-size:9.5px;color:var(--ink-faint);letter-spacing:0.1em">Fetching crew…</div></div>`;
+  setInfoFreshness(null); // clear any stale note from the previous selection while this fetch is in flight
   // fetch crew from worker
   let crew = [];
   let crewFetchFailed = false;
@@ -174,6 +262,11 @@ export async function fetchAndRenderCrew(s) {
     crewFetchFailed = true;
   }
   if (state.selected !== s) return; // selection changed while this was in flight
+  setInfoFreshness(
+    !crewFetchFailed && fetchedAt
+      ? `Crew data as of ${formatRelativeTime(new Date(fetchedAt))}`
+      : null
+  );
 
   // Plausibility stopgap (see CREW_SEATS_BY_FAMILY's doc comment in
   // classify.js), added 2026-07-20 when Open Notify was found serving a
@@ -188,7 +281,6 @@ export async function fetchAndRenderCrew(s) {
   // roster — kept as a harmless, source-agnostic generic backstop.
   let crewSuspect = false;
   if (!crewFetchFailed && state.capsulesData) {
-    const stationKey = isISS ? "iss" : "css";
     let expectedSeats = 0;
     let unrecognizedFamily = false;
     for (const c of Object.values(state.capsulesData)) {
@@ -227,8 +319,7 @@ export async function fetchAndRenderCrew(s) {
   if (state.selected !== s) return; // selection changed while this was in flight
   // Only render real activity data from a successful /today fetch. If it's
   // missing or empty, say so honestly rather than substituting fabricated content.
-  const activities =
-    todayData && Array.isArray(todayData.activities) ? todayData.activities : [];
+  const activities = todayData && Array.isArray(todayData.activities) ? todayData.activities : [];
   const hasToday = activities.length > 0;
   const todayItems = activities
     .map(
@@ -237,6 +328,10 @@ export async function fetchAndRenderCrew(s) {
     )
     .join("");
   const todayDate = (todayData && todayData.updated) || "";
+  // A daily log that stopped updating still reads as "today" — the header
+  // shows its date, but a date alone doesn't tell a user it's months old.
+  // Only computed when there is something to label as stale.
+  const todayStale = showToday && todayDate ? stalenessNote(todayDate, ISS_TODAY_STALE_MS) : null;
   // avatars — use crew from API or show count only
   let avHTML = "";
   if (crew.length > 0) {
@@ -248,9 +343,7 @@ export async function fetchAndRenderCrew(s) {
     avHTML = crew
       .map((p, i) => {
         const init = initials(p.name || "??");
-        const isCmd = hasRoles
-          ? (p.role || "").toLowerCase().includes("commander")
-          : i === 0;
+        const isCmd = hasRoles ? (p.role || "").toLowerCase().includes("commander") : i === 0;
         // Only a person we can actually look up gets button affordances;
         // without an id there's nothing to expand, so it stays a plain div.
         const label = esc((p.name || "").split(" ").pop());
@@ -273,11 +366,7 @@ export async function fetchAndRenderCrew(s) {
         <div class="crew-count-wrap"><div class="crew-count">${
           // eslint-disable-next-line orbital/no-unescaped-innerhtml -- count is crew.length (a number) or the literal "?" fallback
           count
-        }</div><div class="crew-count-lbl">ABOARD</div>${
-          !crewFetchFailed && fetchedAt
-            ? `<div class="crew-count-lbl">as of ${formatRelativeTime(new Date(fetchedAt))}</div>`
-            : ""
-        }</div>
+        }</div><div class="crew-count-lbl">ABOARD</div></div>
       </div>
       <div class="crew-avs">${
         // eslint-disable-next-line orbital/no-unescaped-innerhtml -- avHTML is assembled from esc()-escaped crew data in the map() loop above
@@ -300,7 +389,11 @@ export async function fetchAndRenderCrew(s) {
       showToday
         ? `<div class="crew-today">
       <div class="crew-today-hd"><div class="crew-today-lbl">Today aboard</div>${
-        todayDate ? `<div class="crew-today-dt">${esc(todayDate)}</div>` : ""
+        todayStale
+          ? `<div class="crew-today-dt stale">${esc(todayStale)}</div>`
+          : todayDate
+            ? `<div class="crew-today-dt">${esc(todayDate)}</div>`
+            : ""
       }</div>
       <div class="crew-today-body">${
         hasToday
@@ -309,6 +402,11 @@ export async function fetchAndRenderCrew(s) {
       }</div>
     </div>`
         : ""
+    }
+    ${
+      // eslint-disable-next-line orbital/no-unescaped-innerhtml -- dockedVehiclesHTML() escapes every dynamic value (vehicle name/id) via esc() internally
+      dockedVehiclesHTML(dockedVehicles(stationKey))
     }`;
   wireCrewAvatars(el);
+  wireDockedVehicles(el);
 }

@@ -84,15 +84,48 @@ export function freshnessText({
     return `Simulation · showing ${formatSimOffset(simOffsetMs)}`;
   }
   if (srcTime) {
-    return `Live positions · updated ${formatRelativeTime(srcTime)}`;
+    return `Live · updated ${formatRelativeTime(srcTime)}`;
   }
   const bootAge = formatRelativeTime(bootTime);
   if (syncFailed) {
-    return bootAge
-      ? `Cached elements from ${bootAge} · retrying automatically`
-      : "Cached elements shown · retrying automatically";
+    return bootAge ? `Cached · ${bootAge} · retrying` : "Cached · retrying";
   }
-  return bootAge ? `Live positions · catalog from ${bootAge}` : "Live positions · syncing…";
+  return bootAge ? `Live · catalog ${bootAge}` : "Live · syncing…";
+}
+
+/**
+ * Staleness thresholds for the two scheduled-job data files. Both carry an
+ * `updated` timestamp, but nothing compared it against a limit — so if
+ * update-capsule-status.yml or update-iss-today.yml silently stopped running
+ * (a revoked token, a workflow auto-disabled after repo inactivity, an
+ * upstream shape change), the app would keep presenting months-old capsule
+ * phases and activity logs as current with no signal anywhere.
+ *
+ * Each is a generous multiple of its job's cadence, so a couple of missed
+ * runs — or a slow one — never cries wolf: capsules updates hourly, ISS
+ * Today daily.
+ */
+export const CAPSULE_STALE_MS = 6 * 60 * 60 * 1000;
+export const ISS_TODAY_STALE_MS = 3 * 24 * 60 * 60 * 1000;
+
+/**
+ * A warning string when `updated` is older than `maxAgeMs`, else null — so
+ * callers render nothing at all in the normal case and the note only ever
+ * appears when something is genuinely wrong.
+ *
+ * An unparseable or missing timestamp counts as stale rather than fresh: not
+ * knowing how old data is, is not evidence that it is current.
+ */
+export function stalenessNote(updated, maxAgeMs, now = Date.now()) {
+  const t = updated instanceof Date ? updated.getTime() : Date.parse(updated);
+  if (!Number.isFinite(t)) return "Age unknown — may be out of date";
+  const age = now - t;
+  if (age <= maxAgeMs) return null;
+  // Formatted from the age rather than via formatRelativeTime, which reads
+  // Date.now() itself and would ignore the injected `now`.
+  const hours = Math.floor(age / 3600000);
+  const span = hours < 48 ? `${hours}h` : `${Math.floor(hours / 24)}d`;
+  return `Not updated in ${span} — may be out of date`;
 }
 
 /**

@@ -91,6 +91,38 @@ cross-check those against this document instead.
    phase-aware — that would break the single-source-of-truth
    boundary this rule establishes.
 
+   LAUNCH CHAINS ARE ALSO NOT A CATEGORY: a "Starlink chain"
+   (the string a freshly launched batch flies as for its first
+   days/weeks — the "train" people photograph from the ground)
+   is derived geometry, not classification. detectChains() in
+   packages/catalog/src/chains.js groups the catalog by
+   international-designator launch batch and keeps a group only
+   while it passes four tests, each measured against the real
+   catalog (see the module header — do not re-tune a threshold
+   without re-measuring, the false positives each one removes
+   are specific and documented): recent launch, still below its
+   constellation's operating altitude (read from that category's
+   own median, never hardcoded — Starlink alone has shells at
+   ~360/463/485/546 km), still coplanar, still bunched. Members
+   keep their ordinary category throughout; nothing writes
+   cat:"chain". CHAIN_CATS is restricted to the three batch-
+   launching constellations on purpose — a debris field from one
+   breakup is the tightest, most perfectly coplanar "chain" in
+   the catalog and calling it a launch train would be flatly
+   wrong. Detection runs at boot and after every live sync
+   (apps/web/src/data/chains.js), against real wall-clock time,
+   never state.simNow — the time machine must not invent or
+   erase chains.
+
+   CLOSING THE CHAIN CARD IS NOT UNTRACKING: ✕, Escape, a swipe
+   down and another sheet taking the slot all just put the card
+   away — the chain stays lit on the globe (the highlight is the
+   feature; the "Today in Space" row reopens the card), and only
+   the card's own "Stop tracking" button calls clearChain(). Two
+   automatic cases also clear it: selecting a different chain,
+   and a sync in which this one no longer exists. Don't "fix"
+   ✕ back to clearing the highlight.
+
    Do not add classification logic anywhere else (e.g. inline
    in ingest.js or duplicated in the Worker) — categorize() in
    packages/catalog/src/classify.js is the single source of
@@ -223,6 +255,17 @@ cross-check those against this document instead.
      propagates to a position object full of NaN rather than to
      nothing, and NaN fails every comparison, so an unguarded
      value slips straight past a `<= minElevation` filter.
+   - apps/web/src/ui/sheet-swipe.js's attachSheetSwipe() is the
+     swipe-down-to-dismiss gesture for the bottom sheets
+     (Settings, Tracked Chain) — grab threshold, scroll-position
+     guard, commit distance/velocity and the snap-back all live
+     there once. A new sheet wires it rather than copying the
+     handlers. It returns a reset() the sheet must call whenever
+     it is opened or closed by another route, or a settling
+     animation from the last gesture lands on the reopened sheet.
+     ui/info.js keeps its own copy on purpose: it collapses to
+     the mini-card instead of dismissing, so its commit branch
+     drives different state.
    - apps/web/src/settings.js is the single home for persisted
      user preferences (one validated "ot-settings" localStorage
      key), including the two Saved lists —
@@ -275,13 +318,17 @@ Monorepo (npm workspaces):
 - apps/web/ — the web app itself, built with Vite
   - src/main.js — boot sequence and render loop
   - src/scene/ — Three.js scene, picking, clouds (point-cloud
-    rendering per category), earth, NEOs
+    rendering per category), earth, NEOs, chain.js (the
+    launch-chain highlight: link line, member dots, orbit ring)
   - src/data/ — ingest.js (classification entry point),
-    live.js (Worker fetch), store.js, location.js (geolocation)
+    live.js (Worker fetch), store.js, location.js (geolocation),
+    chains.js (launch-chain detection, boot + every sync)
   - src/astro/ — propagation.js (safeProp), orbital.js, sun.js,
     neo.js, overhead.js (observer/look-angle geometry)
-  - src/ui/ — info card, legend, search, time machine,
-    overhead.js, settings.js, etc.
+  - src/ui/ — info card, chain.js (the "Tracked Chain" card —
+    a whole launch selected at once, parallel to select()'s
+    single object, never a variant of it), legend, search,
+    time machine, overhead.js, settings.js, etc.
   - src/settings.js — user preferences (localStorage)
   - public/ — manifest.json, sw.js, icons, data/*.json
   - Deployed via .github/workflows/deploy-pages.yml, which runs
@@ -289,24 +336,117 @@ Monorepo (npm workspaces):
     automatically on every push to main. No manual step needed.
 
 - packages/catalog/ — shared classification/data-fetch logic
-  (classify.js, groups.js, tle.js), imported by both apps/web
-  and worker as @orbital-traffic/catalog. Single source of
-  truth for categorize().
+  (classify.js, groups.js, tle.js), plus the two derived-state
+  siblings that are deliberately NOT classification
+  (capsules.js — docking phase; chains.js — launch chains),
+  imported by both apps/web and worker as
+  @orbital-traffic/catalog. Single source of truth for
+  categorize().
 
 - worker/ — Cloudflare Worker (worker/src/index.js), proxies
-  and edge-caches SIX endpoints: /tle, /crew, /today,
+  and edge-caches SEVEN endpoints: /tle, /crew, /today,
   /capsules, /satcat (per-object SATCAT metadata — launch date,
   owner, launch site), /astronaut (a trimmed projection of one
-  crew member's LL2 profile — photo, bio, flight/EVA stats).
+  crew member's LL2 profile — photo, bio, flight/EVA stats),
+  /events ("Today in Space" — see below).
   Deploy auto-runs on push to main touching worker/** or
   packages/catalog/** — see Critical Rule #1 and DEPLOY
   COMMANDS. Cache TTLs: /tle 20 min, /crew 1 hour, /today
-  5 min, /capsules 10 min, /satcat 7 days, /astronaut 24 hours.
+  5 min, /capsules 10 min, /satcat 7 days, /astronaut 24 hours,
+  /events 10 min.
+
+- "Today in Space" — a HUD card (collapsed by default, top of
+  the left stack, above Time Machine/Popular Objects) that
+  surfaces real, notable events without hand-curation: docking/
+  undocking/launched/landed capsule phase changes, new launches,
+  re-entries/decays, and crew roster changes. buildEvents() in
+  worker/src/index.js composes it at request time from THREE
+  independently-owned, committed-JSON sources — never one shared
+  file three cron jobs write to, which would reintroduce the
+  concurrent-commit collision class F13 fixed (docs/audit-status.md):
+    - Docking/undocking/launched/landed needs no new state — it's
+      capsule-status.json's own `events` log (advanceCapsuleLog()
+      in packages/catalog/src/capsules.js), already written by the
+      hourly update-capsule-status.yml.
+    - Launches/re-entries: fetch-tles.mjs (refresh-tle-data.yml,
+      daily) diffs the merged catalog's object IDs against
+      whatever satellites.json already held before this run
+      overwrites it (actions/checkout already puts "yesterday's"
+      file there — no git-history lookup needed) via
+      diffLaunchesReentries() in packages/catalog/src/events.js,
+      grouping same-launch objects by their shared TLE
+      international-designator prefix (launchDesignator() in
+      tle.js) so a 23-satellite batch is one event, not 23.
+      Capsule-tracked vehicles (cat:"capsules") are excluded from
+      this diff on both sides — their launch/landing is already
+      reported, with richer context, by the capsule log above;
+      without this exclusion a Dragon splashdown would double-
+      report as both "LANDED" (accurate) and "DEORBITED"
+      (actively wrong — it didn't burn up). Written to
+      launch-reentry-log.json (repo root, MAX_LAUNCH_REENTRY_EVENTS
+      cap), committed alongside satellites.json in the same commit.
+    - Crew changes: update-iss-today.mjs (update-iss-today.yml,
+      daily) best-effort-fetches the Worker's own public /crew
+      route (never LL2 directly — LL2_API_KEY is a Worker secret,
+      not available to GitHub Actions) and diffs via
+      diffCrewRoster() in events.js, persisting the roster +
+      crewEvents into iss-today.json alongside the existing NASA-
+      blog headlines. A failed crew fetch must never block the
+      headline write or be mistaken for "everyone left" — it
+      carries the previous roster forward and logs a warning.
+  buildEvents() time-windows the composed feed to 48 hours
+  (EVENTS_WINDOW_HOURS) and sorts newest-first; each source stays
+  count-capped on write rather than time-pruned, same shape as
+  /capsules already uses. Event-type colors reuse existing CATS
+  tokens (docking=capsules teal, launch=communications orange,
+  reentry=debris grey, crew=the violet capsule-status.js's
+  .crew-today-dot already used) rather than a new palette;
+  glyphs (⬡▲▼◆) follow the app's one existing icon-on-a-swatch
+  precedent (.cat.fav-only .sw::after{content:"★"}) rather than
+  introducing an SVG icon set.
+
+  ONE ROW TYPE IN THIS FEED IS NOT THE WORKER'S: launch-chain
+  rows ("Starlink train · 28 satellites") are composed on the
+  client in ui/today-in-space.js from state.chains, and sort
+  above the Worker's events because they describe something
+  happening now rather than at a past instant — they have no
+  `at` at all. They're also deduped against it: while a launch
+  event for the same batch is still in the 48h window that row
+  wins (it carries the real launch time) and opens the chain
+  itself, and the standalone chain row only appears afterwards,
+  which is most of a train's visible life. Don't move this into
+  buildEvents() — chain detection needs the full elset set at
+  request time, which /events (composed from three committed
+  JSON files) doesn't have, and the client already re-derives
+  chains on every sync.
 
 - GitHub Actions also handles daily TLE refresh
   (refresh-tle-data.yml), ISS Today data updates
   (update-iss-today.yml), and crew/cargo vehicle phase tracking
-  hourly (update-capsule-status.yml). The tracker reads
+  hourly (update-capsule-status.yml).
+
+  ALL THREE MUST KEEP THEIR "Rebuild and redeploy the site"
+  STEP. A push made with the default GITHUB_TOKEN does not
+  start any workflow — GitHub's recursion guard: "Events
+  triggered by the GITHUB_TOKEN will not create a new workflow
+  run." So none of these data commits ever reached
+  deploy-pages.yml, and the published site kept whatever bundled
+  catalog the last PR merge built. Measured 2026-08-19 across
+  120 deploy-pages runs (2026-07-07 → 2026-08-19): every
+  push-triggered deploy was a PR merge, not one was a data
+  commit. Each job therefore ends by dispatching
+  deploy-pages.yml explicitly (workflow_dispatch and
+  repository_dispatch are the two events GitHub exempts from
+  that rule), which is why each needs `actions: write` alongside
+  `contents: write`, and why no PAT or GitHub App token is
+  involved — deliberately, so there is no long-lived credential
+  with write access to main to leak, rotate, or silently expire.
+  `--ref main` is hardcoded on purpose: a manual dispatch of a
+  data workflow from a feature branch must never publish that
+  branch. Removing either the step or `actions: write` silently
+  reintroduces the stale-site bug with no error anywhere.
+
+  The tracker reads
   CelesTrak's stations + last-30-days groups, CATNR-re-verifies
   any previously-tracked vehicle missing from both before
   letting it land, treats elsets older than STALE_TLE_DAYS (7)
@@ -324,21 +464,33 @@ Monorepo (npm workspaces):
   to App Store Connect via the "iOS Build & Upload" GitHub
   Actions workflow (.github/workflows/ios-build.yml, manually
   triggered via workflow_dispatch with an "upload" toggle) — no
-  local Xcode/Mac needed to cut a build. Currently in internal
-  TestFlight testing. Every fresh upload lands in "Missing
-  Compliance" status in App Store Connect until someone manually
-  answers the export-compliance question (Manage → No, standard
-  HTTPS only) — this blocks testers from seeing the new build
-  silently, with no error, until answered. Build numbers
-  auto-increment via github.run_number in the workflow — never
-  hardcode a build number anywhere in this pipeline.
+  local Xcode/Mac needed to cut a build. A build (2.0.0/20) was
+  submitted for public App Store review 2026-08-28; its final
+  disposition (accepted/released vs. rejected) isn't tracked
+  here — check docs/audit-status.md's iOS build tracker or App
+  Store Connect directly rather than assuming from this file.
+  Uploads used to land in "Missing Compliance" in App Store
+  Connect and silently never reach testers until someone answered
+  the export-compliance question by hand; that is resolved —
+  `ITSAppUsesNonExemptEncryption` is set to `false` directly in
+  Info.plist, so the question is no longer asked. If a build ever
+  shows "Missing Compliance" again, check that key first. Build
+  numbers auto-increment via github.run_number in the workflow —
+  never hardcode a build number anywhere in this pipeline.
 
-- 14 object categories (packages/catalog/src/classify.js's
+- 13 object categories (packages/catalog/src/classify.js's
   CATEGORY_IDS, mirrored in apps/web/src/config.js's CATS):
   stations, capsules, navigation, geostationary, starlink,
   oneweb, kuiper, communications, science, other, classified,
-  debris, hazardous, cool — each with its own color/size defined
-  in config.js. OneWeb and Kuiper are each their own category:
+  debris, hazardous — each with its own color/size defined
+  in config.js. A 14th, "cool" (user-facing label "COOL SHIT"),
+  was removed outright during the 2026-08-11 App Store audit:
+  nothing in the pipeline ever assigned it, so it rendered
+  nowhere, but it sat one hand-curated object away from putting
+  that label in the on-screen legend and invalidating a
+  no-profanity age rating. Do not reintroduce it — a category
+  needs an assignment path, not just an enum entry.
+  OneWeb and Kuiper are each their own category:
   groups.js tags GROUP=oneweb records "oneweb" directly, with
   correctStarlinkCat() in classify.js rescuing by name any
   record still tagged "starlink" (see Known Bugs); Kuiper gets a
@@ -350,7 +502,9 @@ Monorepo (npm workspaces):
 
 OBJECT COUNT — ONE DERIVATION, SEVERAL HAND-WRITTEN COPIES:
 the marketing figure for "how many objects does this track"
-(e.g. "18,000+") has exactly one source of truth and several
+(e.g. "19,000+" — check the actual hand-written surfaces below
+for the current figure rather than trusting this example) has
+exactly one source of truth and several
 surfaces that must be kept in sync with it by hand, because
 they can't be templated:
 
@@ -368,6 +522,19 @@ they can't be templated:
     change adds a paths filter there, it must keep
     `apps/web/public/data/**` in scope or this figure goes
     stale.
+
+    Also derived: any `{{OBJECT_COUNT}}` token in an HTML entry
+    point, substituted at build time by the
+    `objectCountHtmlPlugin` `transformIndexHtml` hook in
+    `apps/web/vite.config.js`. This is what `apps/web/welcome.html`
+    uses (5 mentions, including the `description` and
+    `og:description` meta tags). Use the token — never a
+    hand-typed figure — for any new markup or metadata, since
+    `__OBJECT_COUNT__` only reaches code Vite processes as JS
+    and cannot reach a `<meta>` tag.
+    `apps/web/test/object-count-sync.test.js` enforces this:
+    HTML entry points must contain zero literal figures, and
+    welcome.html must still carry the token.
 
   - Hand-written — update ALL of these together whenever the
     rounded figure changes (found via full-repo grep for
@@ -446,6 +613,17 @@ they can't be templated:
   is retained for the TLE-shaped data already in
   satellites.json and capsule-status.json — don't delete it, and
   don't point a CelesTrak fetch back at it.
+- The international designator must be read from the object
+  (s.desig, copied off TLE line 1 by ingest()), never from the
+  satrec: satellite.js v5's twoline2satrec() dropped v4's
+  `intldesg` field, so `rec.intldesg` is undefined for every
+  object in this catalog. Reading it from the satrec is what
+  silently blanked the info card's "INT'L" half, its
+  "Launched <year>" fallback and the share card's designation
+  line for months, with no error anywhere — every call site
+  just got "". chains.js groups launches by this field, so a
+  regression here also silently switches launch-chain detection
+  off entirely.
 - Globe flipY: THREE texture flipY must be false — currently
   set correctly in apps/web/src/scene/earth.js (day/night
   texture setup)
@@ -627,6 +805,14 @@ Verify the Worker is returning data correctly:
   field ("crew"/"cargo") per tracked vehicle, and an "events"
   array of transitions. Active (non-landed) entries must carry
   "l1"/"l2" elset lines; landed entries must NOT.
+
+  curl https://orbital-traffic.ianlewis101.workers.dev/events
+  Check for an "events" array (each entry tagged "type":
+  "docking"/"launch"/"reentry"/"crew"), sorted newest-first and
+  windowed to "windowHours" (48). Composed at request time from
+  capsule-status.json, launch-reentry-log.json and iss-today.json
+  — an empty array is expected/healthy whenever nothing notable
+  happened in the last 48h, not a sign anything is broken.
 
 Web app deploy: automatic on merge to main via
   .github/workflows/deploy-pages.yml — no manual step needed.

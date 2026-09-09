@@ -96,14 +96,14 @@
       <div class="date" id="datestr">&mdash;</div>
       <div class="utc" id="utc">--:--:--</div>
       <div class="rows">
-        <div class="crow"><span class="cap" id="freshness-line" title="Positions are computed live in your browser from orbital elements that refresh periodically; the upstream catalog updates roughly every 2 hours.">Live positions &middot; syncing&hellip;</span><span class="ph-i" id="clock-mode">LIVE</span></div>
+        <div class="crow"><span class="cap" id="freshness-line" title="Positions are computed live in your browser from orbital elements that refresh periodically; the upstream catalog updates roughly every 2 hours.">Orbital elements &middot;</span><span class="ph-i" id="clock-mode">LIVE</span></div>
       </div>
     </div>
   </div>
 
   <div id="search-wrap">
     <div id="search" class="plate">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <button type="button" id="search-toggle" aria-label="Search catalog"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></button>
       <input id="search-in" type="text" placeholder="SEARCH CATALOG" autocomplete="off" spellcheck="false"
         aria-label="Search catalog" role="combobox" aria-expanded="false" aria-controls="results" aria-autocomplete="list">
       <span class="slash" aria-hidden="true">↵</span>
@@ -119,10 +119,6 @@
         <div class="jumps" id="jump-btns"></div>
       </div>
     </div>
-    <div id="today" class="plate">
-      <div class="ph" id="today-ph"><span class="ph-t">Popular Objects</span><span class="ph-i" id="today-toggle">▾</span></div>
-      <div class="body" id="today-list"></div>
-    </div>
     <div id="legend" class="plate">
       <div class="ph" id="legend-ph">
         <span class="ph-t">Orbit Classes</span>
@@ -132,6 +128,14 @@
         </span>
       </div>
       <div class="body" id="cats"></div>
+    </div>
+    <div id="today" class="plate">
+      <div class="ph" id="today-ph"><span class="ph-t">Popular Objects</span><span class="ph-i" id="today-toggle">▾</span></div>
+      <div class="body" id="today-list"></div>
+    </div>
+    <div id="events" class="plate">
+      <div class="ph" id="events-ph"><span class="ph-t" id="events-title">Today in Space</span><span class="ph-i" id="events-toggle">▸</span></div>
+      <div class="body" id="events-list"></div>
     </div>
   </div>
 
@@ -162,13 +166,7 @@
         <button id="info-track">◎ Center on Globe</button>
         <button id="info-share">↗ Share Image</button>
       </div>
-      <div id="info-attr">Orbital data: <a href="https://celestrak.org" target="_blank" rel="noopener">CelesTrak</a> &middot; For informational use only</div>
-      <div id="info-veil">
-        <div class="veil-tag">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          <span class="veil-lbl">Catalogued. Not curated.</span>
-        </div>
-      </div>
+      <div id="info-attr"><span id="info-fresh"></span>Orbital data: <a href="https://celestrak.org" target="_blank" rel="noopener">CelesTrak</a> &middot; For informational use only</div>
     </div>
   </div>
 
@@ -207,6 +205,34 @@
       </span>
     </div>
     <div class="sheet-body" id="settings-body"></div>
+  </div>
+
+  <div id="chain" class="plate" role="dialog" aria-label="Tracked chain">
+    <div class="sheet-drag"></div>
+    <div class="ph">
+      <span class="ph-t">Tracked Chain</span>
+      <span class="ph-r">
+        <span class="ph-i" id="chain-count"></span>
+        <button type="button" class="x" id="chain-x" aria-label="Close chain details">&#10005;</button>
+      </span>
+    </div>
+    <div class="sheet-body" id="chain-body">
+      <div class="chain-top">
+        <div class="cat-tag" id="chain-cat"><span class="d"></span><span></span></div>
+        <div class="chain-nm" id="chain-nm">&mdash;</div>
+        <div class="chain-sub" id="chain-sub"></div>
+      </div>
+      <div class="chain-lead" id="chain-lead"></div>
+      <div class="chips" id="chain-chips"></div>
+      <div class="tele-h lab">Chain Telemetry</div>
+      <div class="grid" id="chain-grid"></div>
+      <div class="tele-h lab">Satellites &mdash; front of the train first</div>
+      <div id="chain-list"></div>
+      <div class="foot">
+        <button type="button" id="chain-stop">&#10005; Stop tracking chain</button>
+      </div>
+      <div class="sheet-attr">Chain worked out on your device from live orbital elements</div>
+    </div>
   </div>
 
   <button type="button" id="overhead-fab" aria-label="What&rsquo;s overhead" aria-expanded="false" aria-controls="overhead" title="What&rsquo;s overhead">

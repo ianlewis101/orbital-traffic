@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   categorize,
+  STATION_CORE_IDS,
   correctStationCat,
   correctStarlinkCat,
   correctDebrisCat,
@@ -56,6 +57,57 @@ describe("STATION_CORE_IDS completeness (audit, fixed 2026-07-16)", () => {
   });
 });
 
+/**
+ * STATION_CORE_IDS is an allowlist, so a wrong ID in it does not fail loudly —
+ * it silently promotes an unrelated satellite to "stations", which is visible
+ * by default and carries station-specific UI (crew card, "Today aboard").
+ *
+ * Four bogus IDs sat in this set for months and shipped to production: 27386
+ * (ENVISAT), 28654 (NOAA 18), 37224 (O/OREOS — a 3U cubesat that was live in
+ * production rendering as a space station) and 37820 (Tiangong-1, decayed
+ * 2018). They were apparently mistaken guesses at Unity/Harmony/Tranquility.
+ *
+ * These are pinned by NORAD ID rather than by count so that adding a genuinely
+ * new module (a future CSS expansion, say) doesn't fail the suite, while
+ * re-adding any of the four known-bad IDs does.
+ */
+describe("STATION_CORE_IDS correctness (pre-submission audit, 2026-08-17)", () => {
+  it("contains no non-station objects that were previously allowlisted by mistake", () => {
+    for (const [id, what] of [
+      ["27386", "ENVISAT"],
+      ["28654", "NOAA 18"],
+      ["37224", "O/OREOS (USA 219)"],
+      ["37820", "TIANGONG-1 (decayed 2018)"],
+    ]) {
+      expect(STATION_CORE_IDS.has(id), `${id} (${what}) is not a station module`).toBe(false);
+    }
+  });
+
+  it("does not promote O/OREOS to stations from either entry point", () => {
+    // Arrives tagged "stations" from CelesTrak's GROUP=stations dump, which is
+    // exactly how it reached production as a station.
+    expect(categorize("37224", "O/OREOS (USA 219)", "stations")).not.toBe("stations");
+    expect(categorize("37224", "O/OREOS (USA 219)", "other")).not.toBe("stations");
+  });
+
+  it("still resolves every real module it is supposed to", () => {
+    for (const [id, name] of [
+      ["25544", "ISS (ZARYA)"],
+      ["49044", "ISS (NAUKA)"],
+      ["36086", "POISK"],
+      ["25575", "ISS (UNITY)"],
+      ["26400", "ISS (ZVEZDA)"],
+      ["26700", "ISS (DESTINY)"],
+      ["48274", "CSS (TIANHE)"],
+      ["53239", "CSS (WENTIAN)"],
+      ["54216", "CSS (MENGTIAN)"],
+    ]) {
+      expect(categorize(id, name, "stations"), `${name} (${id})`).toBe("stations");
+      expect(categorize(id, name, "other"), `${name} (${id}) via other`).toBe("stations");
+    }
+  });
+});
+
 describe("stations vs capsules split (2026-07-16)", () => {
   it("only STATION_CORE_IDS permanent structural modules ever carry stations", () => {
     expect(categorize("25544", "ISS (ZARYA)", "stations")).toBe("stations");
@@ -96,6 +148,33 @@ describe("isDebrisName / correctDebrisCat", () => {
     expect(isDebrisName("ARIANE 5 R/B")).toBe(true);
   });
 
+  /**
+   * SATCAT gives 348 rocket bodies a parenthesised suffix ("DELTA 1 R/B(2)",
+   * "TITAN 3C R/B(1)", "H-1 R/B(MABES)"). The old space-padded " R/B " token
+   * could not match those, so the launcher-name tokens were the only thing
+   * catching them — which is why removing those tokens required this.
+   */
+  it("matches rocket bodies whose R/B carries a parenthesised suffix", () => {
+    expect(isDebrisName("DELTA 1 R/B(2)")).toBe(true);
+    expect(isDebrisName("TITAN 3C R/B(1)")).toBe(true);
+    expect(isDebrisName("IUS R/B(1)")).toBe(true);
+    expect(isDebrisName("H-1 R/B(MABES)")).toBe(true);
+    expect(isDebrisName("INMARSAT 2-F2 R/B(PAM-D)")).toBe(true);
+  });
+
+  /**
+   * Launcher names classify by who launched a thing, not what it is. All of
+   * these are OBJECT_TYPE=PAY in SATCAT — the six MERCURY ATLAS entries are
+   * crewed capsules — and every one was filed as debris before 2026-08-18.
+   */
+  it("does not call a payload debris just for sharing a launcher's name", () => {
+    expect(isDebrisName("MERCURY ATLAS 6")).toBe(false);
+    expect(isDebrisName("ATLAS AGENA D")).toBe(false);
+    expect(isDebrisName("ATLAS CENTAUR 2")).toBe(false);
+    expect(isDebrisName("DELTA 4 DEMO SPACECRAFT")).toBe(false);
+    expect(isDebrisName("NABEO-1 & KICK STAGE")).toBe(false);
+  });
+
   it("matches jettisoned station hardware", () => {
     expect(isDebrisName("ISS OBJECT PP (EP BATTERY)")).toBe(true);
     expect(isDebrisName("SZ-16 MODULE")).toBe(true);
@@ -107,8 +186,19 @@ describe("isDebrisName / correctDebrisCat", () => {
     expect(isDebrisName("PROGRESS-MS 32")).toBe(false);
   });
 
-  it("never overrides hand-curated hero objects", () => {
-    expect(correctDebrisCat("SL-16 R/B (COOL PICK)", "cool")).toBe("cool");
+  it("passes a non-debris name through with its category unchanged", () => {
+    expect(correctDebrisCat("ISS (ZARYA)", "stations")).toBe("stations");
+  });
+
+  // The "cool" category (user-facing label "COOL SHIT") was removed outright
+  // during the App Store submission audit: nothing in the pipeline ever
+  // assigned it, so it rendered nowhere, but it sat one hand-curated object
+  // away from putting that label in the on-screen Orbit Classes legend. It
+  // used to have an escape hatch here that spared a hero object from the
+  // debris demotion. With the category gone, a debris-shaped name demotes
+  // unconditionally — that is the intended consequence, not a regression.
+  it("demotes a debris-shaped name regardless of the category it arrives with", () => {
+    expect(correctDebrisCat("SL-16 R/B (COOL PICK)", "science")).toBe("debris");
   });
 });
 
@@ -164,15 +254,29 @@ describe("correctOtherCat", () => {
     expect(correctOtherCat("14", "KUIPER-00008", "other")).toBe("kuiper");
   });
 
+  it("rescues Starlink satellites by name when the dedicated group's own fetch failed (2026-09-03)", () => {
+    // Starlink normally arrives already tagged "starlink" via groups.js and
+    // never reaches correctOtherCat() at all — this only matters when the
+    // GROUP=starlink fetch itself fails but "active"/"last-30-days" still
+    // carry the same satellites tagged "other". Confirmed live: a Starlink
+    // fetch failure merged ~11,000 Starlink satellites into "other" with no
+    // rescue to route them back, the same failure shape ONEWEB_NAME_RE and
+    // KUIPER_NAME_RE already guard against for their own constellations.
+    expect(correctOtherCat("15", "STARLINK-30042", "other")).toBe("starlink");
+    expect(correctOtherCat("16", "STARLINK-1007", "other")).toBe("starlink");
+  });
+
   it("rescues 2026-07-10 curated batch objects by NORAD ID", () => {
     // debris: fragments/test objects named only by international designator
     expect(correctOtherCat("51950", "2022-023E", "other")).toBe("debris");
     expect(correctOtherCat("69320", "GUOWANG TEST OBJECT A", "other")).toBe("debris");
     // communications: one-off relay/messaging sats with no shared pattern
     expect(correctOtherCat("23439", "RADIO ROSTO (RS15)", "other")).toBe("communications");
-    expect(correctOtherCat("59072", "MARAFON-D GVM", "other")).toBe("communications");
     // classified: one-off military codename with no recognizable scheme
     expect(correctOtherCat("57757", "BB4", "other")).toBe("classified");
+    // MARAFON-D GVM (59072) moved to SCIENCE_IDS 2026-08-19 — see that set's
+    // comment. Not a communications satellite: an inert mass mockup.
+    expect(correctOtherCat("59072", "MARAFON-D GVM", "other")).toBe("science");
     // science: one-off tech demonstrators / national missions / calibration targets
     for (const id of [
       "01361",
@@ -199,9 +303,61 @@ describe("correctOtherCat", () => {
     }
   });
 
+  it("rescues 2026-09-02 Popular Objects research batch by NORAD ID", () => {
+    // science: calibration satellites and civilian tech demonstrators
+    expect(correctOtherCat("00900", "CALSPHERE 1", "other")).toBe("science");
+    // OPS 5712 (P/L 153) is SURCAL 153, a calibration satellite — not the
+    // classified SIGINT payload its sibling P/L 160 (below) actually is.
+    expect(correctOtherCat("02874", "OPS 5712 (P/L 153)", "other")).toBe("science");
+    expect(correctOtherCat("54227", "MATS", "other")).toBe("science");
+    expect(correctOtherCat("58992", "ADRAS-J", "other")).toBe("science");
+    // communications: amateur radio relay
+    expect(correctOtherCat("07530", "OSCAR 7 (AO-7)", "other")).toBe("communications");
+    // classified: known military/intelligence satellites with no shared name pattern
+    expect(correctOtherCat("02826", "OPS 5712 (P/L 160)", "other")).toBe("classified");
+    expect(correctOtherCat("58400", "MALLIGYONG-1", "other")).toBe("classified");
+    expect(correctOtherCat("46396", "GAOFEN-11 02", "other")).toBe("classified");
+    expect(correctOtherCat("58955", "HBTSS-SV2", "other")).toBe("classified");
+  });
+
+  it("promotes CELESTIS-17 & SHERPA-FX1 (47486) to science instead of other", () => {
+    // Commercial orbital transfer vehicle (Sherpa-FX1) hosting a passive
+    // memorial-spaceflight payload — same OTV precedent as Vigoride-3.
+    expect(correctOtherCat("47486", "CELESTIS-17 & SHERPA-FX1", "other")).toBe("science");
+    expect(categorize("47486", "CELESTIS-17 & SHERPA-FX1", "other")).toBe("science");
+  });
+
   it("promotes LINK (NORAD 69792, NASA's active rescue mission) to science instead of other", () => {
     expect(correctOtherCat("69792", "LINK", "other")).toBe("science");
     expect(categorize("69792", "LINK", "other")).toBe("science");
+  });
+
+  it("rescues 2026-09-02 second Popular Objects research batch by NORAD ID", () => {
+    // science: research satellites and university/cadet tech demonstrators
+    expect(correctOtherCat("24920", "FORTE", "other")).toBe("science");
+    expect(correctOtherCat("26113", "IMAGE", "other")).toBe("science");
+    expect(correctOtherCat("33498", "STARS (KUKAI)", "other")).toBe("science");
+    expect(correctOtherCat("39090", "STRAND-1", "other")).toBe("science");
+    expect(correctOtherCat("40021", "DUCHIFAT-1", "other")).toBe("science");
+    expect(correctOtherCat("41896", "ARASE (ERG)", "other")).toBe("science");
+    expect(correctOtherCat("43016", "MAKERSAT 0", "other")).toBe("science");
+    expect(correctOtherCat("43815", "FALCONSAT-6", "other")).toBe("science");
+    // communications: dual-purpose AIS/science hybrid
+    expect(correctOtherCat("42826", "NORSAT-1", "other")).toBe("communications");
+    // classified: known military/intelligence satellites with no shared name pattern
+    expect(correctOtherCat("28470", "JB-3 3 (ZY 2C)", "other")).toBe("classified");
+    expect(correctOtherCat("31797", "SAR-LUPE 2", "other")).toBe("classified");
+    // SJ-11-01's abbreviated name does not match CLASSIFIED_NAME_RE's spelled-out SHIJIAN pattern.
+    expect(correctOtherCat("36088", "SJ-11-01", "other")).toBe("classified");
+    expect(correctOtherCat("43215", "PAZ", "other")).toBe("classified");
+    expect(correctOtherCat("41032", "COSMOS 2510 (EKS 1)", "other")).toBe("classified");
+    expect(correctOtherCat("42921", "ORS-5 SENSORSAT", "other")).toBe("classified");
+    expect(correctOtherCat("44233", "RISAT-2B", "other")).toBe("classified");
+    expect(correctOtherCat("44078", "EMISAT", "other")).toBe("classified");
+    expect(correctOtherCat("44552", "COSMOS 2541 (EKS 3)", "other")).toBe("classified");
+    expect(correctOtherCat("44857", "RISAT-2BR1", "other")).toBe("classified");
+    expect(correctOtherCat("48907", "MANDRAKE 2 ABLE", "other")).toBe("classified");
+    expect(correctOtherCat("53370", "KHAYYAM", "other")).toBe("classified");
   });
 
   it("science IDs corrected after an initial ID/description mismatch (GreenCube, IMECE)", () => {
@@ -270,9 +426,9 @@ describe("isDockedCrewVehicle", () => {
     expect(isDockedCrewVehicle("CST-100 (CALYPSO)")).toBe(true);
   });
 
-  it("matches named Dragon crew airframes without the CREW prefix", () => {
+  it("matches named Dragon crew airframes, but only with the DRAGON prefix", () => {
     expect(isDockedCrewVehicle("DRAGON ENDEAVOUR")).toBe(true);
-    expect(isDockedCrewVehicle("ENDURANCE")).toBe(true);
+    expect(isDockedCrewVehicle("DRAGON ENDURANCE")).toBe(true);
     expect(isDockedCrewVehicle("DRAGON GRACE")).toBe(true);
   });
 
@@ -280,6 +436,8 @@ describe("isDockedCrewVehicle", () => {
     expect(isDockedCrewVehicle("MENGZHOU-1")).toBe(true);
     expect(isDockedCrewVehicle("GAGANYAAN-1")).toBe(true);
     expect(isDockedCrewVehicle("ORION (ARTEMIS II)")).toBe(true);
+    expect(isDockedCrewVehicle("ORION")).toBe(true); // Artemis I, catalogued bare (54257)
+    expect(isDockedCrewVehicle("ORION EFT-1")).toBe(true);
   });
 
   it("never matches cargo or crew-lookalike names", () => {
@@ -287,6 +445,23 @@ describe("isDockedCrewVehicle", () => {
     expect(isDockedCrewVehicle("TIANZHOU-10")).toBe(false);
     expect(isDockedCrewVehicle("GRACE-FO 1")).toBe(false);
     expect(isDockedCrewVehicle("DRAGRACER 2 (AUGURY)")).toBe(false);
+  });
+
+  /**
+   * Every name below is a real SATCAT entry that the pre-2026-08-18 bare-word
+   * alternatives claimed as a crewed capsule. ORION 3 and both TELSTARs are
+   * still in orbit, so this was a live misidentification waiting on the
+   * catch-all groups, not a hypothetical one.
+   */
+  it("does not claim real objects that merely share a crew airframe's name", () => {
+    expect(isDockedCrewVehicle("HAKUTO-R M2 (RESILIENCE)")).toBe(false); // ispace lunar lander, 62717
+    expect(isDockedCrewVehicle("FREEDOM")).toBe(false); // Japanese payload, 41930
+    expect(isDockedCrewVehicle("GRACE-1")).toBe(false); // geodesy pair, 27391/27392
+    expect(isDockedCrewVehicle("NUSAT-20 (GRACE)")).toBe(false); // Argentine EO sat, 48921
+    expect(isDockedCrewVehicle("LEMUR-2-MIA-GRACE")).toBe(false); // Spire cubesat, 41998
+    expect(isDockedCrewVehicle("ORION 3")).toBe(false); // commercial comsat, 25727
+    expect(isDockedCrewVehicle("TELSTAR 11 (ORION 1)")).toBe(false); // 23413
+    expect(isDockedCrewVehicle("TELSTAR 12 (ORION 2)")).toBe(false); // 25949
   });
 });
 

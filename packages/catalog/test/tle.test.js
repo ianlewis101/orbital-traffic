@@ -11,6 +11,8 @@ import {
   tleAgeDays,
   satrecEpochDate,
   satrecAgeDays,
+  intlDesignator,
+  launchDesignator,
 } from "../src/index.js";
 
 const ISS_TLE = `ISS (ZARYA)
@@ -25,6 +27,30 @@ CZ-4B R/B
 describe("noradId", () => {
   it("extracts the catalog number from line 1", () => {
     expect(noradId("1 25544U 98067A   26181.86323116  .00005885")).toBe("25544");
+  });
+});
+
+describe("intlDesignator / launchDesignator", () => {
+  it("extracts the trimmed international designator from line 1", () => {
+    expect(intlDesignator("1 25544U 98067A   26181.86323116  .00005885")).toBe("98067A");
+  });
+
+  it("drops the per-piece letter for the launch-batch key", () => {
+    expect(launchDesignator("1 25544U 98067A   26181.86323116  .00005885")).toBe("98067");
+    expect(launchDesignator("1 60002U 26142B   26181.86323116  .00005885")).toBe("26142");
+  });
+
+  it("two pieces of the same launch share a launchDesignator but not an intlDesignator", () => {
+    const a = "1 60001U 26142A   26181.86323116  .00005885";
+    const b = "1 60002U 26142B   26181.86323116  .00005885";
+    expect(intlDesignator(a)).not.toBe(intlDesignator(b));
+    expect(launchDesignator(a)).toBe(launchDesignator(b));
+  });
+
+  it("returns empty/unparsed gracefully for a malformed or short line", () => {
+    expect(intlDesignator("")).toBe("");
+    expect(intlDesignator("1 25544U")).toBe("");
+    expect(launchDesignator("1 25544U")).toBe("");
   });
 });
 

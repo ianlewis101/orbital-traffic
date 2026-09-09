@@ -40,6 +40,52 @@ export function noradId(l1) {
   return /^[A-Z]/.test(raw) ? decodeAlpha5(raw) : raw;
 }
 
+/**
+ * TLE line 1's international designator (columns 10-17), trimmed — e.g.
+ * "98067A" for the ISS. Returns "" if l1 is too short to have the field.
+ * Read-side counterpart to fmtDesignator() below, which goes the other way
+ * (OBJECT_ID string → fixed-width TLE field) when synthesizing a line.
+ */
+export function intlDesignator(l1) {
+  if (typeof l1 !== "string" || l1.length < 17) return "";
+  return l1.slice(9, 17).trim();
+}
+
+/**
+ * The launch-batch portion of an international designator string — year plus
+ * launch-of-year number, dropping the per-piece letter(s) — e.g. "98067" for
+ * both "98067A" and "98067B". Takes the designator itself rather than a TLE
+ * line so callers holding a parsed satrec (whose `intldesg` field is already
+ * this string) don't have to reconstruct line 1 to group by launch.
+ */
+export function designatorBatch(desig) {
+  const full = String(desig ?? "").trim();
+  const m = /^(\d{5})/.exec(full);
+  return m ? m[1] : full;
+}
+
+/**
+ * Four-digit launch year from an international designator, or null when the
+ * designator isn't in the standard YYNNN form. Same 57 pivot as the TLE epoch
+ * field (epochYearToFull below) — the two encode the two-digit year
+ * identically.
+ */
+export function designatorYear(desig) {
+  const batch = designatorBatch(desig);
+  if (!/^\d{5}$/.test(batch)) return null;
+  return epochYearToFull(Number(batch.slice(0, 2)));
+}
+
+/**
+ * The launch-batch designator for a TLE line 1. A single launch commonly
+ * delivers many catalog objects at once (a Starlink batch is 20+), and they
+ * all share this prefix, which is what groups them into one "Today in Space"
+ * launch event instead of one row per payload.
+ */
+export function launchDesignator(l1) {
+  return designatorBatch(intlDesignator(l1));
+}
+
 const DAY_MS = 86400000;
 
 /** Two-digit TLE years pivot at 57 (Sputnik): 57-99 → 19xx, 00-56 → 20xx. */

@@ -44,7 +44,10 @@ describe("capsuleFamily", () => {
   it("tolerates hyphenation and matches airframes and upcoming vehicles", () => {
     expect(capsuleFamily("CREW-DRAGON 13")).toBe("dragon");
     expect(capsuleFamily("DRAGON GRACE")).toBe("dragon");
-    expect(capsuleFamily("ENDEAVOUR")).toBe("dragon");
+    // Airframe names need their DRAGON prefix — bare ones belonged to real
+    // unrelated objects (see CREW_VEHICLE_PATTERNS' comment in classify.js).
+    expect(capsuleFamily("DRAGON ENDEAVOUR")).toBe("dragon");
+    expect(capsuleFamily("ENDEAVOUR")).toBeNull();
     expect(capsuleFamily("SOYUZ MS-30")).toBe("soyuz");
     expect(capsuleFamily("CST-100 (CALYPSO)")).toBe("starliner");
     expect(capsuleFamily("MENGZHOU-1")).toBe("mengzhou");

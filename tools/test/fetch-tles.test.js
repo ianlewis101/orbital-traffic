@@ -1,5 +1,13 @@
-import { describe, it, expect } from "vitest";
-import { countWideCatalogNumbers, MIN_WIDE_NORAD_ID } from "../fetch-tles.mjs";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { mkdtemp, writeFile, mkdir, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+  countWideCatalogNumbers,
+  MIN_WIDE_NORAD_ID,
+  previousCatalog,
+  loadExistingLog,
+} from "../fetch-tles.mjs";
 import { parseGp } from "@orbital-traffic/catalog";
 
 /**
@@ -56,5 +64,81 @@ describe("countWideCatalogNumbers", () => {
 
   it("uses a threshold the catalog has already passed", () => {
     expect(MIN_WIDE_NORAD_ID).toBe(100000);
+  });
+});
+
+let dir;
+
+afterEach(async () => {
+  if (dir) await rm(dir, { recursive: true, force: true });
+  dir = undefined;
+  vi.restoreAllMocks();
+});
+
+describe("previousCatalog", () => {
+  it("returns null for a genuinely missing file — first run, safe to skip the diff", async () => {
+    dir = await mkdtemp(join(tmpdir(), "satellites-"));
+    expect(await previousCatalog(join(dir, "satellites.json"))).toBeNull();
+  });
+
+  it("returns null (not throws) for a corrupted file — satellites.json is a full re-derived snapshot, not an accumulating log", async () => {
+    dir = await mkdtemp(join(tmpdir(), "satellites-"));
+    const corrupted = join(dir, "satellites.json");
+    await writeFile(corrupted, '[{"name":"ISS (ZARYA","l1":"1 2554');
+    expect(await previousCatalog(corrupted)).toBeNull();
+  });
+
+  it("returns null for a non-array JSON value", async () => {
+    dir = await mkdtemp(join(tmpdir(), "satellites-"));
+    const notAnArray = join(dir, "satellites.json");
+    await writeFile(notAnArray, '{"not":"an array"}');
+    expect(await previousCatalog(notAnArray)).toBeNull();
+  });
+
+  it("returns the parsed array for a real file", async () => {
+    dir = await mkdtemp(join(tmpdir(), "satellites-"));
+    const real = join(dir, "satellites.json");
+    const records = [{ name: "ISS (ZARYA)", l1: "1 25544U 98067A", l2: "2 25544", cat: "stations" }];
+    await writeFile(real, JSON.stringify(records));
+    expect(await previousCatalog(real)).toEqual(records);
+  });
+});
+
+describe("loadExistingLog", () => {
+  it("returns null for a genuinely missing file, so the run starts fresh history", async () => {
+    dir = await mkdtemp(join(tmpdir(), "launch-log-"));
+    expect(await loadExistingLog(join(dir, "launch-reentry-log.json"))).toBeNull();
+  });
+
+  it("aborts instead of silently wiping history on a corrupted file — mirrors update-capsule-status.mjs's loadExisting()", async () => {
+    dir = await mkdtemp(join(tmpdir(), "launch-log-"));
+    const corrupted = join(dir, "launch-reentry-log.json");
+    await writeFile(corrupted, '{"updated":"2026-08-20T00:00:00Z","events":[{"type":"lau');
+
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code) => {
+      throw new Error(`process.exit(${code})`);
+    });
+    await expect(loadExistingLog(corrupted)).rejects.toThrow("process.exit(1)");
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it("aborts on a non-ENOENT read error (e.g. a directory where a file is expected)", async () => {
+    dir = await mkdtemp(join(tmpdir(), "launch-log-"));
+    const asDirectory = join(dir, "launch-reentry-log.json");
+    await mkdir(asDirectory);
+
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code) => {
+      throw new Error(`process.exit(${code})`);
+    });
+    await expect(loadExistingLog(asDirectory)).rejects.toThrow("process.exit(1)");
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it("returns the parsed log for a real file", async () => {
+    dir = await mkdtemp(join(tmpdir(), "launch-log-"));
+    const real = join(dir, "launch-reentry-log.json");
+    const log = { updated: "2026-08-20T00:00:00Z", events: [{ type: "launch", count: 1 }] };
+    await writeFile(real, JSON.stringify(log));
+    expect(await loadExistingLog(real)).toEqual(log);
   });
 });

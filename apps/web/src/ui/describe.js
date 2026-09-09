@@ -17,9 +17,20 @@ export function classify(s) {
     t = s.objType || "";
   if (t === "DEB" || t === "R/B" || isDebrisName(s.name)) return "debris";
   if (/ OBJECT | TBA | UNIDENTIFIED | UNKNOWN /.test(n)) return "unknown";
-  if (s.cat === "cool") return "telescope"; // hero objects — described individually
   if (s.cat === "classified") return "classified";
-  if (id === "25544" || /\bZARYA\b|\bTIANHE\b|\bTIANGONG\b|\bWENTIAN\b|\bMENGTIAN\b/.test(vn))
+  // ZVEZDA/UNITY/DESTINY/POISK are permanent ISS modules that were missing
+  // here, so they fell through to the "generic" bucket and drew a NanoRacks
+  // CubeSat photo from figures.js's satellite_generic pool despite carrying
+  // cat:"stations". Each matches exactly one object in the real catalog, all
+  // already cat:"stations" — checked rather than assumed, since \bUNITY\b and
+  // \bDESTINY\b are ordinary enough words to be a false-positive risk. (The
+  // catalog's "HUNITY" does not match: there is no word boundary inside it.)
+  if (
+    id === "25544" ||
+    /\bZARYA\b|\bZVEZDA\b|\bUNITY\b|\bDESTINY\b|\bPOISK\b|\bTIANHE\b|\bTIANGONG\b|\bWENTIAN\b|\bMENGTIAN\b/.test(
+      vn
+    )
+  )
     return "station";
   if (
     /\bSOYUZ\b|\bPROGRESS\b|\bDRAGON\b|\bCYGNUS\b|\bSHENZHOU\b|\bTIANZHOU\b|\bSTARLINER\b|\bENDEAVOUR\b|\bENDURANCE\b|\bRESILIENCE\b|\bFREEDOM\b/.test(
@@ -27,7 +38,7 @@ export function classify(s) {
     )
   )
     return "capsule";
-  if (/\bSTARLINK\b|\bONEWEB\b/.test(vn)) return "starlink";
+  if (/\bSTARLINK\b|\bONEWEB\b|\bKUIPER\b/.test(vn)) return "starlink";
   if (
     id === "20580" ||
     / HUBBLE | HST | KEPLER | SPITZER | TESS | WEBB | JWST | CHANDRA | CXO | FERMI | FGRST | GLAST /.test(
@@ -39,7 +50,7 @@ export function classify(s) {
   if (WEATHER_NAME_RE.test(n)) return "weather";
   if (EO_NAME_RE.test(n)) return "eo";
   if (s.cat === "geostationary") return "geo";
-  if (s.cat === "starlink") return "starlink";
+  if (s.cat === "starlink" || s.cat === "kuiper") return "starlink";
   if (s.cat === "science") return "telescope"; // science satellites without specific name match
   return "generic";
 }
@@ -96,12 +107,14 @@ export function describe(s) {
     return "The International Space Station — humanity's permanent foothold in space. 109 metres wide, six rooms, six crew. Has been continuously occupied since November 2000.";
   if (s.id === "49044")
     return "Russia's Nauka laboratory module — the largest Russian contribution to the ISS. Launched in July 2021 after a 14-year delay, it docked autonomously and provides additional research facilities, a European robotic arm, and a second toilet for the Russian segment.";
-  if (s.id === "27386")
+  // Unity/Node 1. Keyed to 25575, its real catalog ID — this description was
+  // previously keyed to 27386, which is ENVISAT, so an ESA Earth-observation
+  // satellite was describing itself as an ISS module (fixed 2026-08-17).
+  // The former Node 2 and Node 3 descriptions were removed outright rather
+  // than re-keyed: Harmony and Tranquility were Shuttle-delivered and have no
+  // catalog entry of their own, so there is no object for them to attach to.
+  if (s.id === "25575")
     return "Node 1 — the first US-built ISS module, launched December 1998. Unity connects the Russian and American segments and has six docking ports.";
-  if (s.id === "28654")
-    return "Node 2 — the primary docking hub for visiting spacecraft including Dragon and HTV. Launched October 2007, it connects the US, European and Japanese lab modules.";
-  if (s.id === "37224")
-    return "Node 3 — houses the life support systems that recycle air and water for the crew. Also home to the Cupola — the seven-window observatory with the best view in the solar system.";
   if (/CSS|TIANHE|TIANGONG|WENTIAN|MENGTIAN/.test(n))
     return "China's Tiangong space station — completed in 2022 and permanently crewed. At roughly one-fifth the size of the ISS, it is the world's second active crewed station.";
   if (s.id === "20580" || /HUBBLE|HST/.test(n))
@@ -124,11 +137,13 @@ export function describe(s) {
     return "Aqua — NASA's water-cycle satellite, launched 2002. Measures precipitation, evaporation, ocean temperatures, sea ice, and water vapour to understand how water moves through the Earth system.";
   if (/DSCOVR/.test(n))
     return "DSCOVR — the Deep Space Climate Observatory, sitting at the Sun-Earth L1 point 1 million miles away. Monitors the solar wind 15–60 minutes before it hits Earth and returns the iconic 'EPIC' daily images of the full sunlit Earth.";
-  // --- Starlink / OneWeb ---
+  // --- Starlink / OneWeb / Kuiper ---
   if (n.includes("STARLINK"))
-    return "One of SpaceX's Starlink broadband satellites — part of a constellation now numbering over 6,000 spacecraft, the largest active satellite fleet ever assembled.";
+    return "One of SpaceX's Starlink broadband satellites — over 10,000 now in orbit at roughly 550 km, more than every other satellite type combined, forming a laser-linked mesh network that also powers Direct-to-Cell texting in dead zones with no towers.";
   if (n.includes("ONEWEB"))
-    return "A OneWeb satellite — part of a 648-satellite constellation delivering global broadband internet, particularly to remote and polar regions.";
+    return "A OneWeb satellite — part of a roughly 600-satellite polar broadband constellation now run by Eutelsat OneWeb, flying nearly three times higher than Starlink to reach pole-to-pole coverage for maritime, aviation, and government customers.";
+  if (n.includes("KUIPER"))
+    return "One of Amazon's Kuiper (Amazon Leo) broadband satellites — already the third-largest constellation in orbit behind Starlink and China's networks, racing toward an FCC deadline requiring half its planned 3,236 satellites flying by mid-2026.";
   // --- Soyuz / Dragon / Cygnus ---
   if (/SOYUZ/.test(n))
     return "A Soyuz spacecraft — Russia's workhorse crew vehicle, in continuous service since 1967. Each one flies a crew to and from the ISS before being deorbited.";

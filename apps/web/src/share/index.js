@@ -53,7 +53,9 @@ export function shareModel(sat, date) {
     name: sat.name,
     catLabel: (CATS[sat.cat] || CATS.other).label,
     catColor: catColorHex(sat.cat),
-    norad: formatDesignation(sat.id, sat.rec && sat.rec.intldesg),
+    // sat.desig is the designator ingest() kept off TLE line 1; satellite.js
+    // v5's satrec no longer carries one (see info.js's launchInfo()).
+    norad: formatDesignation(sat.id, sat.desig || (sat.rec && sat.rec.intldesg)),
     description: describe(sat),
     stats,
     timestamp: utcStamp(date),
