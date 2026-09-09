@@ -196,7 +196,14 @@
   /* ---------- today in space (event feed) ---------- */
   #events{position:static;width:100%;min-height:0}
   #events .ph{cursor:pointer}
-  #events .body{padding:5px 7px 7px;max-height:34vh;overflow-y:auto}
+  /* Capped to ~5 rows (measured .event-row height ~35px single-line, plus
+     this padding) rather than a viewport-relative max-height — the feed can
+     hold a dozen+ events in one 48h window, and a vh-based cap let a tall
+     phone show far more than a short one. Rows with wrapped 2-line reason/
+     detail text (e.g. a chain row) are taller, so the exact count dips
+     slightly for those — expected, not a bug; overflow-y still reaches the
+     rest either way. */
+  #events .body{padding:5px 7px 7px;max-height:188px;overflow-y:auto}
   .events-empty{padding:12px 7px;font-size:10px;color:var(--ink-faint);letter-spacing:0.03em;text-align:center;line-height:1.4}
   /* event-row extends .today-row's layout/hover/typography as-is; only the
      icon badge and the non-selectable ("inert") state are new. */
