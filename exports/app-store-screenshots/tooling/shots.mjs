@@ -49,7 +49,7 @@ const SHOTS = [
     // Instagram's 387px column is far narrower than the App Store's 1128px,
     // so the longest headline needs its own step down to avoid orphaning the
     // last word onto a sixth line.
-    igH1Size: 44,
+    igH1Size: 60,
     shotTop: 800,
     cropY: 450,
     eyebrow: "What's overhead",
@@ -74,7 +74,7 @@ const SHOTS = [
   {
     file: "04-capsules.png",
     img: "06-crew-dragon.png",
-    igH1Size: 47,
+    igH1Size: 52,
     shotTop: 764,
     cropY: 450,
     eyebrow: "Crew & cargo",

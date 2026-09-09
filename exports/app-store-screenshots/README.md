@@ -113,10 +113,39 @@ simply much taller than the frame — so this variant is device-framed, reusing
 `device.css` unchanged with its geometry variables re-solved for a 1150px-tall
 phone.
 
+The column is 440px and the phone 500px wide — deliberately a smaller phone
+than this variant first shipped with. At 387px the copy column capped the
+headline at a size that left most of a 1350px column empty; handing 53px back
+to the copy buys a much bigger type scale (76px headlines against the original
+56px) and costs the phone about a tenth of its width.
+
+**The background carries the rest.** Type alone cannot fill a column this tall
+and narrow without absurd wrapping, so `render-instagram.mjs` generates a
+seeded starfield and three wide orbital arcs behind the phone. Both are lifted
+from what the app itself draws — `scene/starfield.js` and the orbit rings in
+`scene/trail.js` — rather than invented decoration, and both sit low enough in
+opacity that the phone stays the brightest thing in frame. The seed comes from
+the frame's file name, so every slide gets its own sky and every re-render
+reproduces it exactly.
+
+**The column is anchored top and bottom** by a wordmark and a carousel counter.
+These are furniture rather than marketing copy: the wordmark says whose app it
+is when a single slide gets reshared, and the counter is the ordinary carousel
+convention. Both sit far below the headline in contrast, so they frame it
+instead of competing. Deleting the two lines in `render-instagram.mjs` removes
+them cleanly if they ever read as clutter.
+
+`IG_H1=<px>` renders the whole set at one headline size, overriding the
+per-shot values — for trialling type scales side by side rather than guessing:
+
+```bash
+IG_H1=68 node exports/app-store-screenshots/tooling/render-instagram.mjs
+```
+
 Two details specific to this measure:
 
 - **Headlines are re-typeset, not rewritten.** The App Store copy carries hard
-  `<br>` breaks tuned to a 1128px column; at 387px the interior ones land
+  `<br>` breaks tuned to a 1128px column; at 440px the interior ones land
   mid-phrase, so they are dropped and the text flows. The break immediately
   before the gradient `<em>` is kept — without it you get "Look up. It's /
   crowded.", splitting the gradient across two lines. The words, and which of

@@ -11,6 +11,12 @@
    occupy just over half the width, which leaves a real column for the copy
    rather than a gutter. */
 
+@font-face {
+  font-family: "Orbitron";
+  font-weight: 700;
+  src: url("../../../apps/web/public/fonts/orbitron-latin.woff2") format("woff2");
+}
+
 html,
 body {
   width: 1080px;
@@ -22,14 +28,19 @@ body {
   height: 1350px;
 
   /* Device geometry, same derivation as device.css, re-solved for a phone
-     that stands 1150px tall instead of 1975px. */
-  --device-w: 553px;
-  --bezel: 22px; /* 4% of --device-w */
-  --screen-w: 509px; /* --device-w - 2 * --bezel */
-  --screen-h: 1106px; /* --screen-w * 2868/1320 */
-  --screen-r: 64px; /* 12.5% of --screen-w */
-  --body-r: 86px; /* --screen-r + --bezel */
-  --island-scale: 1.1568; /* --screen-w / 440pt */
+     that stands 1040px tall instead of 1975px.
+
+     Deliberately smaller than the phone this variant first shipped with: the
+     copy column was 387px, which capped the headline at a size that left most
+     of the column empty. Giving 53px back to the copy buys a materially bigger
+     type scale, and costs the phone about a tenth of its width. */
+  --device-w: 500px;
+  --bezel: 20px; /* 4% of --device-w */
+  --screen-w: 460px; /* --device-w - 2 * --bezel */
+  --screen-h: 1000px; /* --screen-w * 2868/1320 */
+  --screen-r: 58px; /* 12.5% of --screen-w */
+  --body-r: 78px; /* --screen-r + --bezel */
+  --island-scale: 1.0455; /* --screen-w / 440pt */
 }
 
 /* Softer than the App Store canvas: the glows are anchored to the corners, and
@@ -49,11 +60,20 @@ body {
   );
 }
 
+/* Starfield + orbital arcs, painted over the corner glows and under the phone.
+   Generated per frame in render-instagram.mjs. */
+.backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: block;
+}
+
 /* Phone stands full height against the right edge. */
 .device {
-  top: 100px; /* (1350 - 1150) / 2 — optically centred */
+  top: 155px; /* (1350 - 1040) / 2 */
   left: auto;
-  right: 48px;
+  right: 44px;
   transform: none;
 }
 
@@ -86,33 +106,68 @@ body {
   top: 50%;
   left: 56px;
   right: auto;
-  width: 387px;
+  width: 440px;
   transform: translateY(-50%);
 }
 
+/* Column anchors. The copy block is vertically centred and only fills about a
+   third of a 1350px column, so without something holding the top and bottom
+   the frame reads as unfinished. These are furniture, not marketing copy: the
+   wordmark says whose app this is when a slide gets reshared on its own, and
+   the counter is the ordinary carousel convention. Both sit well below the
+   headline in contrast so they frame it rather than compete with it. */
+.brandline {
+  position: absolute;
+  z-index: 6;
+  top: 92px;
+  left: 56px;
+  font-family: "Orbitron", sans-serif;
+  font-weight: 700;
+  font-size: 21px;
+  letter-spacing: 0.3em;
+  color: var(--ink-dim);
+  opacity: 0.55;
+}
+
+.slideno {
+  position: absolute;
+  z-index: 6;
+  bottom: 92px;
+  left: 56px;
+  font-family: "Oxanium", sans-serif;
+  font-weight: 600;
+  font-size: 21px;
+  letter-spacing: 0.2em;
+  color: var(--ink-faint);
+}
+.slideno b {
+  font-weight: 600;
+  color: var(--teal);
+}
+
 .eyebrow {
-  font-size: 20px;
-  letter-spacing: 0.26em;
-  gap: 12px;
+  font-size: 22px;
+  letter-spacing: 0.24em;
+  gap: 14px;
 }
 .eyebrow::before {
-  width: 22px;
+  width: 26px;
 }
 
 h1 {
-  margin-top: 22px;
-  font-size: 56px;
-  line-height: 1.04;
-  letter-spacing: -0.028em;
+  margin-top: 28px;
+  font-size: 76px;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
 }
 
 .rule {
-  margin-top: 26px;
+  margin-top: 32px;
 }
 
 .sub {
-  margin-top: 22px;
-  font-size: 22px;
-  line-height: 1.45;
+  margin-top: 28px;
+  font-size: 26px;
+  line-height: 1.5;
   max-width: none;
 }
