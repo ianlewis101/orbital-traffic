@@ -162,9 +162,18 @@
 
   /* ---------- legend ---------- */
   #leftstack{position:fixed;left:24px;bottom:24px;width:214px;display:flex;flex-direction:column;gap:12px;animation:rise .8s both .2s}
-  #legend{position:static;width:100%}
+  /* min-height:0 overrides the flex item's default min-height:auto, which
+     otherwise lets #leftstack's column stretch this item to its content's
+     full intrinsic height on some WebKit versions (iOS Safari/Capacitor),
+     ignoring the descendant .body's own max-height/overflow-y cap below —
+     same fix idiom .today-row .info already uses on the row axis. */
+  #legend{position:static;width:100%;min-height:0}
   #legend .ph{cursor:pointer}
-  #legend .body{padding:5px 7px 7px}
+  /* max-height/overflow-y unconditional (not mobile-only): #leftstack is
+     position:fixed at every width, so an uncapped body here grows past the
+     viewport on desktop too, clipped off both top and bottom with no way
+     to scroll it — confirmed at 1440x900 with a long catalog. */
+  #legend .body{padding:5px 7px 7px;max-height:38vh;overflow-y:auto}
   .cat{display:flex;align-items:center;gap:10px;padding:6px 7px;cursor:pointer;user-select:none;transition:background .12s}
   .cat:hover{background:var(--amber-soft)}
   .cat.off{opacity:0.3}
@@ -173,9 +182,9 @@
   .cat .ct{font-size:10px;color:var(--ink-dim);font-variant-numeric:tabular-nums;letter-spacing:0.04em}
 
   /* ---------- today's objects ---------- */
-  #today{position:static;width:100%}
+  #today{position:static;width:100%;min-height:0}
   #today .ph{cursor:pointer}
-  #today .body{padding:5px 7px 7px}
+  #today .body{padding:5px 7px 7px;max-height:34vh;overflow-y:auto}
   .today-row{display:flex;align-items:flex-start;gap:10px;padding:6px 7px;cursor:pointer;user-select:none;
     border-radius:7px;transition:background .12s}
   .today-row:hover{background:var(--amber-soft)}
@@ -185,9 +194,9 @@
   .today-row .reason{font-size:10px;color:var(--ink-faint);letter-spacing:0.02em;line-height:1.35;margin-top:2px}
 
   /* ---------- today in space (event feed) ---------- */
-  #events{position:static;width:100%}
+  #events{position:static;width:100%;min-height:0}
   #events .ph{cursor:pointer}
-  #events .body{padding:5px 7px 7px}
+  #events .body{padding:5px 7px 7px;max-height:34vh;overflow-y:auto}
   .events-empty{padding:12px 7px;font-size:10px;color:var(--ink-faint);letter-spacing:0.03em;text-align:center;line-height:1.4}
   /* event-row extends .today-row's layout/hover/typography as-is; only the
      icon badge and the non-selectable ("inert") state are new. */
@@ -767,7 +776,6 @@
     /* Left stack — repositioned, no time machine */
     #leftstack{left:10px;bottom:10px;width:185px;gap:8px;animation:none}
     #time{display:none!important}
-    #legend .body{max-height:38vh;overflow-y:auto}
     #legend .hd{padding:5px 10px}
     /* Reverted 2026-08-19: two enlargement passes (44px, then 36px) both
        shipped and both read as wrong on a real device — denser was what the
@@ -780,19 +788,13 @@
     #legend .ct{font-size:9px}
     #legend .sw{width:8px;height:8px;border-radius:2px;flex-shrink:0}
 
-    /* Today's objects — collapsible, capped height so it never crowds the legend below it */
+    /* Today's objects — collapsible; the height cap itself is unconditional
+       (see #today .body above), only the tighter row density is mobile-only */
     #today .ph{padding:5px 10px}
-    #today .body{max-height:34vh;overflow-y:auto}
     .today-row{padding:5px 7px;gap:7px}
     .today-row .nm{font-size:9px;letter-spacing:0.08em}
     .today-row .reason{font-size:9px}
     .today-row .sw{width:7px;height:7px}
-
-    /* Today in Space — same capped, scrollable body as Popular Objects
-       above it. Its length is data-driven (a busy 48 hours plus a chain row
-       per train currently flying), so without a ceiling a lively week pushes
-       the whole left stack off the top of a phone screen. */
-    #events .body{max-height:34vh;overflow-y:auto}
 
     /* Brand — smaller */
     #brand{top:10px;left:10px;display:none} /* hidden — search takes that space */

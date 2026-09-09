@@ -27,6 +27,15 @@ export const MAX_CREW_EVENTS = 200;
  * didn't burn up). Same style of hard exclusion as astro/overhead.js's
  * OVERHEAD_EXCLUDED_CATS.
  *
+ * Debris is excluded from "launch" events specifically (newRecs only, not
+ * the prev/curr maps reentry detection reads) — nobody launches debris. A
+ * debris object's first appearance in the catalog is usually a newly-
+ * catalogued fragment (or, after a diff gap, a backlog of them), not a
+ * real event happening today, and "LAUNCHED · N NEW DEBRIS SATELLITES"
+ * reads as nonsensical in the feed. Debris still fully participates in
+ * reentry detection — a decaying debris object burning up is a real,
+ * correctly-labeled "DEORBITED" event.
+ *
  * @param {{name:string,l1:string,cat:string}[]} previousRecords  yesterday's catalog
  * @param {{name:string,l1:string,cat:string}[]} currentRecords   today's merged catalog
  * @param {string} nowIso
@@ -42,7 +51,7 @@ export function diffLaunchesReentries(previousRecords, currentRecords, nowIso) {
   const prevById = new Map(prevRecs.map((r) => [noradId(r.l1), r]));
   const currById = new Map(currRecs.map((r) => [noradId(r.l1), r]));
 
-  const newRecs = currRecs.filter((r) => !prevById.has(noradId(r.l1)));
+  const newRecs = currRecs.filter((r) => !prevById.has(noradId(r.l1)) && r.cat !== "debris");
   const goneIds = [...prevById.keys()].filter((id) => !currById.has(id));
 
   const events = [];
