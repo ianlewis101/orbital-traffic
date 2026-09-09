@@ -12,6 +12,17 @@ ray.params.Points.threshold = 0.6;
 const mouse = new THREE.Vector2();
 let downXY = null;
 
+// Pointer Events fire for every touch of a multi-touch gesture, not just the
+// first — so a two-finger pinch produces a pointermove stream per finger.
+// Without this, both streams fought over the single `downXY` baseline below
+// and fed essentially-noise dx/dy into cam.thT/cam.phT (rotation) at the same
+// time touchmove was correctly driving cam.rT (zoom), turning every pinch
+// into a zoom plus a jittery spurious rotation. Tracking concurrently-down
+// pointerIds lets drag/pick stay single-pointer-only and cede the gesture
+// entirely to the touchstart/touchmove pinch handling below once a second
+// finger lands.
+const activePointers = new Set();
+
 function pick(cx, cy) {
   const rc = renderer.domElement.getBoundingClientRect();
   mouse.x = ((cx - rc.left) / rc.width) * 2 - 1;
@@ -28,6 +39,7 @@ function pick(cx, cy) {
 export function initPicking() {
   const tip = $("#tip");
   renderer.domElement.addEventListener("pointermove", (e) => {
+    if (activePointers.size > 1) return; // mid-pinch — let touchmove own the gesture
     if (downXY) {
       // dragging — a manual rotate means the user wants to look away from
       // whatever's centered, so drop any active "Center on Globe" follow
@@ -56,11 +68,20 @@ export function initPicking() {
     }
   });
   renderer.domElement.addEventListener("pointerdown", (e) => {
+    activePointers.add(e.pointerId);
+    if (activePointers.size > 1) {
+      // second finger landed — this is a pinch, not a drag; drop any
+      // in-progress single-finger drag state so pointerup can't misread it
+      // as a completed tap once fingers lift.
+      downXY = null;
+      return;
+    }
     downXY = { x: e.clientX, y: e.clientY, moved: false };
     renderer.domElement.style.cursor = "grabbing";
     tip.style.display = "none";
   });
   window.addEventListener("pointerup", (e) => {
+    activePointers.delete(e.pointerId);
     // Taps that land on HUD controls (close button, buttons, panels, etc.) are
     // handled by their own listeners — never re-pick/re-select from underneath
     // them, or a tap meant to close the info card can immediately reselect
@@ -75,6 +96,10 @@ export function initPicking() {
     }
     downXY = null;
     renderer.domElement.style.cursor = "grab";
+  });
+  window.addEventListener("pointercancel", (e) => {
+    activePointers.delete(e.pointerId);
+    downXY = null;
   });
   renderer.domElement.addEventListener(
     "wheel",
