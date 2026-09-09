@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import worker, {
   buildTLERecords,
+  classifyGroupBody,
   getTLERecords,
   refreshTLECache,
   TLE_TTL,
@@ -11,7 +12,7 @@ import worker, {
   ASTRONAUT_TTL,
   ASTRONAUT_FAIL_TTL,
 } from "../src/index.js";
-import { GROUPS } from "@orbital-traffic/catalog";
+import { GROUPS, parseGp } from "@orbital-traffic/catalog";
 
 // CelesTrak GP rows, in the CSV shape the Worker now fetches. These are the
 // same two elsets these fixtures always described — the TLE text feed can't
@@ -109,7 +110,7 @@ describe("worker routes", () => {
       if (url.includes("GROUP=stations")) return Promise.resolve(textResponse(ISS_GP));
       if (url.includes("GROUP=active"))
         return Promise.resolve(textResponse(ISS_GP + "\n" + DEBRIS_GP));
-      return Promise.resolve(textResponse(""));
+      return Promise.resolve(textResponse(GP_HEADER));
     });
     const res = await worker.fetch(new Request("https://x/tle"), {}, ctx);
     expect(res.status).toBe(200);
@@ -722,7 +723,7 @@ describe("buildTLERecords", () => {
     // only be read once, so mockResolvedValue's single shared instance would
     // make every call after the first look like a failure to fetchGroup()'s
     // await res.text(), which is not what this test means to exercise.
-    fetch.mockImplementation(() => Promise.resolve(textResponse("")));
+    fetch.mockImplementation(() => Promise.resolve(textResponse(GP_HEADER)));
     await buildTLERecords();
     expect(fetch).toHaveBeenCalledTimes(GROUPS.length);
   });
@@ -753,7 +754,7 @@ describe("buildTLERecords", () => {
       return new Promise((resolve) =>
         setTimeout(() => {
           inFlight--;
-          resolve(textResponse(""));
+          resolve(textResponse(GP_HEADER));
         }, 5)
       );
     });
@@ -771,7 +772,7 @@ describe("buildTLERecords", () => {
         if (stationsCalls === 1) return Promise.reject(new Error("celestrak flaky"));
         return Promise.resolve(textResponse(ISS_GP));
       }
-      return Promise.resolve(textResponse(""));
+      return Promise.resolve(textResponse(GP_HEADER));
     });
     const recs = await buildTLERecords();
     expect(stationsCalls).toBe(2);
@@ -804,7 +805,9 @@ describe("TLE_CACHE (Workers KV warm cache)", () => {
   });
 
   it("getTLERecords reads the cron-refreshed catalog from KV instead of building live", async () => {
-    const kv = stubKv(JSON.stringify({ recs: [{ name: "ISS (ZARYA)", cat: "stations" }], failedGroups: 0 }));
+    const kv = stubKv(
+      JSON.stringify({ recs: [{ name: "ISS (ZARYA)", cat: "stations" }], failedGroups: 0 })
+    );
     const recs = await getTLERecords({ TLE_CACHE: kv });
     expect(Array.from(recs)).toEqual([{ name: "ISS (ZARYA)", cat: "stations" }]);
     expect(recs.failedGroups).toBe(0);
@@ -814,7 +817,7 @@ describe("TLE_CACHE (Workers KV warm cache)", () => {
   it("getTLERecords falls back to a live build when KV has nothing yet", async () => {
     fetch.mockImplementation((url) => {
       if (url.includes("GROUP=stations")) return Promise.resolve(textResponse(ISS_GP));
-      return Promise.resolve(textResponse(""));
+      return Promise.resolve(textResponse(GP_HEADER));
     });
     const kv = stubKv(undefined);
     const recs = await getTLERecords({ TLE_CACHE: kv });
@@ -823,13 +826,13 @@ describe("TLE_CACHE (Workers KV warm cache)", () => {
   });
 
   it("getTLERecords falls back to a live build when the KV read throws", async () => {
-    fetch.mockImplementation(() => Promise.resolve(textResponse("")));
+    fetch.mockImplementation(() => Promise.resolve(textResponse(GP_HEADER)));
     const kv = { get: vi.fn().mockRejectedValue(new Error("KV unavailable")) };
     await expect(getTLERecords({ TLE_CACHE: kv })).resolves.toBeInstanceOf(Array);
   });
 
   it("getTLERecords builds live when no TLE_CACHE binding is present", async () => {
-    fetch.mockImplementation(() => Promise.resolve(textResponse("")));
+    fetch.mockImplementation(() => Promise.resolve(textResponse(GP_HEADER)));
     const recs = await getTLERecords({});
     expect(recs).toHaveLength(0);
     expect(fetch).toHaveBeenCalledTimes(GROUPS.length);
@@ -838,12 +841,15 @@ describe("TLE_CACHE (Workers KV warm cache)", () => {
   it("refreshTLECache writes the merged catalog and failedGroups to KV", async () => {
     fetch.mockImplementation((url) => {
       if (url.includes("GROUP=stations")) return Promise.resolve(textResponse(ISS_GP));
-      return Promise.resolve(textResponse(""));
+      return Promise.resolve(textResponse(GP_HEADER));
     });
     const kv = stubKv(undefined);
     await refreshTLECache({ TLE_CACHE: kv });
-    expect(kv.put).toHaveBeenCalledTimes(1);
-    const [key, value, opts] = kv.put.mock.calls[0];
+    // One merged entry under "tle", plus one per-group entry each, so a group
+    // CelesTrak later answers "not updated" for can still be served.
+    const merged = kv.put.mock.calls.find(([key]) => key === "tle");
+    expect(merged).toBeDefined();
+    const [key, value, opts] = merged;
     expect(key).toBe("tle");
     const stored = JSON.parse(value);
     expect(stored.recs.find((r) => r.name === "ISS (ZARYA)")?.cat).toBe("stations");
@@ -852,12 +858,14 @@ describe("TLE_CACHE (Workers KV warm cache)", () => {
   });
 
   it("refreshTLECache tolerates a missing TLE_CACHE binding (never throws)", async () => {
-    fetch.mockImplementation(() => Promise.resolve(textResponse("")));
+    fetch.mockImplementation(() => Promise.resolve(textResponse(GP_HEADER)));
     await expect(refreshTLECache({})).resolves.toBeInstanceOf(Array);
   });
 
   it("the /tle route serves the KV-warmed catalog without building live", async () => {
-    const kv = stubKv(JSON.stringify({ recs: [{ name: "ISS (ZARYA)", cat: "stations" }], failedGroups: 0 }));
+    const kv = stubKv(
+      JSON.stringify({ recs: [{ name: "ISS (ZARYA)", cat: "stations" }], failedGroups: 0 })
+    );
     const res = await worker.fetch(new Request("https://x/tle"), { TLE_CACHE: kv }, ctx);
     expect(res.status).toBe(200);
     const recs = await res.json();
@@ -867,27 +875,149 @@ describe("TLE_CACHE (Workers KV warm cache)", () => {
 
   it("the /tle route reports X-TLE-Source: kv and a builtAt timestamp when served from KV", async () => {
     const builtAt = Date.UTC(2026, 0, 1, 12, 0, 0);
-    const kv = stubKv(JSON.stringify({ recs: [{ name: "ISS (ZARYA)", cat: "stations" }], failedGroups: 0, builtAt }));
+    const kv = stubKv(
+      JSON.stringify({ recs: [{ name: "ISS (ZARYA)", cat: "stations" }], failedGroups: 0, builtAt })
+    );
     const res = await worker.fetch(new Request("https://x/tle"), { TLE_CACHE: kv }, ctx);
     expect(res.headers.get("X-TLE-Source")).toBe("kv");
     expect(res.headers.get("X-TLE-Built-At")).toBe(new Date(builtAt).toISOString());
   });
 
   it("the /tle route reports X-TLE-Source: live when it has to build on demand", async () => {
-    fetch.mockImplementation(() => Promise.resolve(textResponse("")));
+    fetch.mockImplementation(() => Promise.resolve(textResponse(GP_HEADER)));
     const res = await worker.fetch(new Request("https://x/tle"), {}, ctx);
     expect(res.headers.get("X-TLE-Source")).toBe("live");
     expect(res.headers.get("X-TLE-Built-At")).not.toBe("");
   });
 
   it("scheduled() refreshes TLE_CACHE via waitUntil without blocking", async () => {
-    fetch.mockImplementation(() => Promise.resolve(textResponse("")));
+    fetch.mockImplementation(() => Promise.resolve(textResponse(GP_HEADER)));
     const kv = stubKv(undefined);
     const waited = [];
     const schedCtx = { waitUntil: (p) => waited.push(p) };
     await worker.scheduled({}, { TLE_CACHE: kv }, schedCtx);
     expect(waited).toHaveLength(1);
     await waited[0];
-    expect(kv.put).toHaveBeenCalledTimes(1);
+    expect(kv.put.mock.calls.some(([key]) => key === "tle")).toBe(true);
+  });
+});
+
+/**
+ * Regression cover for the incident where /tle served ~4,200 objects instead
+ * of ~19,000 for hours.
+ *
+ * CelesTrak answers a repeat request for an unchanged group with HTTP 200 and
+ * the plain-text line "GP data has not updated since your last request". The
+ * Worker read that as a successful fetch of an empty group: the group vanished
+ * from the merge, was not counted in failedGroups, and the truncated catalog
+ * was cached and served as though it were complete. With a 10-minute cron
+ * re-asking for 13 groups whose elements only change every few hours, that
+ * reply was the common case, not an edge one.
+ */
+function stubGroupKv(seed = {}) {
+  const store = new Map(Object.entries(seed).map(([k, v]) => [k, JSON.stringify(v)]));
+  return {
+    get: vi.fn(async (key, type) => {
+      const raw = store.get(key);
+      if (raw === undefined) return null;
+      return type === "json" ? JSON.parse(raw) : raw;
+    }),
+    put: vi.fn(async (key, value) => {
+      store.set(key, value);
+    }),
+    _keys: () => [...store.keys()],
+    _get: (key) => (store.has(key) ? JSON.parse(store.get(key)) : null),
+  };
+}
+
+const NOT_UPDATED_BODY = "GP data has not updated since your last request";
+const INVALID_BODY = 'Invalid query: "FORMAT=csv&GROUP=glonass" (GROUP=glonass not found)';
+const STALE = Date.now() - 6 * 60 * 60 * 1000;
+
+describe("CelesTrak non-CSV 200 responses", () => {
+  let fetch;
+  beforeEach(() => {
+    fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("tells CSV, 'not updated' and 'invalid query' bodies apart", () => {
+    expect(classifyGroupBody(ISS_GP)).toBe("csv");
+    expect(classifyGroupBody(NOT_UPDATED_BODY)).toBe("not-modified");
+    expect(classifyGroupBody(INVALID_BODY)).toBe("invalid");
+    // An empty 200 is not a valid group response either — CelesTrak always
+    // returns at least the header row.
+    expect(classifyGroupBody("")).toBe("invalid");
+  });
+
+  it("serves a 'not updated' group from its cache instead of dropping it", async () => {
+    const cachedRecs = parseGp(DEBRIS_GP, "starlink");
+    expect(cachedRecs.length).toBeGreaterThan(0);
+    const kv = stubGroupKv({
+      "group:starlink": { recs: cachedRecs, fetchedAt: STALE },
+    });
+    fetch.mockImplementation((url) =>
+      Promise.resolve(textResponse(url.includes("GROUP=starlink") ? NOT_UPDATED_BODY : GP_HEADER))
+    );
+
+    const recs = await buildTLERecords({ TLE_CACHE: kv });
+
+    expect(recs.find((r) => r.name === "CZ-4B R/B")).toBeDefined();
+    // Served from cache is stale, not missing — it must not shorten the
+    // response's cache lifetime the way a genuinely absent group does.
+    expect(recs.failedGroups).toBe(0);
+    expect(recs.staleGroupNames).toContain("starlink");
+  });
+
+  it("does not retry a 'not updated' group — it is a definitive answer", async () => {
+    const kv = stubGroupKv({
+      "group:starlink": { recs: parseGp(DEBRIS_GP, "starlink"), fetchedAt: STALE },
+    });
+    fetch.mockImplementation((url) =>
+      Promise.resolve(textResponse(url.includes("GROUP=starlink") ? NOT_UPDATED_BODY : GP_HEADER))
+    );
+
+    await buildTLERecords({ TLE_CACHE: kv });
+
+    const starlinkCalls = fetch.mock.calls.filter(([url]) => url.includes("GROUP=starlink"));
+    expect(starlinkCalls).toHaveLength(1);
+  });
+
+  it("counts an unparseable group with no cached copy as failed, by name", async () => {
+    const kv = stubGroupKv();
+    fetch.mockImplementation((url) =>
+      Promise.resolve(textResponse(url.includes("GROUP=glo-ops") ? INVALID_BODY : GP_HEADER))
+    );
+
+    const recs = await buildTLERecords({ TLE_CACHE: kv });
+
+    expect(recs.failedGroups).toBe(1);
+    expect(recs.failedGroupNames).toEqual(["glo-ops"]);
+  });
+
+  it("skips groups whose cached copy is still fresh, so CelesTrak is asked far less often", async () => {
+    const fresh = Object.fromEntries(
+      GROUPS.map(([group]) => [`group:${group}`, { recs: [], fetchedAt: Date.now() }])
+    );
+    const kv = stubGroupKv(fresh);
+    fetch.mockImplementation(() => Promise.resolve(textResponse(GP_HEADER)));
+
+    await buildTLERecords({ TLE_CACHE: kv });
+
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("caches each fetched group so the next build can reuse it", async () => {
+    const kv = stubGroupKv();
+    fetch.mockImplementation((url) =>
+      Promise.resolve(textResponse(url.includes("GROUP=stations") ? ISS_GP : GP_HEADER))
+    );
+
+    await buildTLERecords({ TLE_CACHE: kv });
+
+    const stored = kv._get("group:stations");
+    expect(stored.recs.find((r) => r.name === "ISS (ZARYA)")).toBeDefined();
+    expect(stored.fetchedAt).toBeGreaterThan(0);
   });
 });

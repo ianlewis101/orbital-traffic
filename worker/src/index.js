@@ -131,6 +131,35 @@ const GROUP_FETCH_TIMEOUT_MS = 10000;
 // connection ceiling.
 const GROUP_FETCH_CONCURRENCY = 3;
 
+// CelesTrak answers several non-data conditions with HTTP 200 and a short
+// plain-text body rather than an error status, so `res.ok` alone cannot tell
+// data from a refusal. Both observed forms start with a recognisable phrase:
+//
+//   "GP data has not updated since your last request"
+//       Their bandwidth-saving reply to a repeat request for a group whose
+//       elements have not changed since this IP last asked. It is not an
+//       error — it means "you already have this" — so the right response is
+//       to reuse what we already have, never to retry harder.
+//
+//   'Invalid query: "FORMAT=csv&GROUP=..."'
+//       A group name that no longer exists, which is how the glonass ->
+//       glo-ops rename surfaced: silently, as an empty category.
+//
+// parseGp() finds no CSV header in either and returns [], so before this
+// check both looked exactly like a successful fetch of an empty group —
+// contributing nothing to the merge, uncounted in failedGroups, and never
+// retried. That is the whole reason a partial catalog could be cached and
+// served as if it were complete.
+const CSV_HEADER_PREFIX = "OBJECT_NAME";
+const NOT_MODIFIED_RE = /GP data has not updated/i;
+
+export function classifyGroupBody(text) {
+  const body = String(text || "").trimStart();
+  if (body.startsWith(CSV_HEADER_PREFIX)) return "csv";
+  if (NOT_MODIFIED_RE.test(body)) return "not-modified";
+  return "invalid";
+}
+
 async function fetchGroup([group, cat]) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), GROUP_FETCH_TIMEOUT_MS);
@@ -140,28 +169,119 @@ async function fetchGroup([group, cat]) {
       cf: { cacheTtl: TLE_TTL, cacheEverything: true },
       signal: controller.signal,
     });
-    if (!res.ok) return { recs: [], ok: false };
-    return { recs: parseGp(await res.text(), cat), ok: true };
+    if (!res.ok) return { group, recs: [], ok: false };
+    const text = await res.text();
+    const kind = classifyGroupBody(text);
+    if (kind === "not-modified") return { group, recs: [], ok: false, notModified: true };
+    if (kind === "invalid") return { group, recs: [], ok: false, invalid: true };
+    return { group, recs: parseGp(text, cat), ok: true };
   } catch {
-    return { recs: [], ok: false };
+    return { group, recs: [], ok: false };
   } finally {
     clearTimeout(timer);
   }
 }
 
-export async function buildTLERecords() {
-  const settled = await mapWithConcurrency(GROUPS, GROUP_FETCH_CONCURRENCY, fetchGroup);
-  for (let i = 0; i < GROUPS.length; i++) {
-    if (!settled[i].ok) settled[i] = await fetchGroup(GROUPS[i]);
+// Per-group record cache, keyed by CelesTrak group name.
+//
+// CelesTrak's "GP data has not updated since your last request" reply means
+// the caller is expected to keep using the copy it already holds. Before this
+// cache the Worker held no such copy — every build started from nothing — so
+// that reply cost the whole group, and with a 10-minute cron re-asking for 13
+// groups whose elements only change every few hours, getting it for most
+// groups on most cycles was the normal case rather than an edge one. That is
+// what produced a served catalog of ~4,200 objects instead of ~19,000.
+//
+// Keeping each group's parsed records lets a "not updated" reply do what
+// CelesTrak intends, and lets a group that is still fresh be skipped entirely
+// — which cuts requests to CelesTrak by roughly a factor of twelve and stops
+// provoking the reply in the first place.
+const GROUP_KV_PREFIX = "group:";
+const GROUP_CACHE_TTL = 24 * 60 * 60; // dead-man's-switch, not the refresh path
+// CelesTrak regenerates GP data every few hours; asking more often than this
+// earns a "not updated" reply and nothing else.
+const GROUP_MIN_REFETCH_MS = 2 * 60 * 60 * 1000;
+
+async function readGroupCache(kv, group) {
+  if (!kv) return null;
+  try {
+    const stored = await kv.get(GROUP_KV_PREFIX + group, "json");
+    return stored && Array.isArray(stored.recs) ? stored : null;
+  } catch {
+    return null;
   }
+}
+
+async function writeGroupCache(kv, group, recs) {
+  if (!kv) return;
+  try {
+    await kv.put(GROUP_KV_PREFIX + group, JSON.stringify({ recs, fetchedAt: Date.now() }), {
+      expirationTtl: GROUP_CACHE_TTL,
+    });
+  } catch {
+    // A failed cache write only costs freshness on the next build.
+  }
+}
+
+export async function buildTLERecords(env) {
+  const kv = env?.TLE_CACHE;
+  const cached = await Promise.all(GROUPS.map(([group]) => readGroupCache(kv, group)));
+
+  // Only ask CelesTrak for groups we have no copy of, or whose copy has aged
+  // past the point where new elements could plausibly exist.
+  const now = Date.now();
+  const needsFetch = GROUPS.map(
+    (_, i) => !cached[i] || now - (cached[i].fetchedAt || 0) > GROUP_MIN_REFETCH_MS
+  );
+  const toFetch = GROUPS.filter((_, i) => needsFetch[i]);
+
+  const fetched = new Map();
+  if (toFetch.length) {
+    const settled = await mapWithConcurrency(toFetch, GROUP_FETCH_CONCURRENCY, fetchGroup);
+    for (let i = 0; i < toFetch.length; i++) {
+      // One sequential retry for anything that lost the concurrency race —
+      // but never for "not updated", which is a definitive answer, not a miss.
+      if (!settled[i].ok && !settled[i].notModified) settled[i] = await fetchGroup(toFetch[i]);
+      fetched.set(toFetch[i][0], settled[i]);
+    }
+  }
+
+  const perGroup = [];
+  const stale = [];
+  const failed = [];
+  for (let i = 0; i < GROUPS.length; i++) {
+    const group = GROUPS[i][0];
+    const res = fetched.get(group);
+    if (res?.ok) {
+      perGroup.push(res.recs);
+      await writeGroupCache(kv, group, res.recs);
+      continue;
+    }
+    // Either not fetched this cycle (still fresh), or the fetch came back
+    // "not updated"/failed. Both fall back to the copy we hold.
+    if (cached[i]) {
+      perGroup.push(cached[i].recs);
+      if (res) stale.push(group);
+      continue;
+    }
+    perGroup.push([]);
+    failed.push(group);
+  }
+
   // Merge in GROUPS order (not fetch-completion order) so a satellite
   // already claimed by a specific group is never overwritten by a later,
   // more generic one.
-  const records = mergeRecords(settled.map((s) => s.recs));
+  const records = mergeRecords(perGroup);
   // Not serialized to the client (JSON.stringify on an array only emits
   // index-keyed entries) — read by the /tle route's ttlFor below to decide
   // how long this merge is safe to cache. See TLE_PARTIAL_FAIL_TTL.
-  records.failedGroups = settled.filter((s) => !s.ok).length;
+  //
+  // Only a group that contributed *nothing* counts as failed: one served from
+  // its cache is slightly stale, not missing, and does not warrant collapsing
+  // the whole response's cache lifetime to 90 seconds.
+  records.failedGroups = failed.length;
+  records.failedGroupNames = failed;
+  records.staleGroupNames = stale;
   return records;
 }
 
@@ -197,13 +317,15 @@ const TLE_KV_EXPIRATION_TTL = 30 * 60; // 30 minutes
  * apart from a complete one after reading it back.
  */
 export async function refreshTLECache(env) {
-  const records = await buildTLERecords();
+  const records = await buildTLERecords(env);
   if (!env?.TLE_CACHE) return records;
   await env.TLE_CACHE.put(
     TLE_KV_KEY,
     JSON.stringify({
       recs: records,
       failedGroups: records.failedGroups || 0,
+      failedGroupNames: records.failedGroupNames || [],
+      staleGroupNames: records.staleGroupNames || [],
       builtAt: Date.now(),
     }),
     { expirationTtl: TLE_KV_EXPIRATION_TTL }
@@ -235,6 +357,8 @@ export async function getTLERecords(env) {
       if (stored && Array.isArray(stored.recs)) {
         const recs = stored.recs;
         recs.failedGroups = stored.failedGroups || 0;
+        recs.failedGroupNames = stored.failedGroupNames || [];
+        recs.staleGroupNames = stored.staleGroupNames || [];
         recs.source = "kv";
         recs.builtAt = stored.builtAt || null;
         return recs;
@@ -243,7 +367,7 @@ export async function getTLERecords(env) {
       // KV read failed — fall through to a live build rather than error out.
     }
   }
-  const records = await buildTLERecords();
+  const records = await buildTLERecords(env);
   records.source = "live";
   records.builtAt = Date.now();
   return records;
@@ -615,6 +739,12 @@ const ROUTES = {
       (d) => ({
         "X-TLE-Source": d.source || "unknown",
         "X-TLE-Built-At": d.builtAt ? new Date(d.builtAt).toISOString() : "",
+        // Which groups contributed nothing, and which were served from their
+        // cache rather than refetched. A silently short catalog was only
+        // diagnosable by counting categories in the body before this.
+        "X-TLE-Failed-Groups": (d.failedGroupNames || []).join(",") || "none",
+        "X-TLE-Stale-Groups": (d.staleGroupNames || []).join(",") || "none",
+        "X-TLE-Records": String(d.length || 0),
       })
     ),
   "/crew": (ctx, request, env) =>
