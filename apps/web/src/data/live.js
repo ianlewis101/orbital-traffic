@@ -74,10 +74,10 @@ function fetchWithTimeout(url, opts, timeoutMs = FETCH_TIMEOUT_MS) {
 async function fetchGroupRecords([grp, cat]) {
   try {
     const r = await fetchWithTimeout(CELESTRAK_BASE + grp, { cache: "no-store" });
-    if (!r.ok) return { recs: [], ok: false };
+    if (!r.ok) return { recs: [], ok: false, err: grp + ": http " + r.status };
     return { recs: parseGp(await r.text(), cat), ok: true };
-  } catch {
-    return { recs: [], ok: false };
+  } catch (e) {
+    return { recs: [], ok: false, err: grp + ": " + String(e?.message || e) };
   }
 }
 
@@ -185,6 +185,7 @@ async function runLiveSync() {
   // fallback retry instead of surfacing as the error it actually was.
   try {
     let recs = null;
+    let primaryErr = null;
     try {
       const res = await fetchWithTimeout(
         WORKER_BASE + "/tle",
@@ -197,7 +198,8 @@ async function runLiveSync() {
         throw new Error("implausible catalog size: " + primaryRecs.length);
       }
       recs = primaryRecs;
-    } catch {
+    } catch (e) {
+      primaryErr = String(e?.message || e);
       const settled = await mapWithConcurrency(GROUPS, GROUP_FETCH_CONCURRENCY, fetchGroupRecords);
       for (let i = 0; i < GROUPS.length; i++) {
         if (!settled[i].ok) settled[i] = await fetchGroupRecords(GROUPS[i]);
@@ -217,6 +219,14 @@ async function runLiveSync() {
         // elements · retrying" rather than a permanent "syncing…" — the
         // periodic policy will retry on its own.
         state.syncFailed = true;
+        const failed = settled.filter((s) => !s.ok);
+        const fallbackErr = failed.length
+          ? `${failed.length}/${GROUPS.length} groups failed, e.g. ${failed[0].err}`
+          : "implausible catalog size: " + fallbackRecs.length;
+        state.lastSyncFailReason = {
+          message: `worker: ${primaryErr}; fallback: ${fallbackErr}`,
+          at: new Date(),
+        };
         toast("Live fetch unavailable — showing cached elements", "error");
         updateCount();
       }
@@ -277,6 +287,7 @@ async function applyLive(recs, capsules) {
   state.srcTime = new Date();
   state.syncFailed = false;
   state.lastSyncError = null;
+  state.lastSyncFailReason = null;
   // Chains are re-derived from the elements that just landed, then any lit
   // one is re-pointed at its fresh snapshot (or dropped, if the string has
   // finally dispersed). renderEvents() repaints the feed's chain rows off the
