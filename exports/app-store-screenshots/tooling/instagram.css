@@ -110,12 +110,11 @@ body {
   transform: translateY(-50%);
 }
 
-/* Column anchors. The copy block is vertically centred and only fills about a
-   third of a 1350px column, so without something holding the top and bottom
-   the frame reads as unfinished. These are furniture, not marketing copy: the
-   wordmark says whose app this is when a slide gets reshared on its own, and
-   the counter is the ordinary carousel convention. Both sit well below the
-   headline in contrast so they frame it rather than compete with it. */
+/* Column anchor. The copy block is vertically centred and fills only about a
+   third of a 1350px column, so the wordmark holds the top of it. Furniture,
+   not marketing copy — it says whose app this is when a slide gets reshared on
+   its own — and it sits well below the headline in contrast so it frames the
+   copy rather than competing with it. */
 .brandline {
   position: absolute;
   z-index: 6;
@@ -127,22 +126,6 @@ body {
   letter-spacing: 0.3em;
   color: var(--ink-dim);
   opacity: 0.55;
-}
-
-.slideno {
-  position: absolute;
-  z-index: 6;
-  bottom: 92px;
-  left: 56px;
-  font-family: "Oxanium", sans-serif;
-  font-weight: 600;
-  font-size: 21px;
-  letter-spacing: 0.2em;
-  color: var(--ink-faint);
-}
-.slideno b {
-  font-weight: 600;
-  color: var(--teal);
 }
 
 .eyebrow {

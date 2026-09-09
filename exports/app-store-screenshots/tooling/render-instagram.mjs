@@ -119,7 +119,7 @@ function backdrop(seedStr) {
 </svg>`;
 }
 
-const html = (s, i) => `${H1_OVERRIDE}<link rel="stylesheet" href="${HERE}/poster.css">
+const html = (s) => `${H1_OVERRIDE}<link rel="stylesheet" href="${HERE}/poster.css">
 <link rel="stylesheet" href="${HERE}/device.css">
 <link rel="stylesheet" href="${HERE}/instagram.css">
 <div class="poster">
@@ -137,7 +137,6 @@ const html = (s, i) => `${H1_OVERRIDE}<link rel="stylesheet" href="${HERE}/poste
   <div class="grain"></div>
   <div class="ticks"><span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span></div>
   <div class="brandline">ORBITAL TRAFFIC</div>
-  <div class="slideno"><b>${String(i + 1).padStart(2, "0")}</b> / ${String(SHOTS.length).padStart(2, "0")}</div>
   <div class="copy">
     <div class="eyebrow">${s.eyebrow}</div>
     <h1${s.igH1Size ? ` style="font-size:${s.igH1Size}px"` : ""}>${fill(reflow(s.h1))}</h1>
@@ -154,7 +153,7 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1080, height: 1350 } });
 
 for (const s of SHOTS) {
-  await writeFile(`${HERE}/.page-instagram.html`, html(s, SHOTS.indexOf(s)));
+  await writeFile(`${HERE}/.page-instagram.html`, html(s));
   await page.goto(`file://${HERE}/.page-instagram.html`);
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(400);

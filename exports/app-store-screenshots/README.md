@@ -128,12 +128,12 @@ opacity that the phone stays the brightest thing in frame. The seed comes from
 the frame's file name, so every slide gets its own sky and every re-render
 reproduces it exactly.
 
-**The column is anchored top and bottom** by a wordmark and a carousel counter.
-These are furniture rather than marketing copy: the wordmark says whose app it
-is when a single slide gets reshared, and the counter is the ordinary carousel
-convention. Both sit far below the headline in contrast, so they frame it
-instead of competing. Deleting the two lines in `render-instagram.mjs` removes
-them cleanly if they ever read as clutter.
+**The column is anchored at the top** by a wordmark — furniture rather than
+marketing copy, there so a single slide still says whose app it is when it gets
+reshared without the rest. It sits far below the headline in contrast, so it
+frames the copy instead of competing with it. A carousel counter sat at the
+bottom of the column for one revision and was cut: the wordmark alone holds the
+column, and the counter was the more disposable of the two.
 
 `IG_H1=<px>` renders the whole set at one headline size, overriding the
 per-shot values — for trialling type scales side by side rather than guessing:
