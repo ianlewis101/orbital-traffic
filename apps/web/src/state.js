@@ -29,6 +29,13 @@ export const state = {
   // mode is readable directly off the device instead of requiring a
   // connected browser console. Cleared on the next successful sync.
   lastSyncError: null,
+  // { message, at } for the ordinary "both paths failed" case itself —
+  // syncFailed alone only tells the UI *that* it happened, not *why*, which
+  // left field reports like "live fetch unavailable every launch" with no
+  // way to tell a Worker outage apart from a CelesTrak block apart from an
+  // implausible-size response without a connected browser console. Cleared
+  // on the next successful sync.
+  lastSyncFailReason: null,
   capsulesData: null,
   capsulesTime: null,
   // Launch chains ("Starlink trains") currently detectable in the catalog,
