@@ -308,6 +308,22 @@ const TLE_KV_KEY = "tle";
 const TLE_KV_EXPIRATION_TTL = 30 * 60; // 30 minutes
 
 /**
+ * A build that's drastically smaller than what's already cached is worse
+ * than just leaving the last good catalog in place — the per-group cache
+ * above (readGroupCache/writeGroupCache) covers the ordinary case of a
+ * single group being stale or briefly failing, but a cold KV store, a wider
+ * CelesTrak outage, or a bug in the build path could still merge down to a
+ * handful of records. Never on ordinary single-group flakiness, which the
+ * per-group cache already absorbs before it ever reaches this merge. Mirrors
+ * the client's own isPlausibleCatalog() guard (apps/web/src/data/live.js)
+ * against the exact same failure mode, just on the write side instead of
+ * the read side.
+ */
+function isPlausibleTLEBuild(newLen, existingLen) {
+  return newLen > 0 && newLen >= existingLen / 2;
+}
+
+/**
  * Rebuild the merged TLE catalog and store it in TLE_CACHE (Workers KV) —
  * called from scheduled() on a cron, so real user requests almost never
  * pay buildTLERecords()'s ~25s cost. failedGroups rides along explicitly
@@ -315,10 +331,23 @@ const TLE_KV_EXPIRATION_TTL = 30 * 60; // 30 minutes
  * array-with-a-property shape buildTLERecords() returns for direct/
  * in-request use) so getTLERecords() below can still tell a partial merge
  * apart from a complete one after reading it back.
+ *
+ * Skips the write entirely (leaving whatever's already cached in place,
+ * still fresh until its own expirationTtl) when this run's catalog is
+ * implausibly small next to what's already there — see
+ * isPlausibleTLEBuild(). Without this, a build degraded enough to slip past
+ * the per-group cache (e.g. a cold KV store or a broader CelesTrak outage)
+ * would persist a severely undersized /tle for every visitor globally until
+ * a later run happens to recover, for up to TLE_KV_EXPIRATION_TTL.
  */
 export async function refreshTLECache(env) {
   const records = await buildTLERecords(env);
   if (!env?.TLE_CACHE) return records;
+  const existing = await env.TLE_CACHE.get(TLE_KV_KEY, "json").catch(() => null);
+  const existingLen = Array.isArray(existing?.recs) ? existing.recs.length : 0;
+  if (existingLen > 0 && !isPlausibleTLEBuild(records.length, existingLen)) {
+    return records;
+  }
   await env.TLE_CACHE.put(
     TLE_KV_KEY,
     JSON.stringify({
