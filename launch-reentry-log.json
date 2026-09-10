@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-09T10:59:24.517Z",
+  "updated": "2026-09-10T10:56:27.412Z",
   "events": [
     {
       "type": "launch",
@@ -349,6 +349,37 @@
       "id": "47818",
       "name": "STARLINK-2401",
       "cat": "starlink"
+    },
+    {
+      "type": "launch",
+      "at": "2026-09-10T10:56:27.393Z",
+      "ids": [
+        "100642"
+      ],
+      "count": 1,
+      "name": "CESARIO",
+      "cat": "other"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-10T10:56:27.393Z",
+      "id": "36459",
+      "name": "COSMOS 2251 DEB",
+      "cat": "debris"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-10T10:56:27.393Z",
+      "id": "37588",
+      "name": "FENGYUN 1C DEB",
+      "cat": "debris"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-10T10:56:27.393Z",
+      "id": "100271",
+      "name": "H-3 R/B",
+      "cat": "debris"
     }
   ]
 }
