@@ -313,11 +313,12 @@ const TLE_KV_EXPIRATION_TTL = 30 * 60; // 30 minutes
  * above (readGroupCache/writeGroupCache) covers the ordinary case of a
  * single group being stale or briefly failing, but a cold KV store, a wider
  * CelesTrak outage, or a bug in the build path could still merge down to a
- * handful of records. Never on ordinary single-group flakiness, which the
- * per-group cache already absorbs before it ever reaches this merge. Mirrors
- * the client's own isPlausibleCatalog() guard (apps/web/src/data/live.js)
- * against the exact same failure mode, just on the write side instead of
- * the read side.
+ * handful of records. This never fires on ordinary single-group flakiness —
+ * the per-group cache absorbs that before it ever reaches this merge — so a
+ * build that lands here under half size means most groups failed at once
+ * with no usable cached copy to fall back on. Mirrors the client's own
+ * isPlausibleCatalog() guard (apps/web/src/data/live.js) against the exact
+ * same failure mode, just on the write side instead of the read side.
  */
 function isPlausibleTLEBuild(newLen, existingLen) {
   return newLen > 0 && newLen >= existingLen / 2;
@@ -346,6 +347,18 @@ export async function refreshTLECache(env) {
   const existing = await env.TLE_CACHE.get(TLE_KV_KEY, "json").catch(() => null);
   const existingLen = Array.isArray(existing?.recs) ? existing.recs.length : 0;
   if (existingLen > 0 && !isPlausibleTLEBuild(records.length, existingLen)) {
+    // The only event in this path with no other diagnostic. /tle keeps
+    // serving the cached catalog, so X-TLE-Records, X-TLE-Failed-Groups and
+    // X-TLE-Stale-Groups all still describe the *previous* healthy build and
+    // look entirely fine; only X-TLE-Built-At quietly stops advancing, and
+    // you have to already suspect this to go looking. Surfaces in Workers
+    // Logs ([observability] in wrangler.toml).
+    console.warn(
+      `refreshTLECache: SKIPPED KV write — built ${records.length} records vs ${existingLen} cached ` +
+        `(failed: ${records.failedGroupNames?.join(", ") || "none"}; ` +
+        `stale: ${records.staleGroupNames?.join(", ") || "none"}) ` +
+        `— keeping the last good catalog until it expires.`
+    );
     return records;
   }
   await env.TLE_CACHE.put(
