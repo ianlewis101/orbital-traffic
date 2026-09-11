@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-11T05:32:59.106Z",
+  "updated": "2026-09-11T10:27:20.404Z",
   "capsules": {
     "67796": {
       "name": "CREW DRAGON 12",
@@ -58,7 +58,7 @@
       "phase": "docked",
       "stationKey": "css",
       "since": "2026-07-10T20:18:26.588Z",
-      "distanceKm": 0,
+      "distanceKm": 0.3,
       "altitudeKm": 397.6,
       "inclinationDeg": 41.468,
       "l1": "1 69049U 26102A   26253.93522150  .00017370  00000+0  21407-3 0  9998",
@@ -71,7 +71,7 @@
       "phase": "docked",
       "stationKey": "css",
       "since": "2026-07-03T10:34:14.509Z",
-      "distanceKm": 0,
+      "distanceKm": 0.3,
       "altitudeKm": 397.6,
       "inclinationDeg": 41.468,
       "l1": "1 69180U 26113A   26253.93522150  .00017370  00000+0  21407-3 0  9996",
