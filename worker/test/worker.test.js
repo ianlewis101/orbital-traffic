@@ -873,7 +873,10 @@ describe("TLE_CACHE (Workers KV warm cache)", () => {
       return Promise.resolve(textResponse("")); // classifies as "invalid" — no CSV header
     });
     const healthyRecs = Array.from({ length: 100 }, (_, i) => ({ name: "SAT " + i, cat: "other" }));
-    const kv = stubGroupKv({ tle: { recs: healthyRecs, failedGroups: 0, builtAt: 1 } });
+    const kv = stubGroupKv(
+      { tle: { recs: healthyRecs, failedGroups: 0, builtAt: 1 } },
+      { tle: { len: 100 } }
+    );
 
     await refreshTLECache({ TLE_CACHE: kv });
 
@@ -886,7 +889,10 @@ describe("TLE_CACHE (Workers KV warm cache)", () => {
       if (url.includes("GROUP=stations")) return Promise.resolve(textResponse(ISS_GP));
       return Promise.resolve(textResponse(""));
     });
-    const kv = stubGroupKv({ tle: { recs: [{ name: "X", cat: "other" }], failedGroups: 12, builtAt: 1 } });
+    const kv = stubGroupKv(
+      { tle: { recs: [{ name: "X", cat: "other" }], failedGroups: 12, builtAt: 1 } },
+      { tle: { len: 1 } }
+    );
 
     await refreshTLECache({ TLE_CACHE: kv });
 
@@ -897,6 +903,59 @@ describe("TLE_CACHE (Workers KV warm cache)", () => {
     fetch.mockImplementation(() => Promise.resolve(textResponse(GP_HEADER)));
     const kv = stubGroupKv(); // empty — first-ever run
     await refreshTLECache({ TLE_CACHE: kv });
+    expect(kv.put.mock.calls.some(([key]) => key === "tle")).toBe(true);
+  });
+
+  it("refreshTLECache measures the cached catalog from metadata, never by reading it back", async () => {
+    // The regression this guards: reading the length with
+    // get(TLE_KV_KEY, "json") pulled the whole ~3.8 MB catalog back and
+    // parsed it on every cron run, inside scheduled()'s CPU budget, purely
+    // to reach `.recs.length`.
+    fetch.mockImplementation((url) => {
+      if (url.includes("GROUP=stations")) return Promise.resolve(textResponse(ISS_GP));
+      return Promise.resolve(textResponse(""));
+    });
+    const kv = stubGroupKv(
+      { tle: { recs: [{ name: "X", cat: "other" }], failedGroups: 12, builtAt: 1 } },
+      { tle: { len: 1 } }
+    );
+
+    await refreshTLECache({ TLE_CACHE: kv });
+
+    expect(kv.list).toHaveBeenCalled();
+    expect(kv.get.mock.calls.some(([key]) => key === "tle")).toBe(false);
+    // ...and the write re-arms the next run's cheap read.
+    expect(kv._meta("tle")).toEqual({ len: 1 });
+  });
+
+  it("refreshTLECache writes through an entry stored before the length metadata existed", async () => {
+    // One-time migration after this ships: the existing entry carries no
+    // metadata, so there's no count to compare against and the guard stands
+    // aside — even though this build is far smaller than what's cached.
+    // That trade is deliberate (see cachedTLELength): the alternative is
+    // falling back to the expensive read that may be starving the cron in
+    // the first place, which would never write the metadata that ends it.
+    fetch.mockImplementation((url) => {
+      if (url.includes("GROUP=stations")) return Promise.resolve(textResponse(ISS_GP));
+      return Promise.resolve(textResponse(""));
+    });
+    const healthyRecs = Array.from({ length: 100 }, (_, i) => ({ name: "SAT " + i, cat: "other" }));
+    const kv = stubGroupKv({ tle: { recs: healthyRecs, failedGroups: 0, builtAt: 1 } }); // no metadata
+
+    await refreshTLECache({ TLE_CACHE: kv });
+
+    expect(kv.put.mock.calls.some(([key]) => key === "tle")).toBe(true);
+    expect(kv._meta("tle")).toEqual({ len: 1 }); // every later run now reads this
+  });
+
+  it("refreshTLECache writes through rather than throwing when the namespace can't be listed", async () => {
+    fetch.mockImplementation(() => Promise.resolve(textResponse(GP_HEADER)));
+    const kv = stubGroupKv();
+    kv.list = vi.fn(async () => {
+      throw new Error("KV unavailable");
+    });
+
+    await expect(refreshTLECache({ TLE_CACHE: kv })).resolves.toBeInstanceOf(Array);
     expect(kv.put.mock.calls.some(([key]) => key === "tle")).toBe(true);
   });
 
@@ -952,19 +1011,31 @@ describe("TLE_CACHE (Workers KV warm cache)", () => {
  * re-asking for 13 groups whose elements only change every few hours, that
  * reply was the common case, not an edge one.
  */
-function stubGroupKv(seed = {}) {
+function stubGroupKv(seed = {}, meta = {}) {
   const store = new Map(Object.entries(seed).map(([k, v]) => [k, JSON.stringify(v)]));
+  const metaStore = new Map(Object.entries(meta));
   return {
     get: vi.fn(async (key, type) => {
       const raw = store.get(key);
       if (raw === undefined) return null;
       return type === "json" ? JSON.parse(raw) : raw;
     }),
-    put: vi.fn(async (key, value) => {
+    put: vi.fn(async (key, value, opts) => {
       store.set(key, value);
+      if (opts?.metadata !== undefined) metaStore.set(key, opts.metadata);
     }),
+    // Mirrors the real binding's key shape: list() hands back each key's
+    // metadata and never its value. That asymmetry is the entire reason
+    // cachedTLELength() uses it instead of get().
+    list: vi.fn(async ({ prefix = "" } = {}) => ({
+      keys: [...store.keys()]
+        .filter((k) => k.startsWith(prefix))
+        .map((name) => ({ name, metadata: metaStore.get(name) ?? null })),
+      list_complete: true,
+    })),
     _keys: () => [...store.keys()],
     _get: (key) => (store.has(key) ? JSON.parse(store.get(key)) : null),
+    _meta: (key) => metaStore.get(key) ?? null,
   };
 }
 
