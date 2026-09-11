@@ -862,6 +862,44 @@ describe("TLE_CACHE (Workers KV warm cache)", () => {
     await expect(refreshTLECache({})).resolves.toBeInstanceOf(Array);
   });
 
+  it("refreshTLECache never overwrites a healthy cache with an implausibly small build", async () => {
+    // Simulates a build degraded enough to slip past the per-group cache
+    // entirely (e.g. a cold KV store combined with a wider CelesTrak outage)
+    // — only "stations" comes back, drastically smaller than the 100
+    // records already cached under "tle". No group:* entries are seeded, so
+    // every group needs a fresh fetch.
+    fetch.mockImplementation((url) => {
+      if (url.includes("GROUP=stations")) return Promise.resolve(textResponse(ISS_GP));
+      return Promise.resolve(textResponse("")); // classifies as "invalid" — no CSV header
+    });
+    const healthyRecs = Array.from({ length: 100 }, (_, i) => ({ name: "SAT " + i, cat: "other" }));
+    const kv = stubGroupKv({ tle: { recs: healthyRecs, failedGroups: 0, builtAt: 1 } });
+
+    await refreshTLECache({ TLE_CACHE: kv });
+
+    expect(kv.put.mock.calls.some(([key]) => key === "tle")).toBe(false);
+    expect(kv._get("tle").recs).toEqual(healthyRecs); // untouched
+  });
+
+  it("refreshTLECache still writes a recovering build that's no longer implausibly small", async () => {
+    fetch.mockImplementation((url) => {
+      if (url.includes("GROUP=stations")) return Promise.resolve(textResponse(ISS_GP));
+      return Promise.resolve(textResponse(""));
+    });
+    const kv = stubGroupKv({ tle: { recs: [{ name: "X", cat: "other" }], failedGroups: 12, builtAt: 1 } });
+
+    await refreshTLECache({ TLE_CACHE: kv });
+
+    expect(kv.put.mock.calls.some(([key]) => key === "tle")).toBe(true);
+  });
+
+  it("refreshTLECache writes through when there's nothing cached yet to compare against", async () => {
+    fetch.mockImplementation(() => Promise.resolve(textResponse(GP_HEADER)));
+    const kv = stubGroupKv(); // empty — first-ever run
+    await refreshTLECache({ TLE_CACHE: kv });
+    expect(kv.put.mock.calls.some(([key]) => key === "tle")).toBe(true);
+  });
+
   it("the /tle route serves the KV-warmed catalog without building live", async () => {
     const kv = stubKv(
       JSON.stringify({ recs: [{ name: "ISS (ZARYA)", cat: "stations" }], failedGroups: 0 })
