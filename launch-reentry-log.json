@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-12T10:21:46.254Z",
+  "updated": "2026-09-13T11:23:13.830Z",
   "events": [
     {
       "type": "launch",
@@ -516,6 +516,37 @@
       "id": "62621",
       "name": "FLOCK 4G-13",
       "cat": "science"
+    },
+    {
+      "type": "launch",
+      "at": "2026-09-13T11:23:13.809Z",
+      "ids": [
+        "100682"
+      ],
+      "count": 1,
+      "name": "GLOBAL-35",
+      "cat": "other"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-13T11:23:13.809Z",
+      "id": "38131",
+      "name": "FENGYUN 1C DEB",
+      "cat": "debris"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-13T11:23:13.809Z",
+      "id": "60051",
+      "name": "STARLINK-31811",
+      "cat": "starlink"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-13T11:23:13.809Z",
+      "id": "53323",
+      "name": "COSMOS 2558",
+      "cat": "other"
     }
   ]
 }
