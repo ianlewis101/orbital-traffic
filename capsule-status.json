@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-13T22:47:22.856Z",
+  "updated": "2026-09-14T00:36:35.777Z",
   "capsules": {
     "67796": {
       "name": "CREW DRAGON 12",
@@ -8,7 +8,7 @@
       "phase": "docked",
       "stationKey": "iss",
       "since": "2026-08-29T10:40:04.605Z",
-      "distanceKm": 0,
+      "distanceKm": 0.5,
       "altitudeKm": 427,
       "inclinationDeg": 51.631,
       "l1": "1 67796U 26031A   26256.36908747  .00004787  00000+0  94684-4 0  9992",
@@ -32,7 +32,7 @@
       "phase": "docked",
       "stationKey": "iss",
       "since": "2026-08-29T10:40:04.605Z",
-      "distanceKm": 0,
+      "distanceKm": 0.5,
       "altitudeKm": 427,
       "inclinationDeg": 51.631,
       "l1": "1 68689U 26079A   26256.36908747  .00004787  00000+0  94684-4 0  9996",
@@ -45,7 +45,7 @@
       "phase": "docked",
       "stationKey": "iss",
       "since": "2026-08-29T10:40:04.605Z",
-      "distanceKm": 0,
+      "distanceKm": 0.5,
       "altitudeKm": 427,
       "inclinationDeg": 51.631,
       "l1": "1 68837U 26093A   26256.36908747  .00004787  00000+0  94684-4 0  9997",
@@ -84,7 +84,7 @@
       "phase": "docked",
       "stationKey": "iss",
       "since": "2026-08-29T10:40:04.605Z",
-      "distanceKm": 0,
+      "distanceKm": 0.5,
       "altitudeKm": 427,
       "inclinationDeg": 51.631,
       "l1": "1 A0057U 26162A   26256.36908747  .00004787  00000+0  94684-4 0  9994",
