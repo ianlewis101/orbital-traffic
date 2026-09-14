@@ -10,6 +10,7 @@ side — two sized for the App Store, one for Instagram:
 | `composed/` | Full-bleed — the app screen runs to the canvas edges, no phone | `render.mjs` |
 | `composed-device/` | The same frames inside a realistic iPhone mockup | `render-device.mjs` |
 | `composed-instagram/` | The same frames re-laid-out for an Instagram 4:5 feed carousel, 1080×1350 | `render-instagram.mjs` |
+| `instagram-template/` | The Instagram background on its own, no content — plates to build future posts on | `render-template.mjs` |
 
 All three read their shot list, copy and figures from `tooling/shots.mjs`, and
 all three load `tooling/poster.css` for the background and type. Copy is defined once, in
