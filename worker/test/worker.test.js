@@ -874,11 +874,14 @@ describe("TLE_CACHE (Workers KV warm cache)", () => {
     });
     const healthyRecs = Array.from({ length: 100 }, (_, i) => ({ name: "SAT " + i, cat: "other" }));
     const kv = stubGroupKv({ tle: { recs: healthyRecs, failedGroups: 0, builtAt: 1 } });
+    // Skipping warns by design (covered below); keep it out of test output.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     await refreshTLECache({ TLE_CACHE: kv });
 
     expect(kv.put.mock.calls.some(([key]) => key === "tle")).toBe(false);
     expect(kv._get("tle").recs).toEqual(healthyRecs); // untouched
+    warn.mockRestore();
   });
 
   it("refreshTLECache still writes a recovering build that's no longer implausibly small", async () => {
@@ -891,6 +894,35 @@ describe("TLE_CACHE (Workers KV warm cache)", () => {
     await refreshTLECache({ TLE_CACHE: kv });
 
     expect(kv.put.mock.calls.some(([key]) => key === "tle")).toBe(true);
+  });
+
+  it("refreshTLECache logs a warning naming the sizes when it skips the write", async () => {
+    // The skip is otherwise invisible: /tle keeps serving the cached
+    // catalog, so every X-TLE-* header still describes the previous healthy
+    // build. This warning is the only signal it happened.
+    fetch.mockImplementation((url) => {
+      if (url.includes("GROUP=stations")) return Promise.resolve(textResponse(ISS_GP));
+      return Promise.resolve(textResponse(""));
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const healthyRecs = Array.from({ length: 100 }, (_, i) => ({ name: "SAT " + i, cat: "other" }));
+    const kv = stubGroupKv({ tle: { recs: healthyRecs, failedGroups: 0, builtAt: 1 } });
+
+    await refreshTLECache({ TLE_CACHE: kv });
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    const msg = warn.mock.calls[0][0];
+    expect(msg).toContain("SKIPPED KV write");
+    expect(msg).toContain("vs 100 cached"); // the size it declined to overwrite
+    warn.mockRestore();
+  });
+
+  it("refreshTLECache stays quiet on an ordinary healthy write", async () => {
+    fetch.mockImplementation(() => Promise.resolve(textResponse(GP_HEADER)));
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    await refreshTLECache({ TLE_CACHE: stubGroupKv() });
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   it("refreshTLECache writes through when there's nothing cached yet to compare against", async () => {
