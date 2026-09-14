@@ -340,11 +340,42 @@ function isPlausibleTLEBuild(newLen, existingLen) {
  * would persist a severely undersized /tle for every visitor globally until
  * a later run happens to recover, for up to TLE_KV_EXPIRATION_TTL.
  */
+/**
+ * How many records the cached catalog holds, read WITHOUT pulling the
+ * catalog itself back out of KV.
+ *
+ * The merged value is ~3.8 MB. Reading it with get(TLE_KV_KEY, "json")
+ * just to reach `.recs.length` parses all of it on every cron run — inside
+ * scheduled()'s CPU budget, and on top of buildTLERecords() already
+ * parsing 13 CelesTrak group responses and classifying ~19k objects.
+ * list() returns each key's metadata and never its value, so the guard's
+ * cost stops scaling with the size of the thing it's guarding.
+ *
+ * Returns 0 whenever the count can't be established: no entry at all, an
+ * entry written before this metadata existed, or an unreadable namespace.
+ * 0 means "nothing to protect", so refreshTLECache() writes through and
+ * that write attaches the metadata every later run reads. The one-time
+ * write-through after this ships is deliberate — falling back to the full
+ * get() here would re-run the exact read this exists to avoid, and if that
+ * read is what's starving the cron, the metadata would never be written
+ * and the fallback would deadlock on itself.
+ */
+async function cachedTLELength(kv) {
+  try {
+    const { keys } = await kv.list({ prefix: TLE_KV_KEY });
+    const len = keys?.find((k) => k.name === TLE_KV_KEY)?.metadata?.len;
+    return Number.isInteger(len) && len > 0 ? len : 0;
+  } catch {
+    // Unreadable namespace — same posture as every other fallback here:
+    // degrade to "write through", never throw out of the cron.
+    return 0;
+  }
+}
+
 export async function refreshTLECache(env) {
   const records = await buildTLERecords(env);
   if (!env?.TLE_CACHE) return records;
-  const existing = await env.TLE_CACHE.get(TLE_KV_KEY, "json").catch(() => null);
-  const existingLen = Array.isArray(existing?.recs) ? existing.recs.length : 0;
+  const existingLen = await cachedTLELength(env.TLE_CACHE);
   if (existingLen > 0 && !isPlausibleTLEBuild(records.length, existingLen)) {
     return records;
   }
@@ -357,7 +388,9 @@ export async function refreshTLECache(env) {
       staleGroupNames: records.staleGroupNames || [],
       builtAt: Date.now(),
     }),
-    { expirationTtl: TLE_KV_EXPIRATION_TTL }
+    // `len` is what cachedTLELength() reads back on the next run; KV caps
+    // metadata at 1 KB, which one integer is in no danger of reaching.
+    { expirationTtl: TLE_KV_EXPIRATION_TTL, metadata: { len: records.length } }
   );
   return records;
 }
