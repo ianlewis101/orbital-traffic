@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-13T11:23:13.830Z",
+  "updated": "2026-09-14T12:15:23.843Z",
   "events": [
     {
       "type": "launch",
@@ -547,6 +547,20 @@
       "id": "53323",
       "name": "COSMOS 2558",
       "cat": "other"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-14T12:15:23.821Z",
+      "id": "47862",
+      "name": "STARLINK-2291",
+      "cat": "starlink"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-14T12:15:23.821Z",
+      "id": "53673",
+      "name": "STARLINK-4456",
+      "cat": "starlink"
     }
   ]
 }
