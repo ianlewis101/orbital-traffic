@@ -7,9 +7,9 @@
  * describe an unidentified payload is the same research that establishes what
  * it actually is. The conclusion was recorded in
  * apps/web/public/data/descriptions.json's "category" field and, until this
- * table existed, never read by anything — so ~860 individually-researched
- * objects stayed in "other", which state.js hides by default, along with the
- * descriptions written for them.
+ * table existed, never read by anything — so the objects stayed in "other",
+ * which state.js hides by default, along with the descriptions written for
+ * them.
  *
  * This file is DATA, not logic. Rule 2 still holds: categorize() in
  * classify.js remains the single classification entry point for every
@@ -21,22 +21,30 @@
  * Each ID's supporting research — mission type, operator, prose and the
  * curation note — lives in descriptions.json under the same key. Names are
  * deliberately NOT duplicated here: 98 of these objects have no catalog name
- * at all (bare designators like "2021-050D"), which is also why this is an
- * ID table rather than a set of name patterns.
+ * at all (bare designators like "2021-050D"), which is also why this is an ID
+ * table rather than a set of name patterns.
  *
- * apps/web/test/reclassify-sync.test.js keeps this file and
- * descriptions.json's verdicts from drifting apart, and asserts every entry
- * below actually flips a real record — per CLAUDE.md, allowlist membership
- * alone does not guarantee a category change.
+ * Two sections, and the difference matters when reviewing a change:
  *
- * NOT included: 99 entries whose "category" names a category that does not
- * exist ("commercial reconnaissance", "military reconnaissance"). Some are
- * genuine Earth-observation payloads; others are vocabulary drift that
- * contradicts their own "t" field (QIANFAN-19..36 are tagged
- * "commercial reconnaissance" while their own mission type reads "Broadband
- * communications", the same constellation QIANFAN-1..18 correctly put in
- * "communications"). Resolving those needs a per-family decision, so they are
- * deliberately left in "other" rather than guessed at here.
+ *   DIRECT (860) — the recorded verdict already named a real category.
+ *   Applied mechanically, no interpretation.
+ *
+ *   RESOLVED (99) — the recorded verdict named a category that does not
+ *   exist ("commercial reconnaissance" 58, "military reconnaissance" 41).
+ *   Each was read against its own description and mission type and placed by
+ *   hand, so these are judgement calls rather than transcription. Only 18 of
+ *   the 99 turned out to be genuinely classified; the rest are named
+ *   commercial operators publishing what they do, or — for most of the
+ *   "military reconnaissance" set — university CubeSats from a single
+ *   commercial rideshare that appears to have been tagged as one block.
+ *   descriptions.json still says what it said; correcting it there (BRAD owns
+ *   that file) would let these move into DIRECT and shrink this section to
+ *   nothing.
+ *
+ * apps/web/test/reclassify-sync.test.js keeps this file and descriptions.json
+ * from drifting apart, and asserts every entry below actually flips a real
+ * record — per CLAUDE.md, allowlist membership alone does not guarantee a
+ * category change.
  */
 
 /** 620 objects researched as science. */
@@ -913,6 +921,155 @@ const COMMUNICATIONS = [
 /** 1 objects researched as geostationary. */
 const GEOSTATIONARY = ["26720"];
 
+/** 18 of the 99, resolved to classified. */
+const RESOLVED_CLASSIFIED = [
+  // Yaogan-43, second test batch (PLA). Their own "t" already reads
+  // "Reconnaissance (classified)".
+  "60745",
+  "60746",
+  "60747",
+  "60748",
+  "60749",
+  "60750",
+  // Chamran-1 — flown by the IRGC Aerospace Force.
+  "61072",
+  // Cosmos 2578, and Cosmos 2579 (Bars-M electro-optical cartography) —
+  // Russian Aerospace Forces.
+  "61180",
+  "61730",
+  // Unidentified sun-synchronous clusters 2024-173 and 2024-174, both
+  // recorded as "Unconfirmed (likely China)" with no disclosed payload —
+  // which is what this category is for.
+  "61229",
+  "61230",
+  "61231",
+  "61238",
+  "61239",
+  "61240",
+  "61241",
+  "61242",
+  // Gaofen-12 05 — dual-use SAR, consistent with the three other Gaofen
+  // objects already placed in "classified" by direct verdict.
+  "61571",
+];
+
+/** 37 of the 99, resolved to communications. */
+const RESOLVED_COMMUNICATIONS = [
+  // Qianfan ("Thousand Sails") 19-36 — SSST's broadband megaconstellation.
+  // Their own "t" reads "Broadband communications", and Qianfan 1-18 sit in
+  // "communications" by direct verdict: this is one constellation, and the
+  // split between the two is where the bad vocabulary first showed up.
+  "61552",
+  "61553",
+  "61554",
+  "61555",
+  "61556",
+  "61557",
+  "61558",
+  "61559",
+  "61560",
+  "61561",
+  "61562",
+  "61563",
+  "61564",
+  "61565",
+  "61566",
+  "61567",
+  "61568",
+  "61569",
+  // Tianqi 29-32 (Guodian Gaoke IoT relay) and Kinéis 3A-3E (French IoT) —
+  // same situation as Qianfan: earlier members of both constellations are
+  // already in "communications".
+  "61195",
+  "61196",
+  "61197",
+  "61198",
+  "61220",
+  "61221",
+  "61222",
+  "61223",
+  "61224",
+  // AST SpaceMobile BlueBird — direct-to-cell.
+  "61045",
+  "61046",
+  "61047",
+  "61048",
+  "61049",
+  // Sateliot (IoT), UM5-RIBAT (IoT/AIS/ADS-B), Sedna-1 (maritime AIS).
+  "60550",
+  "60552",
+  "60554",
+  "60580",
+  // ASRTU-1 — amateur radio; it carries the AMSAT OSCAR number AO-123.
+  "61781",
+];
+
+/** 44 of the 99, resolved to science. */
+const RESOLVED_SCIENCE = [
+  // Commercial Earth observation and SAR: HawkEye 360 (RF geolocation),
+  // Umbra, Capella, iQPS, Unseenlabs BRO, Kuva HyperField, Jilin-1 Kuanfu.
+  // Named operators publishing what they do — the opposite of the
+  // "operator officially undisclosed" that defines "classified".
+  "60540",
+  "60541",
+  "60542",
+  "60544",
+  "60545",
+  "60547",
+  "60551",
+  "60553",
+  "60562",
+  "60575",
+  "61189",
+  "61190",
+  "61191",
+  "61192",
+  "61193",
+  "61194",
+  // Civil science and technology payloads: the ESA/EUMETSAT Arctic Weather
+  // Satellite, NASA's PTD-4 (LISA-T) solar-array demo, PlanetiQ GNOMES-5
+  // radio occultation, D-Orbit's ION SCV-012 tug, Morocco's UM5-EOSAT and
+  // Australia's Kanyini.
+  "60543",
+  "60555",
+  "60556",
+  "60565",
+  "60573",
+  "60574",
+  // Tianping 3A-01/3B-01/3B-02 — radar cross-section calibration targets.
+  // The entries themselves say "rather than an imaging or reconnaissance
+  // spacecraft".
+  "61614",
+  "61615",
+  "61616",
+  // COSPAR 2024-199 — the Vostochny commercial rideshare of 4 Nov 2024.
+  // The whole cluster carried one "military reconnaissance" tag, but it is a
+  // GK Launch Services rideshare of university and institutional CubeSats:
+  // Altair (Moscow State University, astronomical observation), SamSat-
+  // Ionosphere (Samara University, ionospheric research), Polytech Universe
+  // 4/5, Hors 3/4 (IKI RAN), Vizard-Ion, RTU MIREA 1, SIT-HSE, Sitronics
+  // SIT-2086, Colibri-S, Kosar, plus the still-unidentified members.
+  "61744",
+  "61745",
+  "61746",
+  "61747",
+  "61749",
+  "61750",
+  "61751",
+  "61753",
+  "61754",
+  "61761",
+  "61763",
+  "61764",
+  "61768",
+  "61769",
+  "61775",
+  "61777",
+  "61779",
+  "61784",
+  "61785",
+];
+
 /**
  * id → category. Built from the grouped lists above so the data stays
  * readable and reviewable in category order while lookup stays O(1).
@@ -922,4 +1079,7 @@ export const CATEGORY_OVERRIDES = new Map([
   ...CLASSIFIED.map((id) => [id, "classified"]),
   ...COMMUNICATIONS.map((id) => [id, "communications"]),
   ...GEOSTATIONARY.map((id) => [id, "geostationary"]),
+  ...RESOLVED_CLASSIFIED.map((id) => [id, "classified"]),
+  ...RESOLVED_COMMUNICATIONS.map((id) => [id, "communications"]),
+  ...RESOLVED_SCIENCE.map((id) => [id, "science"]),
 ]);

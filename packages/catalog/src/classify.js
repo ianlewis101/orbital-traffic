@@ -477,7 +477,7 @@ export const CLASSIFIED_IDS = new Set([
  * The four *_IDS allowlists are checked next, before any name regex: they
  * are individually-verified objects with no safe shared pattern, so ID
  * lookup is the only reliable match. reclassify.js's CATEGORY_OVERRIDES is
- * the same idea at scale — 860 objects researched one at a time while their
+ * the same idea at scale — 959 objects researched one at a time while their
  * descriptions were written — and is checked immediately after them, still
  * ahead of the name regexes: a verdict reached by researching one specific
  * object beats a pattern that merely matches its name.

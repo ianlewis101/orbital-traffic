@@ -117,12 +117,39 @@ describe("researched category verdicts reach categorize()", () => {
   });
 });
 
-describe("unresolved verdict vocabulary", () => {
+describe("verdicts whose recorded category does not exist", () => {
+  /** Entries whose "category" names something outside CATEGORY_IDS. */
+  const invalidEntries = Object.entries(descs).filter(
+    ([, e]) => e.category && !VALID.has(e.category)
+  );
+
+  it("resolves every one of them rather than leaving it in other", () => {
+    // These were placed by hand (reclassify.js's RESOLVED section) after
+    // reading each description. The failure this guards against is a new
+    // batch arriving with the same bad vocabulary and silently staying
+    // hidden in "other" — which is exactly how the original 860 went
+    // unnoticed for as long as they did.
+    const unresolved = invalidEntries
+      .filter(([id]) => live.has(id) && !CATEGORY_OVERRIDES.has(id))
+      .map(([id, e]) => ({ id, recorded: e.category, got: liveCat(id) }));
+    expect(unresolved).toEqual([]);
+  });
+
+  it("does not sweep them all into classified", () => {
+    // The recorded vocabulary ("commercial reconnaissance", "military
+    // reconnaissance") reads as though it belongs there, but only 18 of the
+    // 99 are genuinely undisclosed-operator payloads. The rest are named
+    // commercial operators, or university CubeSats from one rideshare
+    // (COSPAR 2024-199) that appears to have been tagged as a block. If a
+    // future edit collapses them into one category, this catches it.
+    const resolved = invalidEntries
+      .filter(([id]) => CATEGORY_OVERRIDES.has(id))
+      .map(([id]) => CATEGORY_OVERRIDES.get(id));
+    expect(new Set(resolved).size).toBeGreaterThan(1);
+  });
+
   it("still uses only the two known invalid category names", () => {
-    // 99 entries name a category that does not exist. They are deliberately
-    // left in "other" rather than guessed at (some are genuine Earth
-    // observation, some contradict their own "t" field). If a NEW invalid
-    // string appears, that is fresh drift worth catching here rather than
+    // A NEW invalid string is fresh drift, worth catching here rather than
     // discovering it as another silently-hidden object months later.
     const invalid = new Set();
     for (const e of Object.values(descs)) {
