@@ -31,9 +31,14 @@ import zlib from "node:zlib";
 import { CITY_LIGHTS } from "../apps/web/src/scene/cityLights.js";
 import { CATS } from "../apps/web/src/config.js";
 
+const argOf = (flag) => {
+  const i = process.argv.indexOf(flag);
+  return i > -1 ? process.argv[i + 1] : null;
+};
+
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PUB = join(ROOT, "apps/web/public");
-const OUT = join(ROOT, "design/social");
+const OUT = argOf("--out-dir") || join(ROOT, "design/social");
 
 // ---------------------------------------------------------------------------
 // Canvas + Facebook geometry
@@ -53,6 +58,19 @@ const SNAPSHOT = new Date("2026-09-15T17:25:00Z");
 // Marketing object count, rounded down to the thousand — the same figure
 // CLAUDE.md's OBJECT COUNT convention maintains everywhere else.
 const OBJECT_COUNT_LABEL = "19,000+";
+
+// Headline. Two lines, the second in accent teal — the same split and accent
+// treatment as welcome.html's <h1>, which carries this exact wording, as do
+// the page <title> and og:title. Changing it here alone makes the cover and
+// the link preview say different things; change welcome.html with it.
+//
+// Budget: ~22 characters per line at this size. Past that, line 1 runs into
+// the globe's left limb at about x = 960, line 2 at about x = 890.
+//
+// Override for trying alternatives without editing the file:
+//   npm run social:cover -- --headline "Space is busier|than you think."
+//   npm run social:cover -- --headline "..." --out-dir /tmp/variants
+const HEADLINE = (argOf("--headline") || "See what's above you,|right now.").split("|");
 
 // Camera: the earth-fixed point the globe is centred on. Mid-Atlantic puts the
 // Americas on the lit limb and Europe/Africa into the night side, where the
@@ -83,6 +101,9 @@ const rnd = (() => {
 })();
 
 const f = (n, d = 1) => Number(n.toFixed(d));
+
+/** Headline text is the one caller-supplied string in this SVG. */
+const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 /** Greenwich mean sidereal time, degrees. */
 function gmstDeg(date) {
@@ -441,9 +462,9 @@ function buildSvg() {
       letter-spacing="5.4" fill="#737a90">LIVE SPACE SITUATIONAL DISPLAY</text>
 
     <text x="${TX}" y="304" font-family="Bricolage Grotesque" font-weight="700" font-size="35"
-      fill="#eef1f8">See what's above you,</text>
+      fill="#eef1f8">${esc(HEADLINE[0] || "")}</text>
     <text x="${TX}" y="346" font-family="Bricolage Grotesque" font-weight="700" font-size="35"
-      fill="#5eead4">right now.</text>
+      fill="#5eead4">${esc(HEADLINE[1] || "")}</text>
 
     <g font-family="Oxanium" font-weight="600" font-size="13.5" letter-spacing="1.9"
        stroke="#07080f" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke">

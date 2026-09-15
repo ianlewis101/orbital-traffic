@@ -116,7 +116,36 @@ In `tools/build-social-cover.mjs`:
 
 *82 characters.*
 
+### Cover headline
+
+The cover currently carries the same two lines as `welcome.html`'s `<h1>`,
+which are also the page `<title>` and `og:title` — so the cover and a shared
+link say the same thing. **Changing it here alone breaks that**; change
+`welcome.html` in the same pass if the pairing matters.
+
+Alternatives that fit the two-line width budget, rendered and checked in place:
+
+| | Headline | Angle |
+|---|---|---|
+| **current** | See what's above you, / right now. | matches the landing page |
+| **A** | Space is busier / than you think. | curiosity; the dot field next to it proves the claim |
+| **B** | 19,000 objects are / above you right now. | scale — but repeats the stat line directly beneath it |
+| **C** | Earth has traffic. / Watch it move. | explains what the product name means |
+| **D** | Look up. / Then look closer. | invitation; vaguest about what the thing is |
+| **E** | What's over your head / right now? | question form, close cousin of the current line |
+| **F** | Real spacecraft. / Real time. | echoes the App Store description's closing line |
+
+To see any of them without touching the file:
+
+```bash
+npm run social:cover -- --headline "Space is busier|than you think." --out-dir /tmp/v
+```
+
 ### About / description (keep under 255 characters)
+
+> A real-time 3D tracker for everything in orbit: 19,000+ satellites, stations, capsules, cargo freighters, debris and 77 near-Earth asteroids. Positions are computed live on your device — no account, no ads. Free on the App Store and at orbitaltraffic.app
+
+*254 characters.* If the App Store mention isn't wanted, this leaves more room:
 
 > A real-time 3D tracker for everything in orbit: 19,000+ satellites, stations, capsules, cargo freighters, debris and 77 near-Earth asteroids. Positions are computed live on your device — no account, no ads, works offline. orbitaltraffic.app
 
@@ -139,8 +168,9 @@ In `tools/build-social-cover.mjs`:
 > aboard the station right now.
 >
 > Every position is computed on your own device from current orbital elements
-> — no account, no ads, nothing collected. Free in any browser, and installable
-> to your home screen.
+> — no account, no ads, nothing collected. Free on the App Store for iPhone and
+> iPad, free in any browser, and installable straight to your home screen on
+> Android and desktop.
 >
 > orbitaltraffic.app
 
@@ -170,10 +200,13 @@ any of these:
   Data Not Collected answer on the App Store privacy questionnaire: location
   is read on demand and used only on-device, saved lists never leave the
   device, and there is no analytics, advertising or account system.
-- **No App Store claim.** A build was submitted for review on 2026-08-28 and
-  its disposition isn't tracked in the repo — check App Store Connect before
-  adding "download it on the App Store" anywhere. The web app and the
-  installable PWA are safe to promote today.
+- **The App Store claim is safe.** The iOS app is live:
+  `apps/web/welcome.html` links the real listing
+  (`apps.apple.com/us/app/orbital-traffic/id6788125984`, added in 9758ae6) and
+  says "Now on the App Store" in both CTAs and the JSON-LD. Note that
+  `docs/audit-status.md` still only records the 2026-08-28 submission with no
+  disposition — welcome.html is the surface that actually knows, so check it
+  rather than the audit doc when in doubt.
 - **No superlatives.** "The most complete view of Earth orbit" and similar
   can't be substantiated — every serious tracker reads the same CelesTrak
   catalogue.
