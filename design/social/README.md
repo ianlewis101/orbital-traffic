@@ -110,7 +110,11 @@ In `tools/build-social-cover.mjs`:
 
 > See what's above you, right now — 19,000+ satellites and spacecraft on a live 3D globe.
 
-*87 characters.* Alternative, if a flatter statement is wanted:
+*87 characters.* If the bio should pick up the cover's headline instead:
+
+> Earth has traffic — 19,000+ satellites, stations and spacecraft on a live 3D globe.
+
+*83 characters.* Or, flatter, saying only what the thing is:
 
 > A live 3D map of everything in orbit: 19,000+ satellites, stations and spacecraft.
 
@@ -118,24 +122,30 @@ In `tools/build-social-cover.mjs`:
 
 ### Cover headline
 
-The cover currently carries the same two lines as `welcome.html`'s `<h1>`,
-which are also the page `<title>` and `og:title` — so the cover and a shared
-link say the same thing. **Changing it here alone breaks that**; change
-`welcome.html` in the same pass if the pairing matters.
+The cover reads **"Earth has traffic. / Watch it move."**
 
-Alternatives that fit the two-line width budget, rendered and checked in place:
+This deliberately does *not* match `welcome.html`, whose `<h1>` — and its
+`<title>` and `og:title` with it — say "See what's above you. Right now." The
+two surfaces meet different readers: a social page is found cold by people who
+have never heard of this and for whom "Orbital Traffic" doesn't explain itself,
+while the landing page is read by someone who has already clicked. If the two
+are ever meant to match again, those three places in `welcome.html` are what
+change.
+
+Alternatives that fit the two-line width budget, all rendered and checked in
+place before choosing:
 
 | | Headline | Angle |
 |---|---|---|
-| **current** | See what's above you, / right now. | matches the landing page |
-| **A** | Space is busier / than you think. | curiosity; the dot field next to it proves the claim |
-| **B** | 19,000 objects are / above you right now. | scale — but repeats the stat line directly beneath it |
-| **C** | Earth has traffic. / Watch it move. | explains what the product name means |
-| **D** | Look up. / Then look closer. | invitation; vaguest about what the thing is |
-| **E** | What's over your head / right now? | question form, close cousin of the current line |
-| **F** | Real spacecraft. / Real time. | echoes the App Store description's closing line |
+| **chosen** | Earth has traffic. / Watch it move. | explains what the product name means |
+| | See what's above you, / right now. | matches the landing page |
+| | Space is busier / than you think. | curiosity; the dot field next to it proves the claim |
+| | 19,000 objects are / above you right now. | scale — but repeats the stat line directly beneath it |
+| | Look up. / Then look closer. | invitation; vaguest about what the thing is |
+| | What's over your head / right now? | question form, close cousin of the landing-page line |
+| | Real spacecraft. / Real time. | echoes the App Store description's closing line |
 
-To see any of them without touching the file:
+To try another without touching the file:
 
 ```bash
 npm run social:cover -- --headline "Space is busier|than you think." --out-dir /tmp/v

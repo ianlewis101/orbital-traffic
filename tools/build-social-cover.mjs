@@ -60,9 +60,14 @@ const SNAPSHOT = new Date("2026-09-15T17:25:00Z");
 const OBJECT_COUNT_LABEL = "19,000+";
 
 // Headline. Two lines, the second in accent teal — the same split and accent
-// treatment as welcome.html's <h1>, which carries this exact wording, as do
-// the page <title> and og:title. Changing it here alone makes the cover and
-// the link preview say different things; change welcome.html with it.
+// treatment as welcome.html's <h1>.
+//
+// The wording deliberately differs from welcome.html's, which is also the page
+// <title> and og:title ("See what's above you. Right now."). A social page is
+// met cold by people who have never heard of this, and "Orbital Traffic" does
+// not explain itself; the landing page is read by someone who has already
+// clicked. If the two are ever meant to match again, welcome.html's <h1>,
+// <title> and og:title are the three places to change.
 //
 // Budget: ~22 characters per line at this size. Past that, line 1 runs into
 // the globe's left limb at about x = 960, line 2 at about x = 890.
@@ -70,7 +75,7 @@ const OBJECT_COUNT_LABEL = "19,000+";
 // Override for trying alternatives without editing the file:
 //   npm run social:cover -- --headline "Space is busier|than you think."
 //   npm run social:cover -- --headline "..." --out-dir /tmp/variants
-const HEADLINE = (argOf("--headline") || "See what's above you,|right now.").split("|");
+const HEADLINE = (argOf("--headline") || "Earth has traffic.|Watch it move.").split("|");
 
 // Camera: the earth-fixed point the globe is centred on. Mid-Atlantic puts the
 // Americas on the lit limb and Europe/Africa into the night side, where the
