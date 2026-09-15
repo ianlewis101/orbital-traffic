@@ -161,7 +161,29 @@
   #search-toggle svg{display:block}
 
   /* ---------- legend ---------- */
-  #leftstack{position:fixed;left:24px;bottom:24px;width:214px;display:flex;flex-direction:column;gap:12px;animation:rise .8s both .2s}
+  /* touch-action:manipulation is load-bearing, not decoration: it is the only
+     thing stopping iOS Safari/WKWebView from reading two quick taps in this
+     stack as a double-tap-to-zoom and scaling the whole page to fit whichever
+     plate was tapped (reported 2026-09-15 with a screen recording — tapping
+     down the Orbit Classes list at a normal pace zoomed the viewport, and a
+     second double-tap only sometimes restored it, because a double-tap landing
+     on a different element re-zooms to that one instead of zooming out).
+     The rows are what make it so easy to hit: .cat measures ~94x17 on mobile
+     (see the density note in the mobile block below), so two ADJACENT rows'
+     centres sit well inside Safari's double-tap slop radius — the user never
+     has to tap the same row twice to trigger it.
+     It goes on the container because the effective touch-action for a touch is
+     the intersection of the hit element's value and its ancestors', so one
+     declaration here covers every row, every collapsible .ph header, and the
+     dead padding/gaps between them — a tap landing on a gap would otherwise
+     re-open the gesture. Individual controls still carry their own copy, as
+     the rest of the app's tappable elements do.
+     This is deliberately NOT a viewport `user-scalable=no`/`maximum-scale=1`:
+     `manipulation` is `pan-x pan-y pinch-zoom`, so deliberate pinch-zoom (and
+     with it the body-scroll and the legend body's own overflow scrolling) all
+     still work — only the accidental double-tap gesture is disabled. */
+  #leftstack{position:fixed;left:24px;bottom:24px;width:214px;display:flex;flex-direction:column;gap:12px;animation:rise .8s both .2s;
+    touch-action:manipulation}
   /* min-height:0 overrides the flex item's default min-height:auto, which
      otherwise lets #leftstack's column stretch this item to its content's
      full intrinsic height on some WebKit versions (iOS Safari/Capacitor),
@@ -174,7 +196,8 @@
      viewport on desktop too, clipped off both top and bottom with no way
      to scroll it — confirmed at 1440x900 with a long catalog. */
   #legend .body{padding:5px 7px 7px;max-height:38vh;overflow-y:auto}
-  .cat{display:flex;align-items:center;gap:10px;padding:6px 7px;cursor:pointer;user-select:none;transition:background .12s}
+  .cat{display:flex;align-items:center;gap:10px;padding:6px 7px;cursor:pointer;user-select:none;transition:background .12s;
+    touch-action:manipulation;-webkit-tap-highlight-color:transparent}
   .cat:hover{background:var(--amber-soft)}
   .cat.off{opacity:0.3}
   .cat .sw{width:8px;height:8px;flex:0 0 auto;box-shadow:0 0 7px currentColor}
@@ -185,8 +208,12 @@
   #today{position:static;width:100%;min-height:0}
   #today .ph{cursor:pointer}
   #today .body{padding:5px 7px 7px;max-height:34vh;overflow-y:auto}
+  /* Same double-tap-zoom guard as .cat above — these rows are just as dense and
+     sit in the same stack, and .today-row is reused by the event feed
+     (.event-row), the docked-vehicle list and Settings' Saved lists, so all of
+     them get it. */
   .today-row{display:flex;align-items:flex-start;gap:10px;padding:6px 7px;cursor:pointer;user-select:none;
-    border-radius:7px;transition:background .12s}
+    border-radius:7px;transition:background .12s;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
   .today-row:hover{background:var(--amber-soft)}
   .today-row .sw{width:8px;height:8px;flex:0 0 auto;margin-top:4px;border-radius:50%;box-shadow:0 0 7px currentColor}
   .today-row .info{flex:1;min-width:0;display:flex;flex-direction:column}
