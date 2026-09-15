@@ -12,9 +12,10 @@
 //     circular orbit, coloured by its own classify.js category via CATS
 //   - the tracked orbit ring is the ISS's actual orbit plane
 //
-// Output geometry follows Facebook's page-cover rules (see
-// design/social/README.md): 1640x624 upload, mobile shows the middle 1109px,
-// desktop tucks the profile picture into the bottom left.
+// Output is 1640x624. What Facebook then shows of it differs between desktop
+// and phone, and not the way its published sizes claim — the real, measured
+// geometry is documented at the guide overlay below and in
+// design/social/README.md, and the layout is built against that.
 //
 //   npm run social:cover        -> design/social/*.png
 //
@@ -45,9 +46,12 @@ const OUT = argOf("--out-dir") || join(ROOT, "design/social");
 // ---------------------------------------------------------------------------
 const W = 1640,
   H = 624;
-// Mobile crops the cover to 16:9 about the centre: H * (640/360) wide.
-const MOBILE_W = Math.round(H * (640 / 360)); // 1109
-const MOBILE_X = Math.round((W - MOBILE_W) / 2); // 266
+// NOTE: Facebook's published sizes say the phone shows a 640x360 centre crop,
+// which would be the middle 1109px of this canvas. It does not — measured
+// against a real page it shows about 948px and hides the bottom ~50px, and it
+// puts the profile photo in the CENTRE rather than bottom-left. The real
+// numbers live with the guide overlay further down (MOBILE_SEEN_*, M_AVATAR_*)
+// and are what the layout is built against.
 
 // The instant the picture shows. Fixed so re-renders are reproducible; bump it
 // when the catalogue is refreshed and you want a fresher sky. Time of day sets
@@ -453,9 +457,15 @@ function buildSvg() {
     : "";
 
   // --- text block -----------------------------------------------------------
-  // Everything critical sits inside the mobile safe area (x 266-1375) and to
-  // the right of the profile photo, which on desktop covers roughly the
-  // bottom-left 420 x 200 of the cover.
+  // Boxed in on three sides by things Facebook draws on top of the cover
+  // (measured from a real page, see design/social/README.md):
+  //   left   x > 400   the DESKTOP profile photo, bottom-left
+  //   left   x > 346   the mobile crop's left edge
+  //   right  x < 660   the MOBILE profile photo, which is centred, not
+  //                    bottom-left, and covers everything below y = 316
+  // So anything below y = 316 has to live in a ~235px column, which is why the
+  // stat rows are stacked rather than the one line they were: that line was
+  // 385px and the phone cut it at "77 ASTEROI".
   const TX = 424;
   const text = `
   <g>
@@ -473,11 +483,14 @@ function buildSvg() {
 
     <g font-family="Oxanium" font-weight="600" font-size="13.5" letter-spacing="1.9"
        stroke="#07080f" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke">
-      <rect x="${TX - 1}" y="392" width="266" height="1" fill="rgba(255,255,255,0.14)"/>
-      <text x="${TX}" y="428" fill="#9aa2b8">
-        <tspan fill="#eef1f8">${OBJECT_COUNT_LABEL}</tspan><tspan fill="#9aa2b8"> OBJECTS</tspan><tspan fill="#5eead4" dx="10">·</tspan><tspan dx="10" fill="#eef1f8">77</tspan><tspan fill="#9aa2b8"> ASTEROIDS</tspan><tspan fill="#5eead4" dx="10">·</tspan><tspan dx="10" fill="#eef1f8">LIVE</tspan><tspan fill="#9aa2b8"> CREW</tspan>
+      <rect x="${TX - 1}" y="384" width="212" height="1" fill="rgba(255,255,255,0.14)"/>
+      <text x="${TX}" y="418" fill="#9aa2b8">
+        <tspan fill="#eef1f8">${OBJECT_COUNT_LABEL}</tspan><tspan fill="#9aa2b8"> OBJECTS</tspan>
       </text>
-      <text x="${TX}" y="458" fill="#5eead4" font-size="15" letter-spacing="3">ORBITALTRAFFIC.APP</text>
+      <text x="${TX}" y="446" fill="#9aa2b8">
+        <tspan fill="#eef1f8">77</tspan><tspan fill="#9aa2b8"> ASTEROIDS</tspan><tspan fill="#5eead4" dx="10">·</tspan><tspan dx="10" fill="#eef1f8">LIVE</tspan><tspan fill="#9aa2b8"> CREW</tspan>
+      </text>
+      <text x="${TX}" y="482" fill="#5eead4" font-size="15" letter-spacing="3">ORBITALTRAFFIC.APP</text>
     </g>
   </g>`;
 
@@ -868,22 +881,75 @@ function shoot(svgMarkup, outPath, { crop = null, scale = 1, overlay = "" } = {}
   return `${width}x${height}`;
 }
 
-/** Safe-area overlay: what mobile crops off, and where the profile photo lands. */
+/**
+ * Safe-area overlay.
+ *
+ * These figures are measured off a real Facebook page rather than taken from
+ * the published "820 x 312 / 640 x 360" guidance, which does not describe what
+ * the phone app actually does. Measured against this artwork:
+ *
+ *   - the phone shows ~950px of the 1640 (not the 1109 a 16:9 centre crop
+ *     implies), and the bottom ~50px go under the page card
+ *   - the profile photo is CENTRED on mobile and bottom-left on desktop, so
+ *     two different regions are covered and both have to be avoided
+ *
+ * Re-measure by comparing a screenshot of the live page against this file.
+ */
+const MOBILE_SEEN_X = 398,
+  MOBILE_SEEN_W = 948,
+  MOBILE_SEEN_H = 576;
+const M_AVATAR_CX = 877,
+  M_AVATAR_TOP = 316,
+  M_AVATAR_R = 203;
+const D_AVATAR_CX = 200,
+  D_AVATAR_CY = 524,
+  D_AVATAR_R = 178;
+
 const GUIDES = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"
-  viewBox="0 0 ${W} ${H}" style="position:absolute;left:0;top:0">
-  <rect x="0" y="0" width="${MOBILE_X}" height="${H}" fill="#fb7185" opacity="0.16"/>
-  <rect x="${MOBILE_X + MOBILE_W}" y="0" width="${W - MOBILE_X - MOBILE_W}" height="${H}"
+  viewBox="0 0 ${W} ${H}" style="position:absolute;left:0;top:0"
+  font-family="Oxanium" font-weight="600">
+  <rect x="0" y="0" width="${MOBILE_SEEN_X}" height="${H}" fill="#fb7185" opacity="0.18"/>
+  <rect x="${MOBILE_SEEN_X + MOBILE_SEEN_W}" y="0" width="${W - MOBILE_SEEN_X - MOBILE_SEEN_W}"
+    height="${H}" fill="#fb7185" opacity="0.18"/>
+  <rect x="0" y="${MOBILE_SEEN_H}" width="${W}" height="${H - MOBILE_SEEN_H}"
+    fill="#fb7185" opacity="0.18"/>
+  <rect x="${MOBILE_SEEN_X}" y="0" width="${MOBILE_SEEN_W}" height="${MOBILE_SEEN_H}"
+    fill="none" stroke="#5eead4" stroke-width="3" stroke-dasharray="16 10"/>
+  <text x="${MOBILE_SEEN_X + 14}" y="32" font-size="17" fill="#5eead4"
+    letter-spacing="2.2">PHONE SHOWS THIS · ${MOBILE_SEEN_W} × ${MOBILE_SEEN_H}</text>
+  <text x="14" y="32" font-size="17" fill="#fb7185" letter-spacing="2">CROPPED</text>
+
+  <circle cx="${M_AVATAR_CX}" cy="${M_AVATAR_TOP + M_AVATAR_R}" r="${M_AVATAR_R}"
     fill="#fb7185" opacity="0.16"/>
-  <rect x="${MOBILE_X}" y="0" width="${MOBILE_W}" height="${H}" fill="none"
-    stroke="#5eead4" stroke-width="3" stroke-dasharray="16 10"/>
-  <text x="${MOBILE_X + 16}" y="34" font-family="Oxanium" font-size="17" fill="#5eead4"
-    letter-spacing="2.4">MOBILE KEEPS THIS · ${MOBILE_W} × ${H}</text>
-  <text x="16" y="34" font-family="Oxanium" font-size="17" fill="#fb7185" letter-spacing="2">CROPPED</text>
-  <circle cx="200" cy="524" r="178" fill="#fb7185" opacity="0.14"/>
-  <circle cx="200" cy="524" r="178" fill="none" stroke="#fb7185" stroke-width="3"
-    stroke-dasharray="12 8"/>
-  <text x="96" y="${H - 22}" font-family="Oxanium" font-size="17" fill="#fb7185"
-    letter-spacing="2">PROFILE PHOTO</text>
+  <circle cx="${M_AVATAR_CX}" cy="${M_AVATAR_TOP + M_AVATAR_R}" r="${M_AVATAR_R}"
+    fill="none" stroke="#fb7185" stroke-width="3" stroke-dasharray="12 8"/>
+  <text x="${M_AVATAR_CX - 96}" y="${M_AVATAR_TOP + 40}" font-size="17" fill="#fb7185"
+    letter-spacing="2">PROFILE · PHONE</text>
+
+  <circle cx="${D_AVATAR_CX}" cy="${D_AVATAR_CY}" r="${D_AVATAR_R}" fill="#a78bfa" opacity="0.16"/>
+  <circle cx="${D_AVATAR_CX}" cy="${D_AVATAR_CY}" r="${D_AVATAR_R}" fill="none"
+    stroke="#a78bfa" stroke-width="3" stroke-dasharray="12 8"/>
+  <text x="${D_AVATAR_CX - 88}" y="${H - 20}" font-size="17" fill="#a78bfa"
+    letter-spacing="2">PROFILE · DESKTOP</text>
+
+  <line x1="660" y1="${M_AVATAR_TOP}" x2="660" y2="${MOBILE_SEEN_H}" stroke="#ffd23d"
+    stroke-width="2" stroke-dasharray="8 6"/>
+  <text x="668" y="${MOBILE_SEEN_H - 12}" font-size="15" fill="#ffd23d" letter-spacing="1.6">
+    COPY MUST END LEFT OF HERE BELOW y=${M_AVATAR_TOP}</text>
+</svg>`;
+
+/**
+ * The phone preview draws the profile photo where Facebook actually puts it,
+ * so the preview shows what a visitor sees rather than what was uploaded. It
+ * is a stand-in for icon-512.png, which is what goes there.
+ */
+const MOBILE_AVATAR = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"
+  viewBox="0 0 ${W} ${H}" style="position:absolute;left:0;top:0">
+  <circle cx="${M_AVATAR_CX}" cy="${M_AVATAR_TOP + M_AVATAR_R}" r="${M_AVATAR_R}"
+    fill="#0c1018" stroke="#eef1f8" stroke-width="7" opacity="0.97"/>
+  <text x="${M_AVATAR_CX}" y="${M_AVATAR_TOP + M_AVATAR_R + 14}" text-anchor="middle"
+    font-family="Oxanium" font-weight="600" font-size="34" fill="#4a5165"
+    letter-spacing="2">PROFILE</text>
 </svg>`;
 
 // One payload for every render, so the starfield is identical across crops.
@@ -900,10 +966,11 @@ const outs = [
   [
     "preview-mobile.png",
     shoot(markup, join(OUT, "preview-mobile.png"), {
-      crop: { x: MOBILE_X, w: MOBILE_W, h: H },
-      scale: 640 / MOBILE_W,
+      crop: { x: MOBILE_SEEN_X, w: MOBILE_SEEN_W, h: MOBILE_SEEN_H },
+      scale: 640 / MOBILE_SEEN_W,
+      overlay: MOBILE_AVATAR,
     }),
-    "as a phone displays it",
+    "as a phone displays it, avatar included",
   ],
   [
     "preview-safe-areas.png",

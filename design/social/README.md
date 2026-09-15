@@ -6,7 +6,7 @@ generator that produces them.
 ```
 cover-facebook.png       1640 × 624 — the file to upload
 preview-desktop.png      820 × 312  — how desktop renders it
-preview-mobile.png       640 × 360  — how a phone renders it
+preview-mobile.png       640 × 389  — how a phone renders it, profile photo included
 preview-safe-areas.png   crop + profile-photo guides, for checking placement
 ```
 
@@ -24,26 +24,40 @@ is the app icon at 512 × 512 and already reads correctly in a circular crop.
 
 ## Cover geometry
 
-Facebook shows one uploaded image at two different aspect ratios, and crops
-rather than letterboxes:
+**Do not trust Facebook's published cover sizes.** They say the phone shows a
+640 × 360 centre crop, which would be the middle 1109px of this canvas, and
+they say nothing about the profile photo moving. Both are wrong in ways that
+cut the artwork. The figures below are measured from a screenshot of the real
+page and are what the layout is built against; re-measure the same way if
+Facebook changes the layout again.
 
-| Surface | Displayed at | Which part of the upload |
+| Surface | Shows | Profile photo sits |
 |---|---|---|
-| Upload | 1640 × 624 | the whole file (2× of the desktop size, for retina) |
-| Desktop | 820 × 312 | all of it |
-| Mobile | 640 × 360 | the **middle 1109 × 624** — the sides are cut off |
+| Upload | the whole 1640 × 624 file | — |
+| Desktop | all of it, at 820 × 312 | **bottom-left**, over roughly x < 400, y > 344 |
+| Phone | **x 398–1346, y 0–576** (≈948 wide, bottom ~50px hidden) | **centred**, over x 674–1080, everything below y = 316 |
 
-Two constraints follow, and the layout in `tools/build-social-cover.mjs` respects both:
+Three constraints follow, and the layout respects all three:
 
-1. **Everything that must be read lives between x = 266 and x = 1375**, the
-   middle 1109px that survives the mobile crop. Only the starfield and the
-   globe are allowed to bleed past that.
-2. **The bottom-left corner stays empty.** On desktop the page's profile
-   picture sits over roughly the bottom-left 420 × 200 of the cover. The copy
-   block starts at x = 424 for that reason — it used to start at 336, where
-   the profile photo clipped the URL line.
+1. **Readable content stays between x ≈ 400 and x ≈ 1346** — the band the phone
+   keeps. Only the starfield and the globe bleed past it.
+2. **The bottom-left corner stays empty** for the desktop profile photo. The
+   copy block starts at x = 424 for that reason.
+3. **Anything below y = 316 must end before x ≈ 660**, clear of the *centred*
+   phone profile photo. This is the constraint that is easy to miss, because
+   nothing on desktop hints at it. The stat rows are stacked rather than one
+   line precisely because of it: the single line was 385px wide, ran to x = 809,
+   and the phone cut it mid-word at "77 ASTEROI".
 
-`preview-safe-areas.png` draws both regions over the artwork.
+`preview-safe-areas.png` draws all of it — both profile-photo positions, the
+phone's crop, and the x = 660 limit — over the artwork. `preview-mobile.png`
+now includes the profile photo where it really lands, so the phone preview
+shows what a visitor sees rather than what was uploaded.
+
+Because the phone shows a *narrower* band than the upload, Facebook lets the
+image be dragged horizontally in its cover editor. These figures describe its
+default placement. Dragging shifts the visible band, so leave it where it
+lands.
 
 ## What the picture is made of
 
