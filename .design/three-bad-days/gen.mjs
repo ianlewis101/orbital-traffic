@@ -21,7 +21,7 @@ const SLIDES = [
     h1: "2,694 pieces", h2: "of wreckage.", size: 77,
     body: `Every one tracked, named, and still flying. <b>99%</b> of it came from just two days.`,
     shot: "shot-shell.jpg" },
-  { file: "Fengyun.dc.html", kicker: "— 11 JANUARY 2007",
+  { file: "Fengyun.dc.html", flip: true, kicker: "— 11 JANUARY 2007",
     h1: "One missile.", h2: "1,970 fragments.", size: 60,
     body: `China destroyed its own weather satellite as a test. The pieces still carry the dead satellite's <b>1999</b> launch date.`,
     shot: "shot-fengyun.jpg" },
@@ -29,7 +29,7 @@ const SLIDES = [
     h1: "Nobody was", h2: "steering.", size: 80,
     body: `A dead Russian comms satellite hit a working Iridium over Siberia — the first accidental collision between two intact satellites. <b>691 pieces</b> are still up there.`,
     shot: "shot-cosmos.jpg" },
-  { file: "Spread.dc.html", kicker: "— IT DOESN'T STAY PUT",
+  { file: "Spread.dc.html", flip: true, kicker: "— IT DOESN'T STAY PUT",
     h1: "The junk", h2: "comes to you.", size: 71,
     body: `Fengyun debris alone now spreads from <b>370 to 1,956 km</b>. Across the catalog, 39 fragments dip to the altitude where the station and its crew fly.`,
     shot: "shot-tilt.jpg" },
@@ -43,7 +43,16 @@ const SLIDES = [
 const BG = "#07080f", INK = "#eef1f8", INK_DIM = "#9aa2b8";
 const TEAL = "#5eead4", VIOLET = "#a78bfa";
 
-const page = (s) => `<!doctype html>
+// Slides 2 and 4 mirror the layout — device left, copy right — so the carousel
+// alternates sides. The wordmark and corner brackets stay put: they're the
+// persistent frame, not part of the flipped content.
+const page = (s) => {
+const colLeft   = s.flip ? 566 : 62;    // 62px outer margin on the copy's own side
+const devLeft   = s.flip ? 47 : 537;
+const align     = s.flip ? "right" : "left";
+const ruleSelf  = s.flip ? "flex-end" : "flex-start";
+const ruleDir   = s.flip ? "270deg" : "90deg";
+return `<!doctype html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -94,18 +103,18 @@ ${FACES}
   <div class="logo" style="position: absolute; left: 62px; top: 84px; font-size: 20px; font-weight: 700; letter-spacing: 0.42em; color: rgba(238,241,248,0.62);">ORBITAL TRAFFIC</div>
 
   <!-- copy column -->
-  <div style="position: absolute; left: 62px; top: 0; width: 452px; height: 1350px; display: flex; flex-direction: column; justify-content: center; gap: 28px;">
+  <div style="position: absolute; left: ${colLeft}px; top: 0; width: 452px; height: 1350px; display: flex; flex-direction: column; justify-content: center; gap: 28px; text-align: ${align};">
     <div class="logo" style="font-size: 19px; font-weight: 700; letter-spacing: 0.26em; color: ${TEAL};">${s.kicker}</div>
     <div class="disp" style="font-size: ${s.size}px; font-weight: 800; line-height: 0.98; letter-spacing: -0.022em; color: ${INK}; white-space: nowrap;">
       <div>${s.h1}</div>
       <div style="background: linear-gradient(90deg, ${TEAL} 0%, ${VIOLET} 100%); -webkit-background-clip: text; background-clip: text; color: transparent;">${s.h2}</div>
     </div>
-    <div style="height: 1px; width: 340px; background: linear-gradient(90deg, rgba(94,234,212,0.75) 0%, rgba(94,234,212,0) 100%);"></div>
+    <div style="height: 1px; width: 340px; align-self: ${ruleSelf}; background: linear-gradient(${ruleDir}, rgba(94,234,212,0.75) 0%, rgba(94,234,212,0) 100%);"></div>
     <div class="body" style="font-size: 25px; font-weight: 400; line-height: 1.6; color: ${INK_DIM}; text-wrap: pretty;">${s.body}</div>
   </div>
 
   <!-- device -->
-  <div style="position: absolute; left: 537px; top: 150px; width: 496px; height: 1064px; border-radius: 64px;
+  <div style="position: absolute; left: ${devLeft}px; top: 150px; width: 496px; height: 1064px; border-radius: 64px;
               background: linear-gradient(145deg, #3a3e4b 0%, #1c1f27 26%, #14161c 74%, #2b2f3a 100%);
               box-shadow: 0 48px 120px rgba(0,0,0,0.6), 0 0 90px rgba(94,234,212,0.05);">
     <div style="position: absolute; left: 13px; top: 13px; width: 470px; height: 1038px; border-radius: 51px; overflow: hidden; background: ${BG};">
@@ -123,6 +132,7 @@ ${FACES}
 </body>
 </html>
 `;
+};
 
 for (const s of SLIDES) fs.writeFileSync(`${DIR}/${s.file}`, page(s));
 
