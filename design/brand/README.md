@@ -15,6 +15,10 @@ Palette: `#eef1f8 → #5eead4 → #a78bfa` gradient on `#07080f` — same tokens
 `apps/web/src/config.js` / the app's own CSS custom properties, so any future
 re-export stays on-brand automatically.
 
+The splash screen uses a different mark — a satellite, not the orbit ring —
+paired with the `Orbital Traffic™` wordmark. Exports of that lockup live in
+[`logo/`](logo/), with their own README.
+
 To re-render at a custom size (requires `librsvg`):
 ```
 rsvg-convert -w 1024 -h 1024 icon-master.svg -o icon-1024.png
