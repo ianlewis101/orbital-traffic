@@ -6,6 +6,8 @@ import {
   normalizeVehicleName,
 } from "@orbital-traffic/catalog";
 import { DATA } from "../data/store.js";
+import { orbital, orbitClass } from "../astro/orbital.js";
+import { EARTH_KM } from "../config.js";
 
 /** Fine-grained display type used to choose descriptions and artwork. */
 export function classify(s) {
@@ -50,9 +52,65 @@ export function classify(s) {
   if (WEATHER_NAME_RE.test(n)) return "weather";
   if (EO_NAME_RE.test(n)) return "eo";
   if (s.cat === "geostationary") return "geo";
-  if (s.cat === "starlink" || s.cat === "kuiper") return "starlink";
+  if (s.cat === "starlink" || s.cat === "oneweb" || s.cat === "kuiper") return "starlink";
   if (s.cat === "science") return "telescope"; // science satellites without specific name match
+  // Checked after "geo" on purpose: a communications satellite in a
+  // geostationary slot is already better described as geostationary, and the
+  // two copies below would otherwise both explain where it sits.
+  if (s.cat === "communications") return "communications";
   return "generic";
+}
+
+/**
+ * What an object's orbit is *for*, in one sentence, keyed off orbitClass()'s
+ * own regime names so the altitude/eccentricity thresholds stay defined once
+ * in astro/orbital.js rather than being restated here.
+ *
+ * Deliberately explanatory rather than numeric: the info card already prints
+ * the regime name in its chips and the altitude, inclination, lap time and
+ * apogee/perigee in its stat grid, so repeating any of those would just pad
+ * the lead paragraph. orbitClass()'s own `note` is close to this, but it
+ * lives in a `title=` tooltip — which does not exist on a touch screen.
+ */
+const ORBIT_PROSE = {
+  "Low Earth Orbit":
+    "It works from low Earth orbit, a few hundred miles up — close enough that it crosses the whole sky in minutes, so a ground antenna has to track it rather than simply point at it.",
+  "Medium Earth Orbit":
+    "It works from medium Earth orbit, thousands of miles up — high enough to hold an entire hemisphere in view at once, which is why navigation constellations favour this altitude.",
+  Geostationary:
+    "It sits in a geostationary slot above the equator, circling at exactly the speed Earth turns — so from the ground it appears to hang motionless over one spot.",
+  "Highly Elliptical":
+    "It follows a stretched, egg-shaped path that swings far out into space before diving back close to Earth, lingering over one hemisphere for hours at a time.",
+};
+
+/**
+ * Display types whose generic copy below stops short of saying where the
+ * object flies, so ORBIT_PROSE has something non-redundant to add. The types
+ * left out already describe their own orbit ("geo", "station", "capsule",
+ * "debris", "starlink").
+ */
+const ORBIT_CLAUSE_TYPES = new Set([
+  "communications",
+  "navigation",
+  "weather",
+  "eo",
+  "telescope",
+  "classified",
+  "unknown",
+  "generic",
+]);
+
+/**
+ * Non-finite elements are rejected rather than formatted, on the same
+ * reasoning as astro/overhead.js: a malformed satrec yields NaN, and NaN
+ * would otherwise reach the card as prose built from a garbage regime.
+ */
+function orbitClause(s) {
+  if (!s || !s.rec) return "";
+  const ob = orbital(s.rec);
+  const meanAlt = ob.a - EARTH_KM;
+  if (!Number.isFinite(meanAlt) || !Number.isFinite(ob.e)) return "";
+  return ORBIT_PROSE[orbitClass(meanAlt, ob.e).name] || "";
 }
 
 export function describe(s) {
@@ -167,6 +225,14 @@ export function describe(s) {
   if (/\bCHANGGUANG\b/.test(n))
     return "A Chang Guang Satellite Technology spacecraft. Nominally a commercial Earth-imaging operator behind the Jilin-1 constellation, the state-linked company is also believed to support Chinese military reconnaissance — the line between commercial and military space in China is deliberately blurred.";
   // --- generic by type ---
+  const base = genericLead(c);
+  if (!ORBIT_CLAUSE_TYPES.has(c)) return base;
+  const clause = orbitClause(s);
+  return clause ? `${base} ${clause}` : base;
+}
+
+/** The type-level sentence, before orbitClause() adds where it flies. */
+function genericLead(c) {
   switch (c) {
     case "station":
       return "A crewed space station — a permanently inhabited outpost in orbit.";
@@ -182,6 +248,8 @@ export function describe(s) {
       return "A space telescope — studying the cosmos from above the blur and filtering of Earth's atmosphere.";
     case "geo":
       return "A geostationary satellite — locked in orbit at 22,236 miles up, hovering motionless over one fixed point above the equator.";
+    case "communications":
+      return "A communications satellite — one of the relay stations that carry television, phone calls, internet traffic and data between distant points on the ground.";
     case "classified":
       return "A classified military or intelligence satellite. Its mission, capabilities, and operator are officially undisclosed.";
     case "debris":

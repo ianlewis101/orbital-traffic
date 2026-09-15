@@ -113,7 +113,11 @@ describe("LEMUR-2-HUBBLE guard — the deliberate space-bounded exception", () =
   it("does not classify them as telescopes", () => {
     for (const s of lemurs) {
       expect(classify(s)).not.toBe("telescope");
-      expect(classify(s)).toBe("generic");
+      // They land in "communications" off their own cat, which is what the
+      // real catalog tags them. Before describe.js grew a communications
+      // display type they fell to "generic" — either way the guard here is
+      // that the HUBBLE in their name never reaches the telescope branch.
+      expect(classify(s)).toBe("communications");
     }
   });
 

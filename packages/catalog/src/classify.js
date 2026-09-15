@@ -9,6 +9,8 @@
  * categorize() so the whole system agrees on what an object is.
  */
 
+import { CATEGORY_OVERRIDES } from "./reclassify.js";
+
 /** Known display categories. Anything else is normalized to "other". */
 export const CATEGORY_IDS = [
   "stations",
@@ -238,8 +240,7 @@ export function correctStarlinkCat(name, cat) {
  * what makes dropping the launcher names safe — verified against the live
  * catalog and the full 70,292-row SATCAT.
  */
-const DEBRIS_NAME_RE =
-  / DEB | DEBRIS | FRAGMENT | FRAG |\bR\/B\b| ROCKET BODY | ARIANE /;
+const DEBRIS_NAME_RE = / DEB | DEBRIS | FRAGMENT | FRAG |\bR\/B\b| ROCKET BODY | ARIANE /;
 /**
  * Hardware released or jettisoned from a crewed station (cameras, experiment
  * housings, unidentified ISS-origin objects, Shenzhou orbital modules left
@@ -475,7 +476,11 @@ export const CLASSIFIED_IDS = new Set([
  *
  * The four *_IDS allowlists are checked next, before any name regex: they
  * are individually-verified objects with no safe shared pattern, so ID
- * lookup is the only reliable match.
+ * lookup is the only reliable match. reclassify.js's CATEGORY_OVERRIDES is
+ * the same idea at scale — 959 objects researched one at a time while their
+ * descriptions were written — and is checked immediately after them, still
+ * ahead of the name regexes: a verdict reached by researching one specific
+ * object beats a pattern that merely matches its name.
  */
 export function correctOtherCat(id, name, cat) {
   if (cat !== "other") return cat;
@@ -485,6 +490,13 @@ export function correctOtherCat(id, name, cat) {
   if (DEBRIS_IDS.has(id)) return "debris";
   if (COMMS_IDS.has(id)) return "communications";
   if (CLASSIFIED_IDS.has(id)) return "classified";
+  // The bulk researched verdicts (reclassify.js) are checked after the four
+  // sets above, not before: those are small, individually annotated, and
+  // include corrections made against this very data (see MARAFON-D GVM in
+  // SCIENCE_IDS), so a hand-written entry keeps the last word if the two ever
+  // disagree. They agree on every object today — nothing is shadowed.
+  const researched = CATEGORY_OVERRIDES.get(id);
+  if (researched) return researched;
   const n = (name || "").toUpperCase();
   if (NAV_NAME_RE.test(n)) return "navigation";
   if (COMMS_NAME_RE.test(n)) return "communications";

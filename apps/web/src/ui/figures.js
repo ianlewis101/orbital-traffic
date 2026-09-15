@@ -55,7 +55,10 @@ export function photoKey(s) {
   // rather than show a photo of the wrong spacecraft.
   if (c === "navigation" || c === "geo") return c === "geo" ? "geo_generic" : "navigation_generic";
   if (c === "weather" || c === "eo" || c === "telescope") return "science_generic";
-  if (c === "generic") return "satellite_generic";
+  // "communications" draws the same generic-satellite pool "generic" does:
+  // it was split out of "generic" for its description copy only (describe.js),
+  // and there is no separate comms photo bucket for it to fall into.
+  if (c === "generic" || c === "communications") return "satellite_generic";
   return null;
 }
 
