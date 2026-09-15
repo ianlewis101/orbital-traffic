@@ -46,6 +46,16 @@ CelesTrak routes aborted. Categories are toggled through `#cats .cat`
 rows. Note the ISS card renders "Crew data temporarily unavailable" when
 the Worker is unreachable — don't shoot that card in a sandboxed session.
 
+## Exporting the slides
+
+The canvas's own PNG export drops the file-entry screenshots (the phone
+renders empty), so the shippable 1080×1350 PNGs are rendered directly:
+`node export.mjs` shoots each artboard under `export/` at 2x and
+downsamples to exactly 1080×1350, supersampling type and screens. Those
+artboards point at the ORIGINAL full-res captures rather than the 440px
+JPEGs the canvas carries, so the exports are sharper than the canvas
+preview. Finished slides are committed under `export/`.
+
 ## Editing
 
 Once the canvas has been edited in the browser, the published artifact is
