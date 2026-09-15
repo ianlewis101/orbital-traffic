@@ -1,0 +1,53 @@
+{
+  "size": "1290x2796",
+  "renderedAt": "2026-08-19T23:52:11.816Z",
+  "counts": {
+    "objects": "19,000+",
+    "profiles": "2,200+",
+    "neos": 77
+  },
+  "frames": [
+    {
+      "file": "01-globe.png",
+      "headline": "Look up. It’s crowded.",
+      "eyebrow": "Live 3D globe",
+      "chip": "Real orbital data · refreshed continuously",
+      "kb": 2862
+    },
+    {
+      "file": "02-overhead.png",
+      "headline": "What’s over your head right now?",
+      "eyebrow": "What’s overhead",
+      "chip": "Your location never leaves your phone",
+      "kb": 1441
+    },
+    {
+      "file": "03-object.png",
+      "headline": "Every dot has a story.",
+      "eyebrow": "Tap any object",
+      "chip": "2,200+ hand-written profiles",
+      "kb": 1672
+    },
+    {
+      "file": "04-crew.png",
+      "headline": "Someone is up there.",
+      "eyebrow": "Live from the station",
+      "chip": "Live roster · ISS and Tiangong",
+      "kb": 1733
+    },
+    {
+      "file": "05-capsules.png",
+      "headline": "Follow every capsule home.",
+      "eyebrow": "Capsule watch",
+      "chip": "Docking status checked every hour",
+      "kb": 1391
+    },
+    {
+      "file": "06-asteroids.png",
+      "headline": "The ones that come close.",
+      "eyebrow": "Near-Earth asteroids",
+      "chip": "No account · no ads · nothing tracked but satellites",
+      "kb": 1657
+    }
+  ]
+}

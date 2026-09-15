@@ -79,6 +79,46 @@ Real data. Real spacecraft. Right now.
 
 ---
 
+## SCREENSHOTS (6.9" iPhone — 1290×2796)
+
+Generated, not hand-assembled: `tools/store-screenshots/` drives the real app,
+captures six screens, and composes the frames into
+`design/store-screenshots/`. Upload those six PNGs in numbered order;
+`contact-sheet.jpg` is for reviewing the set, not for upload. See that tool's
+README for the two commands and for why every figure in the copy is derived
+from the bundled data rather than typed in.
+
+Order is deliberate. The App Store shows the first three in search results
+without anyone tapping through, so those three carry the whole pitch: what it
+is, why it's about you, how deep it goes. The back half is for people already
+swiping.
+
+| # | Eyebrow | Headline | Proof line |
+|---|---|---|---|
+| 01 | Live 3D globe | Look up. **It's crowded.** | Real orbital data · refreshed continuously |
+| 02 | What's overhead | What's over your **head right now?** | Your location never leaves your phone |
+| 03 | Tap any object | Every dot **has a story.** | 2,200+ hand-written profiles |
+| 04 | Live from the station | Someone is **up there.** | Live roster · ISS and Tiangong |
+| 05 | Capsule watch | Follow every **capsule home.** | Docking status checked every hour |
+| 06 | Near-Earth asteroids | The ones that **come close.** | No account · no ads · nothing tracked but satellites |
+
+The bold half of each headline is set in that frame's accent colour, taken
+from the app's own category palette for whatever the frame shows.
+
+Two things worth a second look before any submission:
+
+- **Frame 04 shows the real ISS crew**, including surnames and (if the profile
+  is expanded — it is not, in the shipped frame) a NASA portrait. That is live
+  Launch Library 2 data the app genuinely displays. Names in a product
+  screenshot are ordinary; if a portrait is ever wanted in a frame, weigh
+  whether a recognisable astronaut's face in *marketing* could read as an
+  endorsement, which NASA's media guidelines don't allow.
+- **Frame 02 is captured during a real ISS pass** — the observer is placed on
+  the ISS ground track so the whole station complex is overhead at once. Real
+  app state, chosen moment.
+
+---
+
 ## Accuracy notes — why the copy is worded the way it is
 
 These are deliberate. Re-check them before loosening any claim (Guideline
