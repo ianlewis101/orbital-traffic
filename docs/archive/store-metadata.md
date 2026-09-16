@@ -5,7 +5,8 @@ sync with what is actually entered in App Store Connect — and note that the
 object count ("19,000+") appears here twice and is one of the hand-maintained
 surfaces listed in CLAUDE.md's OBJECT COUNT convention.
 
-Last reviewed: 2026-08-11 (pre-submission audit).
+Last reviewed: 2026-09-16 (added the WHAT'S NEW section for 2.0.1; listing
+fields themselves unchanged since the 2026-08-11 pre-submission audit).
 
 ---
 
@@ -76,6 +77,84 @@ SHARE THE SKY
 Found something interesting in orbit? Generate a shareable card and show everyone what's flying overhead.
 
 Real data. Real spacecraft. Right now.
+
+---
+
+## WHAT'S NEW IN THIS VERSION
+
+**4,000 char max.** Unlike DESCRIPTION and PROMOTIONAL TEXT, this field is
+**not indexed by App Store search** — so there is nothing to gain from working
+a brand name into it, and the generic phrasing below is the safer choice under
+the same trademark caution that governs KEYWORDS above.
+
+**Scope rule — write the notes against the last build that actually reached
+the public App Store, not the last build uploaded.** Builds that stop at App
+Store Connect never showed their notes to anyone, so their changes still need
+covering. The build history table in `docs/audit-status.md` records which
+builds were released and each build's head SHA; diff that SHA against `main`
+for the exact merged-since set.
+
+**Formatting:** paste the body only. App Store Connect already renders the
+version number above the text, and the 2.0.1 entry shipped wrapped in stray
+`-` characters with a "What's New in 2.0.1" heading repeating it — on the
+product page that renders as a bare dash above the copy and a dangling one
+below. No heading, no surrounding dashes.
+
+### 2.1.0 — covers build 34 (everything merged after build 33)
+
+Build 33 / **2.0.1** was cut from `9ef3b82` (PR #241) on 2026-09-10 and went
+live on the public App Store. Only seven PRs merged after it — #242, #243,
+#238, #247, #248, #249, #250 — and two of those (#242's hero screenshot,
+#250's canonical URL) touch only the marketing site, so they are not in-app
+changes and are deliberately absent below.
+
+```
+Deep space, and thousands of satellites that finally explain themselves.
+
+NEW — WHERE'S VOYAGER?
+Searching for Voyager 1 or 2, Pioneer 10 or 11, New Horizons, the James Webb Space Telescope, Parker Solar Probe or the Tesla Roadster now gives you a real answer — current distance, one-way light time, and a plain explanation of why they can't appear on the globe — instead of "No matches found".
+
+BETTER EXPLANATIONS
+• Nearly 1,000 satellites filed under "Other" have been researched and re-filed as science, communications or classified — so their write-ups actually surface.
+• Every satellite without a hand-written profile now gets a real explanation of what it does and what its orbit is for, instead of one generic line.
+• Around 100 new hand-written profiles, now covering 2,800+ objects.
+
+FIXES
+• Fixed quick taps on the orbit-class legend triggering iOS double-tap zoom.
+• Near-Earth asteroid distances were being computed from the wrong side of the Sun, and are now correct.
+• Catalog loading is steadier — a degraded refresh can no longer overwrite good data.
+```
+
+Short variant, if the full set reads as too much:
+
+```
+• Ask where Voyager is — Voyager, Pioneer, New Horizons, Webb, Parker Solar Probe and the Tesla Roadster now answer with their current distance and light time instead of "No matches found".
+• Nearly 1,000 satellites researched out of "Other" and re-filed, and every satellite without a hand-written profile now gets a real explanation instead of one generic line.
+• Fixed legend taps triggering iOS double-tap zoom, and corrected near-Earth asteroid distances.
+```
+
+**Accuracy notes for this entry:**
+
+- **"Nearly 1,000"** — 959 researched category verdicts applied in PR #247
+  (860 direct + 99 resolved). Don't round up to "over 1,000".
+- **"Around 100 new"** — PR #243 added 99. PR #247 added no new profiles; its
+  contribution is making existing research reachable, which is why the two are
+  separate bullets rather than one combined figure.
+- **"2,800+ objects"** — `descriptions.json` curates 2,882 of 19,244 as of
+  2026-09-16. Conservative on purpose, same reasoning as the "1,700+" note
+  below. (That DESCRIPTION figure is now well behind reality and can be raised
+  to "2,800+" whenever the listing is being edited anyway.)
+- **"the James Webb Space Telescope"** — correctly listed among objects that
+  *can't* appear on the globe: it's at L2 on a station-kept halo orbit, not in
+  Earth orbit, and its figure renders as nominal (`~`) rather than live.
+
+### 2.0.1 — shipped, for reference
+
+Released 2026-09-10 from build 33. Its entry covered launch-train tracking,
+the redesigned Today in Space feed, Popular Objects rotation, new object
+write-ups, pinch-zoom and camera-drift fixes, the search auto-zoom fix and the
+info-card/sidebar overlap fix. Recorded here so the next release's scope can
+be drawn against it without going back to App Store Connect.
 
 ---
 
