@@ -40,6 +40,39 @@ Live Satellite & Space Tracker
 
 See what's above you right now. 19,000+ satellites, stations and spacecraft, tracked live on a real-time 3D globe.
 
+**This is the only listing field that can be changed with no new build and no
+App Review pass.** It renders above DESCRIPTION on the product page, so it is
+the first sentence a visitor reads after the screenshots. It is *not* search
+indexed (see the WHAT'S NEW note below), so it earns nothing by carrying
+keywords — its only job is to give someone already on the page a reason to
+tap Get. Treat it as rotating copy: point it at whatever shipped most
+recently, and never at something not yet released, which would be inaccurate
+metadata under Guideline 2.3.1.
+
+**2026-09-16 — this field had drifted out of sync with this file.** App Store
+Connect was carrying:
+
+> Live Space Situational Display. 3D Tracking of every satellite in Earth's orbit. Tap a satellite and learn about who built it, its mission, and more.
+
+Two problems, which is why the version above is the one to restore. "Live
+Space Situational Display" is jargon in the highest-value sentence on the
+page. And **"every satellite in Earth's orbit" is an overclaim** of exactly
+the kind the Accuracy notes below exist to prevent: the app tracks the ~19,244
+objects in CelesTrak's catalog, which is not every satellite in orbit, and
+Guideline 2.3.1 governs this field as much as the description.
+
+Rotation options, kept here so this field doesn't get rewritten from scratch
+each time:
+
+| When | Copy | Chars |
+|---|---|---|
+| Evergreen / default | `See what's above you right now. 19,000+ satellites, stations and spacecraft, tracked live on a real-time 3D globe.` | 114 |
+| While 2.0.1 is newest | `New: tap a fresh launch and watch the whole batch fly in formation. 19,000+ satellites, stations and spacecraft, tracked live on a 3D globe.` | 140 |
+| Once 2.1.0 is released | `Now answering the big one: where is Voyager? Plus 19,000+ satellites and spacecraft, tracked live on a real-time 3D globe.` | 122 |
+
+The 2.1.0 line must not go up before that version is actually released — the
+feature it names does not exist in 2.0.1.
+
 ## KEYWORDS (100 char max — 87)
 
 ```
@@ -82,10 +115,13 @@ Real data. Real spacecraft. Right now.
 
 ## WHAT'S NEW IN THIS VERSION
 
-**4,000 char max.** Unlike DESCRIPTION and PROMOTIONAL TEXT, this field is
-**not indexed by App Store search** — so there is nothing to gain from working
-a brand name into it, and the generic phrasing below is the safer choice under
-the same trademark caution that governs KEYWORDS above.
+**4,000 char max.** Like DESCRIPTION and PROMOTIONAL TEXT, this field is **not
+indexed by App Store search** — on Apple's store only APP NAME, SUBTITLE and
+the KEYWORDS field feed the search index (this is the opposite of Google Play,
+where the description *is* indexed). So there is nothing to gain from working
+a brand name in for discoverability, and the generic phrasing below is the
+safer choice under the same trademark caution that governs KEYWORDS above.
+This copy's only job is conversion for someone already on the page.
 
 **Scope rule — write the notes against the last build that actually reached
 the public App Store, not the last build uploaded.** Builds that stop at App
