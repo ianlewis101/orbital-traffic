@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-15T11:24:08.657Z",
+  "updated": "2026-09-16T11:09:03.894Z",
   "events": [
     {
       "type": "launch",
@@ -608,6 +608,60 @@
       "id": "58294",
       "name": "ICEYE-X34",
       "cat": "science"
+    },
+    {
+      "type": "launch",
+      "at": "2026-09-16T11:09:03.872Z",
+      "ids": [
+        "100689",
+        "100690",
+        "100691"
+      ],
+      "count": 3,
+      "name": "2026-209A",
+      "cat": "other"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-16T11:09:03.872Z",
+      "id": "47073",
+      "name": "COSMOS 2251 DEB",
+      "cat": "debris"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-16T11:09:03.872Z",
+      "id": "46160",
+      "name": "STARLINK-1598",
+      "cat": "starlink"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-16T11:09:03.872Z",
+      "id": "46705",
+      "name": "STARLINK-1805",
+      "cat": "starlink"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-16T11:09:03.872Z",
+      "id": "100365",
+      "name": "CZ-12 R/B",
+      "cat": "debris"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-16T11:09:03.872Z",
+      "id": "53452",
+      "name": "DONGPO 02",
+      "cat": "other"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-16T11:09:03.872Z",
+      "id": "56943",
+      "name": "NUSAT-40 (C SHOEMAKER)",
+      "cat": "other"
     }
   ]
 }
