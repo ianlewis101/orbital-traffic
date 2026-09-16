@@ -3,6 +3,8 @@ import { state, $ } from "../state.js";
 import { select } from "./info.js";
 import { esc } from "../util/html.js";
 import { neoSats } from "../scene/neos.js";
+import { matchDeepSpace } from "../data/deep-space.js";
+import { deepSpaceRowHTML } from "./deep-space.js";
 
 /** Most results the panel will show. */
 export const SEARCH_LIMIT = 40;
@@ -117,8 +119,29 @@ export function initSearch() {
     el.scrollIntoView?.({ block: "nearest" });
   }
 
+  /**
+   * Expand/collapse a deep-space explainer in place.
+   *
+   * Deliberately does NOT close the panel or overwrite the query the way
+   * choosing a satellite does: there is nothing to select, and the row's whole
+   * purpose is text the user still has to read. On mobile that matters twice
+   * over — collapseSearch() would dismiss the answer the moment it appeared.
+   */
+  function toggleDeep(s) {
+    const i = hits.indexOf(s);
+    const el = sRes.children[i];
+    if (!el) return;
+    const open = el.classList.toggle("open");
+    el.setAttribute("aria-expanded", open ? "true" : "false");
+    setActive(i); // also scrolls the row (and its newly revealed body) into view
+  }
+
   function choose(s) {
     if (!s) return;
+    if (s._deep) {
+      toggleDeep(s);
+      return;
+    }
     select(s);
     sIn.value = s.name;
     hideResults();
@@ -167,7 +190,13 @@ export function initSearch() {
       showResults(false);
       return;
     }
-    hits = searchCatalog(state.sats.concat(neoSats), q);
+    // Deep-space explainers sort BELOW every catalog hit. They are a fallback
+    // for a query the catalog can't answer, and some queries legitimately hit
+    // both: "horizons" matches three real Intelsat birds as well as New
+    // Horizons, and the trackable objects are the ones this app is for.
+    hits = searchCatalog(state.sats.concat(neoSats), q).concat(
+      matchDeepSpace(q).map((e) => ({ _deep: e }))
+    );
     if (!hits.length) {
       // Previously this hid the panel outright, so a query matching nothing
       // looked identical to a broken search — against a ~19,000-object
@@ -183,17 +212,23 @@ export function initSearch() {
       return;
     }
     hits.forEach((s, i) => {
-      const hex = catColorHex(s.cat);
       const el = document.createElement("div");
-      el.className = "res";
       el.id = "search-opt-" + i;
       el.setAttribute("role", "option");
       el.setAttribute("aria-selected", "false");
       el.tabIndex = -1;
-      el.innerHTML = `<span class="cd" style="background:${hex}"></span><span class="nm">${esc(s.name)}</span><span class="meta">#${
-        // eslint-disable-next-line orbital/no-unescaped-innerhtml -- s.id is a numeric NORAD catalog id, not free text
-        s.id
-      }</span>`;
+      if (s._deep) {
+        el.className = "res res-deep";
+        el.setAttribute("aria-expanded", "false");
+        el.innerHTML = deepSpaceRowHTML(s._deep);
+      } else {
+        const hex = catColorHex(s.cat);
+        el.className = "res";
+        el.innerHTML = `<span class="cd" style="background:${hex}"></span><span class="nm">${esc(s.name)}</span><span class="meta">#${
+          // eslint-disable-next-line orbital/no-unescaped-innerhtml -- s.id is a numeric NORAD catalog id, not free text
+          s.id
+        }</span>`;
+      }
       el.addEventListener("click", () => choose(s));
       sRes.appendChild(el);
     });
