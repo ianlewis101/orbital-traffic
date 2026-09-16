@@ -44,37 +44,45 @@ manual click is no longer needed. Left documented here because this caused the
 "it didn't make it" confusion on 2026-07-13 — if a future build ever shows
 "Missing Compliance" again, check that key first.
 
-**⚠️ A NEW BUILD IS REQUIRED BEFORE APP STORE SUBMISSION.** The pre-submission
-audit bumped `MARKETING_VERSION` from 1.0 to 2.0.0, and a marketing version
-only takes effect in a freshly archived build. Everything in the table below
-is already live on orbitaltraffic.app; none of it is on a device until a build
-is cut.
+**✅ 2.0.0 IS LIVE ON THE PUBLIC APP STORE.** Build 20 (`MARKETING_VERSION`
+2.0.0) was cut from `b0e0ac5` (PR #195) on 2026-08-28 and was accepted and
+released. Confirmed by PR #236, which had to bump `MARKETING_VERSION` to 2.0.1
+*because* Apple rejects a new upload under a version string that already
+belongs to a released version.
 
-**Merged, not yet in an iOS build:**
+**Current state (2026-09-16):** `MARKETING_VERSION` is **2.0.1**, and App Store
+Connect has a 2.0.1 "Prepare for Submission" slot open. Builds have kept
+flowing since 2.0.0 shipped — the "iOS Build & Upload" workflow is at run 33,
+the last successful one being **2.0.1 (33)**, cut 2026-09-10 from `9ef3b82`
+(PR #241). Those uploads reached App Store Connect but 2.0.1 has not been
+released to the public store, so **release notes for the next submission must
+cover everything since build 20, not just since the last upload.** The drafted
+"What's New" entry for 2.0.1 lives in `docs/archive/store-metadata.md`.
 
-| # | Item | PR | Merged date |
-|---|---|---|---|
-| F4 | SGP4 wasted on hidden objects | #79 | 2026-07-13 |
-| F5 | Boot ingest blocks main thread | #80 | 2026-07-13 |
-| F6 | Time-machine × selection perf cliff | #81 | 2026-07-13 |
-| — | Everything merged 2026-07-14 → 2026-08-11 | various | see change log |
-| — | App Store audit: photo provenance, `cool` category removal, `MARKETING_VERSION` 2.0.0, `esc()` in figures.js | #165 | 2026-08-11 |
-| — | Second App Store audit: `STATION_CORE_IDS` cleanup, fabricated ISS-module descriptions removed, real launch screen, object-count guard | this PR | 2026-08-17 |
-| — | Missing `NSLocationAlwaysAndWhenInUseUsageDescription` purpose string | this PR | 2026-09-02 |
+**How to find the real cut point** (this tracker went badly stale by trying to
+maintain it by hand): the build number *is* the workflow run number, so the
+Actions tab → "iOS Build & Upload" gives every build's `head_sha` directly.
+Diff that SHA against `main` for the exact merged-since set. Record both below
+each time a build is cut, so the next session doesn't have to re-derive it.
 
-**Last build cut:** 2026-07-13 — via the "iOS Build & Upload" GitHub Actions
-workflow, after PR #78 fixed the recurring build-number collision
-(`CURRENT_PROJECT_VERSION` was hardcoded to 1; now auto-increments via
-`github.run_number`). This build carried F16, F7, F3, F1, and F2.
-Confirmed installed and running via TestFlight. **A second build, 2.0.0 (20),
-was submitted 2026-08-28** — App Store Connect returned a non-blocking
-warning (ITMS 90683: missing `NSLocationAlwaysAndWhenInUseUsageDescription`,
-see the new Low-bugs row below) rather than a rejection, so this build's
-final disposition (accepted for review / released) isn't confirmed in this
-file yet — check App Store Connect directly rather than assuming from this
-note. This tracker's row-53 table above still hadn't been updated for
-everything merged between 2026-07-13 and 2026-08-28, so treat "last build
-cut" here as approximate until that gap is reconciled.
+| Build | Version | Date | Cut from | Notes |
+|---|---|---|---|---|
+| 33 | 2.0.1 | 2026-09-10 | `9ef3b82` (PR #241) | Latest successful build. Uploaded, not released. |
+| 32 | 2.0.1 | 2026-09-09 | `ee93aaa` (PR #236) | First build under 2.0.1 after the version-collision failure. |
+| 31 | — | 2026-09-09 | `6ba6e40` (PR #234) | **Failed** — uploaded under 2.0.0, which was already live. Fixed by PR #236. |
+| 21–30 | 2.0.0 | 2026-09-01 → 09-05 | various | TestFlight only. |
+| **20** | **2.0.0** | **2026-08-28** | **`b0e0ac5` (PR #195)** | **Submitted for review and released to the public App Store.** ITMS 90683 (missing `NSLocationAlwaysAndWhenInUseUsageDescription`) came back as a non-blocking warning, fixed afterwards in PR #206. |
+| 19 | 2.0.0 | 2026-08-27 | `a81da74` (PR #187) | |
+| 15 | 2.0.0 | 2026-08-11 | `fcd8c83` (PR #166) | First build carrying the 2.0.0 marketing version. |
+
+**In 2.0.1 but not yet public** (merged after build 20 — PRs #196–#250): launch-train
+tracking (#227, #230), deep-space search answers and the NEO geocentric sign
+fix / F38 (#249), Popular Objects rotation (#201, #202, #224), 959 researched
+reclassifications out of `other` plus real fallback descriptions for uncurated
+objects (#247), curated description batches (#198, #205, #243), catalog-load
+reliability (#196, #203, #207, #209, #215, #223, #238, #240), and a run of
+mobile layout/gesture fixes (#210, #213, #216, #217, #226, #233, #234, #235,
+#248).
 
 ---
 

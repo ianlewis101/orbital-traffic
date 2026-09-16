@@ -5,7 +5,8 @@ sync with what is actually entered in App Store Connect — and note that the
 object count ("19,000+") appears here twice and is one of the hand-maintained
 surfaces listed in CLAUDE.md's OBJECT COUNT convention.
 
-Last reviewed: 2026-08-11 (pre-submission audit).
+Last reviewed: 2026-09-16 (added the WHAT'S NEW section for 2.0.1; listing
+fields themselves unchanged since the 2026-08-11 pre-submission audit).
 
 ---
 
@@ -76,6 +77,81 @@ SHARE THE SKY
 Found something interesting in orbit? Generate a shareable card and show everyone what's flying overhead.
 
 Real data. Real spacecraft. Right now.
+
+---
+
+## WHAT'S NEW IN THIS VERSION
+
+**4,000 char max.** Unlike DESCRIPTION and PROMOTIONAL TEXT, this field is
+**not indexed by App Store search** — so there is nothing to gain from working
+a brand name into it, and the generic phrasing below is the safer choice under
+the same trademark caution that governs KEYWORDS above.
+
+Keep a dated section per released version. When cutting a build, write the
+notes against the **last build that actually reached the public App Store**,
+not the last build uploaded — builds that stop at App Store Connect never
+showed their notes to anyone, so their changes still need covering.
+
+### 2.0.1 — covers builds 21–34 (everything merged after build 20)
+
+Build 20 / 2.0.0 was cut from `b0e0ac5` (PR #195, 2026-08-28) and is the live
+App Store version. Everything below merged after that commit: PRs #196–#250.
+
+```
+Deep-space search, launch-train tracking, and a much more reliable catalog.
+
+NEW — LAUNCH TRAINS
+A freshly launched batch of internet satellites flies as a single string for its first days in orbit — the "train" people photograph from the ground. Today in Space now spots them and lights up the whole batch at once: a link line through the string, live spacing in both miles and seconds, altitude, and a tappable list of every satellite in it.
+
+NEW — WHERE'S VOYAGER?
+Searching for Voyager 1 or 2, Pioneer 10 or 11, New Horizons, the James Webb Space Telescope, Parker Solar Probe or the Tesla Roadster now gives you a real answer — current distance, one-way light time, and a plain explanation of why they can't appear on the globe — instead of "No matches found".
+
+NEW — POPULAR OBJECTS ROTATES
+The highlights panel now cycles through a much larger pool of curated objects instead of showing the same five every time.
+
+BETTER EXPLANATIONS
+• Nearly 1,000 satellites filed under "Other" have been researched and re-filed as science, communications or classified — so their write-ups actually surface.
+• Every satellite without a hand-written profile now gets a real explanation of what it does and what its orbit is for, instead of one generic line.
+• Hundreds of new hand-written profiles — now 2,800+ objects — plus new spacecraft photography.
+
+FIXES
+• Smoother pinch-to-zoom, and low-orbit satellites visibly move again when you zoom in close.
+• Fixed the geostationary ring clipping in portrait, the object card overlapping the side panels on narrow phones, and quick legend taps triggering iOS double-tap zoom.
+• Dragging or zooming the globe now releases "Center on Globe" tracking.
+• Today in Space is tidier: redesigned icons, a scrollable list, and no more debris in launch events.
+• Confirmation messages no longer look like errors.
+
+UNDER THE HOOD
+Whole categories of satellites could occasionally go missing at startup. Several separate causes are fixed, the catalog is now cached globally for a faster first load anywhere in the world, and sync problems now say what went wrong instead of failing silently. Near-Earth asteroid distances were also corrected — they were being computed from the wrong side of the Sun.
+```
+
+Short variant, if the full set reads as too much:
+
+```
+• Launch trains — tap a newly launched batch in Today in Space and see the whole string lit at once, with live spacing and altitude.
+• Ask where Voyager is — Voyager, Pioneer, New Horizons, Webb, Parker Solar Probe and the Tesla Roadster now answer with their current distance and light time instead of "No matches found".
+• Nearly 1,000 satellites researched out of "Other" and re-filed, and every uncurated satellite now gets a real explanation instead of one generic line.
+• Popular Objects now rotates through a much larger pool.
+• Smoother pinch-zoom, several mobile layout fixes, and a much more reliable catalog load.
+```
+
+**Accuracy notes for this entry:**
+
+- **"Nearly 1,000"** — 959 researched category verdicts applied in PR #247
+  (860 direct + 99 resolved). Don't round up to "over 1,000".
+- **"2,800+ objects"** — `descriptions.json` curates 2,882 of 19,244 as of
+  2026-09-16. Conservative on purpose, same reasoning as the "1,700+" note
+  below. (That DESCRIPTION figure is now well behind reality and can be
+  raised to "2,800+" whenever the listing is being edited anyway.)
+- **No brand name on the launch-train bullet** — the feature's own UI does say
+  "Starlink train", and naming it here would be accurate descriptive use, but
+  this field isn't search-indexed so it buys nothing against the KEYWORDS
+  trademark caution above. Ian's call if he prefers the named version.
+- **"the James Webb Space Telescope"** — correctly listed among objects that
+  *can't* appear on the globe: it's at L2 on a station-kept halo orbit, not in
+  Earth orbit, and its figure renders as nominal (`~`) rather than live.
+- **Today in Space itself is not new** — it shipped 2026-08-20, inside build
+  20. Only the refinements above are new in 2.0.1.
 
 ---
 
