@@ -62,6 +62,9 @@ const SAFE_FUNCTIONS = new Set([
   "fmtSpeed",
   "toDistance",
   "distanceUnit",
+  "fmtBigDistance", // same shape, scaled: "25.7 billion km" / "16.0 billion mi"
+  // astro/deep-space.js — digits plus "s"/"m"/"h" separators ("23 h 49 m").
+  "fmtLightTime",
 ]);
 
 // Number-formatting methods: the result is only digits / separators / sign,

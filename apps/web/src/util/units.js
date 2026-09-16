@@ -63,3 +63,33 @@ export function distanceUnit() {
 export function toDistance(km, digits = 0) {
   return localized(isMetric() ? km : km * MI_PER_KM, digits);
 }
+
+/**
+ * Interplanetary distances, scaled to a word — "25.7 billion km",
+ * "1.5 million km", "16.0 billion mi".
+ *
+ * fmtDistance() is right up to geostationary but falls apart past it: the
+ * deep-space search rows (ui/deep-space.js) deal in figures like 25,708,431,776
+ * km, and a fourteen-digit run of separators is unreadable on a phone and wraps
+ * the row. Scaling happens after the unit conversion, so the threshold applies
+ * to the number actually shown — a figure can read "1.5 million km" and
+ * "932,057 mi", which is correct rather than inconsistent.
+ */
+export function fmtBigDistance(km) {
+  if (!Number.isFinite(km)) return "—";
+  const v = isMetric() ? km : km * MI_PER_KM;
+  const unit = distanceUnit();
+  const mag = Math.abs(v);
+  if (mag >= 1e9) return `${localized(v / 1e9, 1)} billion ${unit}`;
+  if (mag >= 1e6) return `${localized(v / 1e6, 1)} million ${unit}`;
+  if (mag >= 1e4) {
+    // Three significant figures, not six. A value landing here is one that
+    // scaled below "million" on the way through a unit conversion — Webb's
+    // nominal 1.5 million km becomes 932,057 mi, which reads as a survey-grade
+    // measurement of a figure that is explicitly a round approximation. Imperial
+    // is the default unit, so this is the rendering most users actually see.
+    const step = Math.pow(10, Math.floor(Math.log10(mag)) - 2);
+    return `${localized(Math.round(v / step) * step, 0)} ${unit}`;
+  }
+  return `${localized(v, 0)} ${unit}`;
+}
