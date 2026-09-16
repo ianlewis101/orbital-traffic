@@ -26,6 +26,30 @@ jobs:
           node-version: 22
           cache: "npm"
 
+      # Apple rejects an upload under a CFBundleShortVersionString that
+      # already belongs to a released (READY_FOR_SALE) version, and
+      # project.pbxproj carries no memory of whether its committed version
+      # ever actually shipped. Build 31 failed exactly this way under
+      # 2.0.0; 2.0.1 then went live on 2026-09-10 and left the committed
+      # version stale all over again. This asks App Store Connect what is
+      # live and patch-bumps only if it matches.
+      #
+      # It fails open by design — missing credentials, a network blip or an
+      # API shape change just prints the committed version (with the reason
+      # on stderr), so this can never block a build that would otherwise
+      # have succeeded. It reuses the three App Store Connect secrets the
+      # upload step already needs; there is nothing new to configure.
+      - name: Resolve marketing version
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+        run: |
+          set -euo pipefail
+          RESOLVED_MARKETING_VERSION="$(node tools/appstore-marketing-version.mjs)"
+          echo "Archiving as MARKETING_VERSION=$RESOLVED_MARKETING_VERSION"
+          echo "RESOLVED_MARKETING_VERSION=$RESOLVED_MARKETING_VERSION" >> "$GITHUB_ENV"
+
       - name: Install workspace dependencies
         run: npm ci
 
@@ -108,6 +132,7 @@ jobs:
             DEVELOPMENT_TEAM="$TEAM_ID" \
             PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
             CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            MARKETING_VERSION="$RESOLVED_MARKETING_VERSION" \
             archive
 
       - name: Export IPA

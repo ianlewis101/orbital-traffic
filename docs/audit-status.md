@@ -50,14 +50,27 @@ released. Confirmed by PR #236, which had to bump `MARKETING_VERSION` to 2.0.1
 *because* Apple rejects a new upload under a version string that already
 belongs to a released version.
 
-**Current state (2026-09-16):** `MARKETING_VERSION` is **2.0.1**, and App Store
-Connect has a 2.0.1 "Prepare for Submission" slot open. Builds have kept
-flowing since 2.0.0 shipped — the "iOS Build & Upload" workflow is at run 33,
-the last successful one being **2.0.1 (33)**, cut 2026-09-10 from `9ef3b82`
-(PR #241). Those uploads reached App Store Connect but 2.0.1 has not been
-released to the public store, so **release notes for the next submission must
-cover everything since build 20, not just since the last upload.** The drafted
-"What's New" entry for 2.0.1 lives in `docs/archive/store-metadata.md`.
+**✅ 2.0.1 IS ALSO LIVE.** Released 2026-09-10 from build 33 (`9ef3b82`,
+PR #241), and showing on the public product page with a 5.0 rating. Confirmed
+against App Store Connect ("iOS App Version 2.0.1 — Ready for Distribution")
+and the store listing, not inferred.
+
+**Current state (2026-09-16):** `MARKETING_VERSION` is **2.1.0**, bumped from
+2.0.1 because 2.0.1 is now released and Apple rejects an upload under a
+released version string. The next build is **2.1.0 (34)**, covering only the
+seven PRs merged after build 33. Its "What's New" entry is drafted in
+`docs/archive/store-metadata.md`.
+
+**The stale-version failure is now guarded in CI.** `ios-build.yml` gained a
+"Resolve marketing version" step that runs
+`tools/appstore-marketing-version.mjs` (added in PR #236 but never wired in)
+and passes the result to the archive step. It asks App Store Connect for the
+live version and patch-bumps only on a match, reusing the three App Store
+Connect secrets the upload step already needs. It fails open — no credentials,
+no network or an API change just uses the committed version — so it cannot
+block a build that would otherwise succeed. **This had already bitten twice:**
+build 31 failed outright under 2.0.0, and build 34 was about to repeat it
+under 2.0.1.
 
 **How to find the real cut point** (this tracker went badly stale by trying to
 maintain it by hand): the build number *is* the workflow run number, so the
@@ -67,7 +80,8 @@ each time a build is cut, so the next session doesn't have to re-derive it.
 
 | Build | Version | Date | Cut from | Notes |
 |---|---|---|---|---|
-| 33 | 2.0.1 | 2026-09-10 | `9ef3b82` (PR #241) | Latest successful build. Uploaded, not released. |
+| 34 | 2.1.0 | pending | — | Next build. Version bumped ahead of it; CI now resolves this automatically. |
+| **33** | **2.0.1** | **2026-09-10** | **`9ef3b82` (PR #241)** | **Released to the public App Store.** |
 | 32 | 2.0.1 | 2026-09-09 | `ee93aaa` (PR #236) | First build under 2.0.1 after the version-collision failure. |
 | 31 | — | 2026-09-09 | `6ba6e40` (PR #234) | **Failed** — uploaded under 2.0.0, which was already live. Fixed by PR #236. |
 | 21–30 | 2.0.0 | 2026-09-01 → 09-05 | various | TestFlight only. |
@@ -75,14 +89,12 @@ each time a build is cut, so the next session doesn't have to re-derive it.
 | 19 | 2.0.0 | 2026-08-27 | `a81da74` (PR #187) | |
 | 15 | 2.0.0 | 2026-08-11 | `fcd8c83` (PR #166) | First build carrying the 2.0.0 marketing version. |
 
-**In 2.0.1 but not yet public** (merged after build 20 — PRs #196–#250): launch-train
-tracking (#227, #230), deep-space search answers and the NEO geocentric sign
-fix / F38 (#249), Popular Objects rotation (#201, #202, #224), 959 researched
-reclassifications out of `other` plus real fallback descriptions for uncurated
-objects (#247), curated description batches (#198, #205, #243), catalog-load
-reliability (#196, #203, #207, #209, #215, #223, #238, #240), and a run of
-mobile layout/gesture fixes (#210, #213, #216, #217, #226, #233, #234, #235,
-#248).
+**Merged after build 33, so shipping in 2.1.0** (PRs #242, #243, #238, #247,
+#248, #249, #250): deep-space search answers and the NEO geocentric sign fix /
+F38 (#249), 959 researched reclassifications out of `other` plus real fallback
+descriptions for uncurated objects (#247), 99 curated OTHER descriptions
+(#243), the legend double-tap-zoom fix (#248), and the TLE_CACHE degraded-write
+guard (#238). #242 and #250 touch only the marketing site — not in-app changes.
 
 ---
 
