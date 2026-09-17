@@ -2,6 +2,12 @@
 
 Thanks for helping track everything in orbit!
 
+Orbital Traffic is proprietary — see [LICENSE](LICENSE). This repository is public for
+transparency and reference, not as an invitation to reuse the code. Bug reports and
+corrections are welcome; by submitting a contribution you assign it to the project owner
+(LICENSE §6). The setup below is for working on Orbital Traffic itself, not for building
+something else from it.
+
 ## Setup
 
 ```bash

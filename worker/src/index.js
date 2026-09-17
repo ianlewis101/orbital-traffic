@@ -698,10 +698,76 @@ export async function fetchSatcat(catnr) {
 export const SATCAT_FAIL_TTL = 90;
 export const ASTRONAUT_FAIL_TTL = 90;
 
+// ---------------------------------------------------------------------
+// CORS
+//
+// These endpoints exist to serve Orbital Traffic, not as a public API
+// (LICENSE §4). The allowlist below is what a *browser* is permitted to
+// read them from.
+//
+// Deliberately narrow in what it protects: CORS is enforced by browsers
+// and by nothing else, so this stops another site's web app from pointing
+// at this Worker — it does not stop curl, a server-side proxy, or a native
+// HTTP client, none of which consult it. It is the cheap half of the
+// problem; the licence covers the rest.
+//
+// A request with NO Origin header is served normally, without an ACAO
+// header. Non-browser clients don't enforce CORS, so withholding the grant
+// costs them nothing, and it keeps CLAUDE.md's documented verification
+// curls (`curl .../tle`, `/capsules`, `/events`) working unchanged.
+// ---------------------------------------------------------------------
+
+const ALLOWED_ORIGINS = new Set([
+  "https://orbitaltraffic.app",
+  "https://www.orbitaltraffic.app",
+  // Pages' own hostname, still live alongside the custom domain.
+  "https://ianlewis101.github.io",
+]);
+
+/**
+ * Whether `origin` may read these endpoints from a browser.
+ *
+ * Matched on scheme for the native shells rather than on the full origin
+ * string: the Capacitor iOS build serves the app from capacitor://localhost,
+ * and the scheme is the stable part of that — the host is Capacitor's to
+ * change between major versions, and an already-shipped App Store build
+ * cannot be repaired without another review cycle if this list is wrong.
+ */
+export function isAllowedOrigin(origin) {
+  if (!origin) return false;
+  if (ALLOWED_ORIGINS.has(origin)) return true;
+  let u;
+  try {
+    u = new URL(origin);
+  } catch {
+    return false;
+  }
+  if (u.protocol === "capacitor:" || u.protocol === "ionic:") return true;
+  // Local development — the Vite dev server on any port.
+  if (u.hostname === "localhost" || u.hostname === "127.0.0.1") return true;
+  return false;
+}
+
+/**
+ * Attach the CORS grant for this specific request.
+ *
+ * Applied out here, at the request boundary, rather than inside
+ * jsonResponse() — cached() keys caches.default on the path alone, so an
+ * origin-specific header baked into the cached body would be replayed to
+ * every later caller whatever *their* origin was. Vary: Origin says the
+ * same thing to any cache upstream of us.
+ */
+function withCors(res, origin) {
+  const out = new Response(res.body, res);
+  if (isAllowedOrigin(origin)) out.headers.set("Access-Control-Allow-Origin", origin);
+  out.headers.append("Vary", "Origin");
+  return out;
+}
+
 function badRequest(message) {
   return new Response(JSON.stringify({ error: message }), {
     status: 400,
-    headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+    headers: { "Content-Type": "application/json" },
   });
 }
 
@@ -709,7 +775,6 @@ function jsonResponse(data, ttl, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
     headers: {
       "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
       "Cache-Control": `public, max-age=${ttl}`,
       ...extraHeaders,
     },
@@ -826,21 +891,21 @@ const ROUTES = {
 
 export default {
   async fetch(request, env, ctx) {
+    const origin = request.headers.get("Origin");
     if (request.method === "OPTIONS") {
-      return new Response(null, {
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "GET, OPTIONS",
-          "Access-Control-Allow-Headers": "*",
-        },
-      });
+      // Preflight. The method/header grants are only meaningful alongside an
+      // ACAO, so they ride on the same allowlist check withCors() makes.
+      const headers = isAllowedOrigin(origin)
+        ? { "Access-Control-Allow-Methods": "GET, OPTIONS", "Access-Control-Allow-Headers": "*" }
+        : {};
+      return withCors(new Response(null, { status: 204, headers }), origin);
     }
     const { pathname } = new URL(request.url);
     const route = ROUTES[pathname];
-    if (!route) return new Response("Not found", { status: 404 });
+    if (!route) return withCors(new Response("Not found", { status: 404 }), origin);
     // env rides along so /crew can see the optional LL2_API_KEY binding;
     // routes that don't need it just ignore the extra argument.
-    return route(ctx, request, env);
+    return withCors(await route(ctx, request, env), origin);
   },
   // Cron trigger (see wrangler.toml's [triggers]) — keeps TLE_CACHE (Workers
   // KV) warm well within TLE_TTL so a real visitor's /tle request almost

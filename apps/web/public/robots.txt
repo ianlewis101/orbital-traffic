@@ -1,4 +1,11 @@
 User-agent: *
 Allow: /
 
+# The curated catalogue (object descriptions, agency attributions, researched
+# category verdicts, photo selections) is hand-compiled original work, not a
+# redistributable feed — see LICENSE §3. The app fetches these itself; a
+# crawler indexing or archiving them serves no one but a scraper.
+# robots.txt is a request, not an access control, and is treated as such.
+Disallow: /data/
+
 Sitemap: https://orbitaltraffic.app/sitemap.xml
