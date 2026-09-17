@@ -428,6 +428,32 @@ Monorepo (npm workspaces):
   JSON files) doesn't have, and the client already re-derives
   chains on every sync.
 
+- tools/video/ — the promo-film pipeline (`npm run video`), which
+  shoots vertical 1080x1920 TikTok/Reels footage from the REAL app
+  and the REAL catalog rather than from a mockup. tools/video/
+  README.md has the full breakdown; the two things worth knowing
+  before touching anything:
+
+  SHOTS.MJS IS THE FILM. Cut, camera moves, on-screen copy and the
+  printed-page passages all live there; everything else in the
+  directory is machinery that executes it. Tune framing with
+  `--stills --scale 0.5` (seconds per iteration), never by shooting
+  the whole cut (minutes).
+
+  CAPTURE MODE IS NOT A SCREEN RECORDING. apps/web/src/capture.js
+  is dynamically imported only under `?capture=1`, so Vite emits it
+  as a chunk no real visitor fetches. It raises state.frozen, which
+  parks main.js's render loop (its one early return), and then draws
+  each frame synchronously for an exact simulation time and camera
+  position via window.__otCapture.step(). That decoupling from
+  wall-clock time is the whole design: it is what makes footage come
+  out at a true 30fps on a software-GL renderer that manages about
+  one frame a second, and what makes two runs identical. Don't
+  "simplify" it into a real-time recording — that reintroduces both
+  the stutter and the non-determinism. Live fetches are blocked
+  during a shoot on purpose, so the count burned into the film
+  always matches the committed catalog it was derived from.
+
 - GitHub Actions also handles daily TLE refresh
   (refresh-tle-data.yml), ISS Today data updates
   (update-iss-today.yml), and crew/cargo vehicle phase tracking

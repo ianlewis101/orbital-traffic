@@ -57,6 +57,14 @@ export default [
     languageOptions: { globals: { ...globals.node } },
   },
   {
+    // The promo-video tool runs in Node but ships callbacks into a headless
+    // browser through Playwright's page.evaluate(), so both sets of globals
+    // are legitimately in scope in the same file. Narrowed to tools/video/ so
+    // no other Node script silently gains `window`/`document`.
+    files: ["tools/video/**/*.mjs"],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
+  },
+  {
     files: ["**/*.test.js"],
     languageOptions: { globals: { ...globals.node } },
   },

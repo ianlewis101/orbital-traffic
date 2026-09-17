@@ -45,6 +45,10 @@ export const state = {
   // opens that satellite in the info card with the chain still highlighted.
   chains: [],
   chain: null,
+  // Raised only by src/capture.js (?capture=1) while it drives the scene one
+  // deterministic frame at a time; parks main.js's render loop so wall-clock
+  // time stops advancing anything. Always false in the shipped app.
+  frozen: false,
 };
 Object.keys(CATS).forEach((c) => (state.cats[c] = 0));
 

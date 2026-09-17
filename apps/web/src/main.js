@@ -93,6 +93,11 @@ function updateFreshnessLine() {
 
 function loop(now) {
   requestAnimationFrame(loop);
+  // Capture mode (src/capture.js, ?capture=1 only) drives the scene itself,
+  // one deterministic frame at a time. Parking the loop here rather than
+  // cancelling it keeps boot and teardown identical in both modes — the rAF
+  // chain stays alive and simply stops touching anything.
+  if (state.frozen) return;
   const dtWall = now - state.lastWall;
   state.lastWall = now;
   state.simNow += dtWall * state.rate;
@@ -221,6 +226,13 @@ async function boot() {
   refreshEvents();
   updateFreshnessLine();
   requestAnimationFrame(loop);
+  // Promo-footage capture (tools/video/). Dynamically imported so the module
+  // is its own chunk that no ordinary visitor ever fetches; the query flag is
+  // the only way in, and everything below still runs exactly as it would
+  // otherwise until the capture tool calls prep().
+  if (new URLSearchParams(location.search).has("capture")) {
+    import("./capture.js").then((m) => m.initCapture());
+  }
   setTimeout(() => {
     splash.classList.add("gone");
     setTimeout(() => splash.remove(), 900);

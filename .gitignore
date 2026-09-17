@@ -19,3 +19,7 @@ coverage/
 .idea/
 .vscode/
 *.local
+
+# Promo video (tools/video/) — scratch frames and rendered output
+.video-work/
+exports/video/
