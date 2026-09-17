@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-16T11:09:03.894Z",
+  "updated": "2026-09-17T11:17:51.964Z",
   "events": [
     {
       "type": "launch",
@@ -661,6 +661,110 @@
       "at": "2026-09-16T11:09:03.872Z",
       "id": "56943",
       "name": "NUSAT-40 (C SHOEMAKER)",
+      "cat": "other"
+    },
+    {
+      "type": "launch",
+      "at": "2026-09-17T11:17:51.947Z",
+      "ids": [
+        "100692",
+        "100697",
+        "100698",
+        "100701"
+      ],
+      "count": 4,
+      "name": "QIANFAN 15 OBJECT A",
+      "cat": "other"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-17T11:17:51.947Z",
+      "id": "36689",
+      "name": "FENGYUN 1C DEB",
+      "cat": "debris"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-17T11:17:51.947Z",
+      "id": "47040",
+      "name": "FENGYUN 1C DEB",
+      "cat": "debris"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-17T11:17:51.947Z",
+      "id": "46353",
+      "name": "STARLINK-1656",
+      "cat": "starlink"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-17T11:17:51.947Z",
+      "id": "47879",
+      "name": "STARLINK-2336",
+      "cat": "starlink"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-17T11:17:51.947Z",
+      "id": "63117",
+      "name": "STARLINK-32955",
+      "cat": "starlink"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-17T11:17:51.947Z",
+      "id": "100366",
+      "name": "2026-188A",
+      "cat": "other"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-17T11:17:51.947Z",
+      "id": "100367",
+      "name": "2026-188B",
+      "cat": "other"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-17T11:17:51.947Z",
+      "id": "100368",
+      "name": "2026-188C",
+      "cat": "other"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-17T11:17:51.947Z",
+      "id": "100369",
+      "name": "2026-188D",
+      "cat": "other"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-17T11:17:51.947Z",
+      "id": "100462",
+      "name": "2026-188E",
+      "cat": "other"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-17T11:17:51.947Z",
+      "id": "100463",
+      "name": "2026-188F",
+      "cat": "other"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-17T11:17:51.947Z",
+      "id": "100464",
+      "name": "2026-188G",
+      "cat": "other"
+    },
+    {
+      "type": "reentry",
+      "at": "2026-09-17T11:17:51.947Z",
+      "id": "58584",
+      "name": "ARKTIKA-M 2",
       "cat": "other"
     }
   ]
