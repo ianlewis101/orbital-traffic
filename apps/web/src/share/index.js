@@ -6,6 +6,7 @@ import * as satellite from "satellite.js";
 import { CATS, catColorHex } from "../config.js";
 import { subpoint } from "../astro/overhead.js";
 import { toDistance, distanceUnit, fmtSpeed } from "../util/units.js";
+import { isNativeWrapper } from "../util/platform.js";
 import { orbitRingPoints } from "../scene/trail.js";
 import { describe } from "../ui/describe.js";
 import { captureGlobe } from "./capture.js";
@@ -86,12 +87,6 @@ export async function buildShareImage(sat, date) {
     else resolve(null);
   });
   return blob ? { blob, filename: shareFilename(sat.name), name: sat.name } : null;
-}
-
-/** Running inside the Capacitor iOS wrapper? */
-function isNativeWrapper() {
-  const c = typeof window !== "undefined" && window.Capacitor;
-  return !!(c && (typeof c.isNativePlatform !== "function" || c.isNativePlatform()));
 }
 
 /**

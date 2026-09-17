@@ -34,6 +34,11 @@ export const DEFAULTS = {
   locationPermissionDenied: false,
   units: "imperial",
   reduceMotion: false,
+  // Dismissing the "Get the iOS app" banner (ui/app-banner.js) is permanent
+  // rather than per-session: it's a nudge, and a nudge that comes back after
+  // being turned down is an ad. Settings › About keeps a standing link so
+  // there's still a route to the App Store afterwards.
+  appBannerDismissed: false,
   saved: { favorites: [], watchlist: [] },
 };
 
@@ -79,6 +84,7 @@ function validate(raw) {
   }
   if (UNIT_VALUES.includes(raw.units)) out.units = raw.units;
   if (typeof raw.reduceMotion === "boolean") out.reduceMotion = raw.reduceMotion;
+  if (typeof raw.appBannerDismissed === "boolean") out.appBannerDismissed = raw.appBannerDismissed;
   if (raw.saved && typeof raw.saved === "object") {
     out.saved = {
       favorites: validateIdList(raw.saved.favorites),

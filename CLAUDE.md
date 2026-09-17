@@ -255,6 +255,14 @@ cross-check those against this document instead.
      propagates to a position object full of NaN rather than to
      nothing, and NaN fails every comparison, so an unguarded
      value slips straight past a `<= minElevation` filter.
+   - apps/web/src/util/platform.js answers "which shell is this
+     running in" — isNativeWrapper() (the Capacitor iOS build),
+     isIOS() (including iPadOS's desktop user agent),
+     isStandalone() (installed PWA) and smartBannerUnsupported().
+     isNativeWrapper() used to be a private copy inside
+     share/index.js; don't start a second one. Every probe reads a
+     user-agent or a global that can lie or be missing, so each
+     fails to false rather than throwing.
    - apps/web/src/ui/sheet-swipe.js's attachSheetSwipe() is the
      swipe-down-to-dismiss gesture for the bottom sheets
      (Settings, Tracked Chain) — grab threshold, scroll-position
@@ -550,6 +558,42 @@ they can't be templated:
   Do not add a new hand-written mention of the count anywhere
   new without adding it to the checklist above in the same
   change.
+
+APP STORE BANNER — TWO MECHANISMS, NEVER BOTH AT ONCE: the web
+app offers the iOS app two ways, and they are mutually exclusive
+by construction. Safari on iOS/iPadOS draws Apple's own Smart App
+Banner from index.html's `apple-itunes-app` meta tag — strictly
+better than anything a page can build, because Safari alone knows
+whether the app is installed and offers OPEN instead of GET. It
+never renders in a WKWebView (so the Capacitor build can't show
+it) or in any non-Safari iOS browser, and #app-banner
+(apps/web/src/ui/app-banner.js) covers exactly that gap. Its
+platform probe only ever fires on a POSITIVE match for a known
+non-Safari iOS browser token (util/platform.js's
+NO_SMART_BANNER_TOKENS) — never on "not Safari" inferred from an
+absence. The bias is deliberate: a wrong positive stacks two
+banners in Safari, a wrong negative costs a nudge nobody notices.
+Add a token only after confirming it against that product's real
+user agent.
+
+The banner is also suppressed inside the Capacitor build, in an
+installed PWA, off iOS entirely, and after a dismissal (persisted
+as settings.js's `appBannerDismissed`). That dismissal is
+permanent, which is only safe because Settings › About keeps a
+standing "Get the iOS app" link — don't remove one without the
+other. Height is published to CSS as `--app-banner-h` and read by
+every fixed element anchored to the top edge (#brand, #clock,
+#search-wrap, #results, #info and the three sheets, whose
+max-height subtracts it too) — a new top-anchored element needs
+the same calc() term or it renders under the bar.
+
+APP STORE ID (6788125984) — ONE CONSTANT, FOUR HAND-WRITTEN
+COPIES: declared in apps/web/src/ui/app-banner.js and hand-copied
+into index.html's meta tag, index.html's banner href, and
+welcome.html's three download buttons. It's immutable for the
+life of the app, so there's no build-time substitution —
+apps/web/test/app-banner.test.js asserts every copy still matches
+instead. Add a new surface to that test in the same change.
 
 ── KNOWN BUGS THAT MUST NOT BE REINTRODUCED ─────────────────
 
