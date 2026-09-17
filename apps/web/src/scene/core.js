@@ -72,10 +72,63 @@ export function clampCamR(r) {
   return Math.max(MIN_CAM_R, Math.min(maxCamR(), r));
 }
 
-export function applyCam() {
-  cam.r += (cam.rT - cam.r) * 0.12;
-  cam.theta += (cam.thT - cam.theta) * 0.16;
-  cam.phi += (cam.phT - cam.phi) * 0.16;
+// --- easing ---
+//
+// The rig eases toward its targets with an exponential filter. These are the
+// per-frame fractions the feel was tuned at, on a 60fps display; applyCam()
+// re-derives the fraction actually used from how long the frame took, so a
+// move lands in the same wall-clock time whatever the frame rate.
+//
+// They used to be applied once per frame regardless of frame time, which made
+// every camera move take as long as the device was slow — the move is a fixed
+// number of FRAMES, so its duration is whatever the frame rate says. Measured
+// on the real 19,000-object scene at ~9fps: a "Center on Globe" onto the ISS
+// that settles in 0.42s at 60fps took 3.9s, and 6.2s from a zoomed-out,
+// spun-around view. That is the "nothing happens for five seconds after you
+// press it" this control was reported for, and it got worse the older the
+// phone.
+const EASE_R = 0.12;
+const EASE_ANG = 0.16;
+const EASE_REF_MS = 1000 / 60;
+// Longest frame gap the easing will honour. A tab restored from the
+// background, a long GC pause or the first frame after boot can report
+// hundreds of ms; without this the camera would cover the whole remaining
+// distance in a single step and teleport instead of moving.
+const EASE_MAX_MS = 100;
+
+/** Fraction to move this frame, for a rate tuned per-frame at 60fps. */
+function ease(perFrame, dtMs) {
+  return 1 - Math.pow(1 - perFrame, dtMs / EASE_REF_MS);
+}
+
+const TAU = Math.PI * 2;
+
+/** Wrap an angle into [-PI, PI). */
+export function wrapAngle(a) {
+  return ((((a + Math.PI) % TAU) + TAU) % TAU) - Math.PI;
+}
+
+/**
+ * Advance the smoothed rig one frame. `dtMs` is the real time since the last
+ * frame — omitted, it assumes one 60fps frame, which is what a caller
+ * stepping the rig synchronously (tests) wants.
+ */
+export function applyCam(dtMs = EASE_REF_MS) {
+  const dt = Math.min(Math.max(dtMs, 0), EASE_MAX_MS);
+  const kAng = ease(EASE_ANG, dt);
+  cam.r += (cam.rT - cam.r) * ease(EASE_R, dt);
+  // Always the short way round. The two things that write cam.thT disagree
+  // about range: a drag subtracts from it without bound (spin the globe a few
+  // times and it is several turns from zero), while framePoint()'s atan2
+  // always returns (-PI, PI]. Lerping the raw difference therefore sent the
+  // camera the long way round — measured at over a full extra revolution
+  // after six swipes — and in follow mode it whipped the globe all the way
+  // back round every time the tracked object crossed atan2's branch cut, once
+  // per orbit. Wrapping both keeps the rig's angle bounded as well, so a long
+  // session can't drift into the range where float precision starts to bite.
+  cam.theta = wrapAngle(cam.theta + wrapAngle(cam.thT - cam.theta) * kAng);
+  cam.thT = wrapAngle(cam.thT);
+  cam.phi += (cam.phT - cam.phi) * kAng;
   const sp = Math.sin(cam.phi);
   camera.position.set(
     cam.r * sp * Math.sin(cam.theta),

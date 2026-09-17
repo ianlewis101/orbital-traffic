@@ -384,8 +384,12 @@
   .stat .v small{font-size:9px;color:var(--ink-dim);font-weight:400;letter-spacing:0.04em}
   #info .bar{height:1px;background:var(--line)}
   #info .foot{padding:9px 15px 12px;display:flex;flex-direction:column;gap:7px}
+  /* touch-action:manipulation for the same reason #info .ph .x and #tele-toggle
+     carry it — these are the card's primary actions and shouldn't be the only
+     controls in it still waiting on a double-tap-to-zoom timeout. */
   #info-track,#info-share{width:100%;text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:0.18em;padding:9px 0;text-transform:uppercase;
-    color:var(--signal);background:rgba(174,227,255,0.06);border:1px solid rgba(174,227,255,0.28);cursor:pointer;transition:all .12s}
+    color:var(--signal);background:rgba(174,227,255,0.06);border:1px solid rgba(174,227,255,0.28);cursor:pointer;transition:all .12s;
+    touch-action:manipulation;-webkit-tap-highlight-color:transparent}
   #info-track:hover,#info-share:hover{background:rgba(174,227,255,0.13)}
   /* Secondary to "Center on Globe" — quieter so the primary action still leads. */
   #info-share{color:var(--ink-dim);background:none;border-color:var(--line)}
@@ -619,6 +623,14 @@
   #info .launch{display:none;margin-top:5px;font-family:var(--mono);font-size:9.5px;font-weight:400;letter-spacing:0.04em;color:var(--ink-faint)}
   #info-track{color:#06122a;background:linear-gradient(95deg,#5eead4,#7dd3fc);border:none;font-weight:700}
   #info-track:hover{filter:brightness(1.08)}
+  /* Follow mode engaged. The "on" state used to be an inline colour swap to
+     var(--signal) — #7dd3fc, which is the right-hand stop of the button's own
+     gradient above, so the text turned the colour of its own background and
+     the control looked identical whether it was following or not. A dimmed
+     face plus a ring reads as "engaged" at a glance instead. */
+  #info-track.on{background:rgba(94,234,212,0.16);color:var(--good);font-weight:700;
+    box-shadow:inset 0 0 0 1px rgba(94,234,212,0.9),0 0 14px rgba(94,234,212,0.28)}
+  #info-track.on:hover{background:rgba(94,234,212,0.24);filter:none}
   #info::-webkit-scrollbar{width:6px}#info::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.18);border-radius:3px}
   #info .nm{font-weight:700;letter-spacing:-0.02em}
 
