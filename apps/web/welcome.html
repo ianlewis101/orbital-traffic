@@ -16,9 +16,13 @@
 <meta property="og:title" content="Orbital Traffic — see what's above you, right now">
 <meta property="og:description" content="Track every satellite, station and spacecraft orbiting Earth in real time. {{OBJECT_COUNT}} objects on a live 3D globe, computed entirely on your device.">
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="Orbital Traffic">
 <meta property="og:url" content="https://orbitaltraffic.app/welcome.html">
 <meta property="og:image" content="https://orbitaltraffic.app/screenshots/screenshot-desktop.png">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Orbital Traffic — see what's above you, right now">
+<meta name="twitter:description" content="Track every satellite, station and spacecraft orbiting Earth in real time. {{OBJECT_COUNT}} objects on a live 3D globe, computed entirely on your device.">
+<meta name="twitter:image" content="https://orbitaltraffic.app/screenshots/screenshot-desktop.png">
 <link rel="canonical" href="https://orbitaltraffic.app/welcome.html">
 
 <script type="application/ld+json">
@@ -35,8 +39,66 @@
     "price": "0",
     "priceCurrency": "USD"
   },
+  "isPartOf": { "@id": "https://orbitaltraffic.app/#website" },
   "sameAs": [
-    "https://apps.apple.com/us/app/orbital-traffic/id6788125984"
+    "https://apps.apple.com/us/app/orbital-traffic/id6788125984",
+    "https://github.com/ianlewis101/orbital-traffic"
+  ]
+}
+</script>
+
+<!-- The five questions below are already on the page as <details> elements.
+     This states them in the form Google actually reads for an FAQ rich result;
+     it adds no content a visitor cannot see, which is the condition for the
+     markup being eligible at all. Any edit to the <details> copy in <body> has
+     to be made here in the same change — mismatched FAQ markup is a manual
+     action, not a silent no-op. seo-metadata.test.js checks the two agree. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "isPartOf": { "@id": "https://orbitaltraffic.app/#website" },
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Is Orbital Traffic free?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Completely free. No ads, no subscriptions, no account required."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does it work without an internet connection?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes — after the first load it works offline, and the catalog refreshes automatically the next time you're online."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is my location ever sent anywhere?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. What's Overhead uses your location entirely on your device to work out what's above you — it's never transmitted or stored, by us or anyone else."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What platforms does it run on?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "iOS is available now on the App Store. It also installs as a full app on Android and desktop straight from your browser, no app store required."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Where does the data come from?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Real orbital data from CelesTrak, NASA/JPL, and Launch Library 2 — refreshed continuously, not simulated."
+      }
+    }
   ]
 }
 </script>
