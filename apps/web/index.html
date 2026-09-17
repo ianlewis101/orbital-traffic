@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
   <meta name="application-name" content="Orbital Traffic">
-  <meta name="description" content="Continuously updated 3D tracker for every satellite and asteroid near Earth">
+  <meta name="description" content="Orbital Traffic is a live 3D satellite tracker: {{OBJECT_COUNT}} satellites, space stations, spacecraft and near-Earth asteroids, updated continuously and computed entirely on your device.">
   <meta name="theme-color" content="#5eead4">
 
   <!-- PWA manifest -->
@@ -34,13 +34,65 @@
   <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16.png">
 
   <!-- Open Graph / Social -->
-  <meta property="og:title" content="Orbital Traffic">
-  <meta property="og:description" content="Continuously updated 3D tracker for every satellite and asteroid near Earth">
+  <meta property="og:title" content="Orbital Traffic — Live 3D Satellite Tracker">
+  <meta property="og:description" content="Orbital Traffic is a live 3D satellite tracker: {{OBJECT_COUNT}} satellites, space stations, spacecraft and near-Earth asteroids, updated continuously and computed entirely on your device.">
   <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Orbital Traffic">
   <meta property="og:url" content="https://orbitaltraffic.app/">
+  <meta property="og:image" content="https://orbitaltraffic.app/screenshots/screenshot-desktop.png">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="canonical" href="https://orbitaltraffic.app/">
+
+  <!-- Brand entity, for crawlers that never run the app.
+       This page is a WebGL canvas: strip the scripts and there is no prose on
+       it at all, so everything a non-rendering crawler can learn about who
+       "Orbital Traffic" is has to be stated here and in the <noscript> block
+       at the end of <body>. alternateName covers the spellings people actually
+       type, and sameAs ties the domain to the App Store listing and the public
+       repo so the three read as one entity rather than three unrelated
+       mentions of a common phrase. -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://orbitaltraffic.app/#website",
+        "name": "Orbital Traffic",
+        "alternateName": ["OrbitalTraffic", "Orbital Traffic App", "orbitaltraffic.app"],
+        "url": "https://orbitaltraffic.app/",
+        "inLanguage": "en"
+      },
+      {
+        "@type": "WebApplication",
+        "@id": "https://orbitaltraffic.app/#app",
+        "name": "Orbital Traffic",
+        "alternateName": "Orbital Traffic — Live 3D Satellite Tracker",
+        "url": "https://orbitaltraffic.app/",
+        "description": "A live 3D satellite tracker showing {{OBJECT_COUNT}} satellites, space stations, spacecraft and near-Earth asteroids in real time. Orbital positions are propagated on your own device from continuously refreshed orbital data.",
+        "applicationCategory": "https://schema.org/UtilitiesApplication",
+        "operatingSystem": "iOS, Android, Web",
+        "browserRequirements": "Requires WebGL",
+        "isPartOf": { "@id": "https://orbitaltraffic.app/#website" },
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "featureList": [
+          "Live 3D globe of every tracked object in Earth orbit",
+          "What's Overhead — notable objects passing above your location right now",
+          "Crewed capsule and cargo vehicle tracking from launch through docking to landing",
+          "Near-Earth asteroids on their real heliocentric orbits",
+          "Launch-chain detection for freshly launched satellite trains",
+          "Works offline after first load"
+        ],
+        "sameAs": [
+          "https://apps.apple.com/us/app/orbital-traffic/id6788125984",
+          "https://github.com/ianlewis101/orbital-traffic"
+        ]
+      }
+    ]
+  }
+  </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ORBITAL TRAFFIC — live space tracker</title>
+<title>Orbital Traffic — Live 3D Satellite Tracker</title>
 </head>
 <body>
 <div id="scene"></div>
@@ -292,6 +344,73 @@
 
 <div id="tip"></div>
 <div id="sel-marker"><div class="ring"></div></div>
+
+<!-- The only prose on this page.
+
+     Everything above renders into a WebGL canvas, so a crawler that does not
+     execute JavaScript sees a 16 KB shell with no sentences in it — which is
+     most of them outside Googlebot, including the AI crawlers people
+     increasingly search through. This block is what those read, and it is the
+     one internal link to welcome.html anywhere on the site (the app itself
+     never linked to it, leaving the only content page on the domain an
+     orphan).
+
+     It is genuinely useful rather than crawler bait: with JavaScript off the
+     app is a black screen, and this at least says what the page is and where
+     else to go. Keep it truthful and keep it matching the app — text that
+     contradicts what renders is cloaking, and it is also just wrong. -->
+<noscript>
+  <!-- app.css is imported from main.js, so with JavaScript off no stylesheet
+       loads at all and this would otherwise render as unstyled black-on-white.
+       Scoped here rather than added to app.css for that exact reason: a rule in
+       a file that never loads is no rule. -->
+  <style>
+    #noscript-fallback{position:fixed;inset:0;z-index:9999;overflow-y:auto;
+      background:#0b1020;color:#cbd5e1;
+      font:400 16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+      padding:48px 24px 64px;margin:0}
+    #noscript-fallback>*{max-width:44rem;margin-inline:auto}
+    #noscript-fallback h1{color:#eef1f8;font-size:1.65rem;line-height:1.25;margin:0 0 .75em}
+    #noscript-fallback h2{color:#5eead4;font-size:1.05rem;letter-spacing:.06em;
+      text-transform:uppercase;margin:2.25em auto .75em}
+    #noscript-fallback p{margin:0 auto 1em}
+    #noscript-fallback ul{margin:0 auto 1em;padding-left:1.25em}
+    #noscript-fallback li{margin-bottom:.5em}
+    #noscript-fallback strong{color:#eef1f8}
+    #noscript-fallback a{color:#5eead4}
+  </style>
+  <div id="noscript-fallback">
+    <h1>Orbital Traffic — live 3D satellite tracker</h1>
+    <p>
+      Orbital Traffic plots {{OBJECT_COUNT}} satellites, space stations, spacecraft and
+      near-Earth asteroids on a real-time 3D globe. Orbital positions are propagated on
+      your own device from continuously refreshed orbital data — nothing about where you
+      are or what you look at is ever transmitted.
+    </p>
+    <p>
+      The globe itself needs JavaScript and WebGL, which are currently switched off in
+      this browser. <a href="/welcome.html">Read what Orbital Traffic does</a>, or
+      <a href="https://apps.apple.com/us/app/orbital-traffic/id6788125984">get the free iOS app</a>.
+    </p>
+    <h2>What it tracks</h2>
+    <ul>
+      <li><strong>Space stations</strong> — the ISS and China's Tiangong, module by module.</li>
+      <li><strong>Crewed capsules and cargo freighters</strong> — Dragon, Soyuz, Starliner, Shenzhou, Progress, Cygnus and Tianzhou, followed from launch through docking to landing.</li>
+      <li><strong>Constellations</strong> — Starlink, OneWeb, Kuiper, GPS and Galileo, each as its own orbit class.</li>
+      <li><strong>Science and observation satellites</strong> — Hubble, weather and Earth-observation craft, with hand-written profiles on the notable ones.</li>
+      <li><strong>Near-Earth asteroids</strong> — plotted on their real heliocentric orbits, with close-approach dates.</li>
+      <li><strong>Debris</strong> — the tracked fragments sharing those orbits.</li>
+    </ul>
+    <h2>What's Overhead</h2>
+    <p>
+      Orbital Traffic can narrow all {{OBJECT_COUNT}} objects down to the handful worth
+      looking up for: the notable satellites and stations passing high above your own
+      location at this moment, ranked by how far above the horizon they are. The
+      calculation runs entirely in your browser.
+    </p>
+    <p><a href="/welcome.html">More about Orbital Traffic</a> &middot; <a href="/privacy.html">Privacy</a> &middot; <a href="/support.html">Support</a></p>
+  </div>
+</noscript>
 
 <script type="module" src="/src/main.js"></script>
 </body></html>
