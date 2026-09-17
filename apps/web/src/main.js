@@ -124,7 +124,10 @@ function loop(now) {
     .applyQuaternion(_invQ.copy(earthGroup.quaternion).invert());
 
   if (state.tracking && state.selected && state.selected._p) frameSelected();
-  applyCam();
+  // Real elapsed time, not an assumed 60fps frame: the rig's easing is
+  // wall-clock based so "Center on Globe" takes the same time to land on a
+  // struggling phone as it does on a desktop (see applyCam()).
+  applyCam(dtWall);
   updateSelMarker();
   updateClock(date);
   renderer.render(scene, camera);

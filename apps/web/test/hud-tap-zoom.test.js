@@ -76,6 +76,15 @@ describe("left HUD stack is immune to double-tap-to-zoom", () => {
     expectGuarded(".cat");
   });
 
+  it("the object card's foot buttons carry it too", () => {
+    // "Center on Globe" and "Share Image" are the card's primary actions and
+    // were the last tappable controls in it still without the guard — the
+    // close button, the watchlist eye and the telemetry more/less toggle all
+    // already had it.
+    expectGuarded("#info-track");
+    expectGuarded("#info-share");
+  });
+
   it("the hotlist/event row carries it too", () => {
     // .today-row is the same dense row one plate down, and is reused by the
     // event feed (.event-row), the docked-vehicle list and Settings' Saved

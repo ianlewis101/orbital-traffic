@@ -126,7 +126,8 @@ function updateMiniCard(s) {
  */
 export function stopTracking() {
   state.tracking = false;
-  $("#info-track").style.color = "";
+  const btn = $("#info-track");
+  if (btn) btn.classList.remove("on");
 }
 
 export function select(s) {
@@ -591,8 +592,30 @@ export function initInfoCard() {
     select(null);
   };
   $("#info-track").onclick = () => {
-    state.tracking = !state.tracking;
-    $("#info-track").style.color = state.tracking ? "var(--signal)" : "";
-    if (state.selected && state.selected._p) frameSelected();
+    if (state.tracking) {
+      stopTracking();
+      return;
+    }
+    // Nothing to aim at — say nothing happened rather than lighting the
+    // control and leaving the globe where it was. This used to flip
+    // state.tracking and repaint the button unconditionally, so a press that
+    // could not move the camera was indistinguishable from one that did:
+    // every NEO landed here (they carried no `_p` at all), which is what
+    // "the button never works" looked like from the outside.
+    if (!state.selected || !state.selected._p) return;
+    state.tracking = true;
+    $("#info-track").classList.add("on");
+    frameSelected();
+    // On a phone the card is a bottom sheet up to 82vh tall, so the centre of
+    // the viewport — where frameSelected() puts the object — is behind it, and
+    // pressing "Center on Globe" moved the camera to a place the user could
+    // not see. Getting the sheet out of the way is the point of the press, so
+    // it collapses to the mini-card, which keeps the selection, the orbit ring
+    // and the marker exactly as they are and reopens on one tap. Desktop needs
+    // nothing: the card is a 300px side panel there, and the globe is already
+    // in view. ui/chain.js solved the same problem for its own (shorter) sheet
+    // with framePoint()'s liftRad — that isn't enough here, since at 82vh
+    // there is no strip left to lift the object into.
+    if (isMobileLayout() && !state.cardCollapsed) collapseCard();
   };
 }
