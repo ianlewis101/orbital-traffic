@@ -1,0 +1,72 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1080,
+      "h": 1350
+    },
+    {
+      "file": "HudStation.dc.html",
+      "x": 1200,
+      "y": 0,
+      "w": 1080,
+      "h": 1350
+    },
+    {
+      "file": "FullbleedOpener.dc.html",
+      "x": 0,
+      "y": 1580,
+      "w": 1080,
+      "h": 1350
+    },
+    {
+      "file": "FullbleedStation.dc.html",
+      "x": 1200,
+      "y": 1580,
+      "w": 1080,
+      "h": 1350
+    },
+    {
+      "file": "TelemetryOpener.dc.html",
+      "x": 0,
+      "y": 3160,
+      "w": 1080,
+      "h": 1350
+    },
+    {
+      "file": "TelemetryStation.dc.html",
+      "x": 1200,
+      "y": 3160,
+      "w": 1080,
+      "h": 1350
+    }
+  ],
+  "annotations": [
+    {
+      "id": "dir-1",
+      "x": 2500,
+      "y": 40,
+      "w": 420,
+      "text": "1 · HUD — the poster is one of the app's own plates"
+    },
+    {
+      "id": "dir-2",
+      "x": 2500,
+      "y": 1620,
+      "w": 420,
+      "text": "2 · FULL BLEED — the render fills the frame"
+    },
+    {
+      "id": "dir-3",
+      "x": 2500,
+      "y": 3200,
+      "w": 420,
+      "text": "3 · TELEMETRY — the info card's grid as a spec sheet"
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}
