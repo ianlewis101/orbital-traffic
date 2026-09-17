@@ -3,6 +3,7 @@ import worker, {
   buildTLERecords,
   classifyGroupBody,
   getTLERecords,
+  isAllowedOrigin,
   refreshTLECache,
   TLE_TTL,
   SATCAT_TTL,
@@ -93,16 +94,59 @@ describe("worker routes", () => {
     vi.unstubAllGlobals();
   });
 
-  it("answers OPTIONS with CORS headers", async () => {
-    const res = await worker.fetch(new Request("https://x/tle", { method: "OPTIONS" }), {}, ctx);
-    expect(res.status).toBe(200);
-    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+  it("answers OPTIONS from an allowed origin with CORS headers", async () => {
+    const res = await worker.fetch(
+      new Request("https://x/tle", {
+        method: "OPTIONS",
+        headers: { Origin: "https://orbitaltraffic.app" },
+      }),
+      {},
+      ctx
+    );
+    expect(res.status).toBe(204);
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("https://orbitaltraffic.app");
     expect(res.headers.get("Access-Control-Allow-Methods")).toContain("GET");
+  });
+
+  it("withholds the preflight grant from an unknown origin", async () => {
+    const res = await worker.fetch(
+      new Request("https://x/tle", {
+        method: "OPTIONS",
+        headers: { Origin: "https://competitor.example" },
+      }),
+      {},
+      ctx
+    );
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBeNull();
+    expect(res.headers.get("Access-Control-Allow-Methods")).toBeNull();
   });
 
   it("404s unknown paths", async () => {
     const res = await worker.fetch(new Request("https://x/nope"), {}, ctx);
     expect(res.status).toBe(404);
+  });
+
+  it("echoes the CORS grant back to the app's own origin, not a wildcard", async () => {
+    fetch.mockImplementation(() => Promise.resolve(textResponse(GP_HEADER)));
+    const res = await worker.fetch(
+      new Request("https://x/tle", { headers: { Origin: "https://orbitaltraffic.app" } }),
+      {},
+      ctx
+    );
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("https://orbitaltraffic.app");
+    // Without this, any cache in front of us could replay one origin's grant.
+    expect(res.headers.get("Vary")).toContain("Origin");
+  });
+
+  it("serves the body but no CORS grant to an unknown origin", async () => {
+    fetch.mockImplementation(() => Promise.resolve(textResponse(GP_HEADER)));
+    const res = await worker.fetch(
+      new Request("https://x/tle", { headers: { Origin: "https://competitor.example" } }),
+      {},
+      ctx
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBeNull();
   });
 
   it("serves merged, classified TLE records on /tle", async () => {
@@ -115,7 +159,9 @@ describe("worker routes", () => {
     const res = await worker.fetch(new Request("https://x/tle"), {}, ctx);
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toBe("application/json");
-    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    // No Origin header (curl, native HTTP client, the verification calls in
+    // CLAUDE.md): the body still serves, it just carries no CORS grant.
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBeNull();
     expect(res.headers.get("Cache-Control")).toBe(`public, max-age=${TLE_TTL}`);
     const recs = await res.json();
     expect(recs).toHaveLength(2);
@@ -886,7 +932,9 @@ describe("TLE_CACHE (Workers KV warm cache)", () => {
       if (url.includes("GROUP=stations")) return Promise.resolve(textResponse(ISS_GP));
       return Promise.resolve(textResponse(""));
     });
-    const kv = stubGroupKv({ tle: { recs: [{ name: "X", cat: "other" }], failedGroups: 12, builtAt: 1 } });
+    const kv = stubGroupKv({
+      tle: { recs: [{ name: "X", cat: "other" }], failedGroups: 12, builtAt: 1 },
+    });
 
     await refreshTLECache({ TLE_CACHE: kv });
 
@@ -1057,5 +1105,37 @@ describe("CelesTrak non-CSV 200 responses", () => {
     const stored = kv._get("group:stations");
     expect(stored.recs.find((r) => r.name === "ISS (ZARYA)")).toBeDefined();
     expect(stored.fetchedAt).toBeGreaterThan(0);
+  });
+});
+
+describe("isAllowedOrigin", () => {
+  it("allows the deployed web app", () => {
+    expect(isAllowedOrigin("https://orbitaltraffic.app")).toBe(true);
+    expect(isAllowedOrigin("https://www.orbitaltraffic.app")).toBe(true);
+    expect(isAllowedOrigin("https://ianlewis101.github.io")).toBe(true);
+  });
+
+  // The already-shipped App Store build cannot be repaired without another
+  // review cycle, so this matches on Capacitor's scheme rather than on a host
+  // it is free to change between major versions. Keep these passing.
+  it("allows the Capacitor native shell on scheme, whatever the host", () => {
+    expect(isAllowedOrigin("capacitor://localhost")).toBe(true);
+    expect(isAllowedOrigin("capacitor://orbitaltraffic.app")).toBe(true);
+    expect(isAllowedOrigin("ionic://localhost")).toBe(true);
+  });
+
+  it("allows local development on any port", () => {
+    expect(isAllowedOrigin("http://localhost:5173")).toBe(true);
+    expect(isAllowedOrigin("http://127.0.0.1:4173")).toBe(true);
+  });
+
+  it("rejects everyone else, and anything unparseable", () => {
+    expect(isAllowedOrigin("https://competitor.example")).toBe(false);
+    // Substring lookalikes must not slip through.
+    expect(isAllowedOrigin("https://orbitaltraffic.app.evil.example")).toBe(false);
+    expect(isAllowedOrigin("https://notorbitaltraffic.app")).toBe(false);
+    expect(isAllowedOrigin("null")).toBe(false);
+    expect(isAllowedOrigin("")).toBe(false);
+    expect(isAllowedOrigin(null)).toBe(false);
   });
 });

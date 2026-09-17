@@ -1,21 +1,89 @@
-MIT License
+Orbital Traffic — Proprietary Software License
 
-Copyright (c) 2026 Ian Lewis
+Copyright (c) 2026 Ian Lewis. All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. OWNERSHIP
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+   Orbital Traffic (the "Software") — including its source code, build and
+   deployment scripts, design assets, documentation, and the curated data
+   described in Section 3 — is the exclusive property of Ian Lewis and is
+   protected by copyright law and international treaties.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+2. NO LICENSE GRANTED
+
+   No right or licence is granted to any person, expressly or by implication,
+   to use, copy, modify, merge, publish, distribute, sublicense, sell, or
+   create derivative works of the Software, in whole or in part, by any means
+   or in any medium.
+
+   This repository is published for transparency and reference only. The
+   ability to view or download these files does not grant permission to use
+   them. Without limiting the above, you may not:
+
+     a. publish, distribute, or sell any application, service, or other work
+        derived from the Software, including to any application store;
+     b. incorporate any portion of the Software into another product;
+     c. reproduce or redistribute the curated data described in Section 3, in
+        any product or dataset; or
+     d. access the backend services described in Section 4 from any software
+        other than Orbital Traffic itself.
+
+3. CURATED DATA
+
+   The object descriptions, agency attributions, researched category verdicts,
+   photograph selections, and highlight lists distributed with the Software —
+   including apps/web/public/data/descriptions.json, neo-descriptions.json,
+   photos.json, hotlist.json, and packages/catalog/src/reclassify.js — are
+   original works of authorship, compiled through manual research. They are
+   not derived from, and are not redistributable under the terms of, the
+   public catalogues credited in README.md. They are covered by this Licence
+   in full.
+
+   The underlying orbital elements and source material obtained from CelesTrak,
+   NASA/JPL, NASA, and The Space Devs remain subject to those providers' own
+   terms, and nothing in this Licence asserts any claim over them.
+
+4. BACKEND SERVICES
+
+   The Orbital Traffic Cloudflare Worker endpoints exist solely to serve
+   Orbital Traffic. They are not a public API. Use by any other application,
+   automated scraping, and redistribution of their responses are not
+   permitted.
+
+5. THIRD-PARTY COMPONENTS
+
+   The Software incorporates third-party components that remain under their
+   own licences and are not covered by Sections 1–4:
+
+     - three.js                                     MIT License
+     - satellite.js                                 MIT License
+     - Capacitor (@capacitor/*)                     MIT License
+     - Bricolage Grotesque, Orbitron, Oxanium       SIL Open Font License 1.1
+       (licence text: apps/web/public/fonts/OFL-*.txt)
+
+   Build-time and development dependencies declared in package.json likewise
+   remain under their own licences.
+
+6. CONTRIBUTIONS
+
+   By submitting a contribution to this repository, you assign to Ian Lewis
+   all right, title, and interest in that contribution, and confirm you have
+   the authority to do so.
+
+7. NO WARRANTY
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+   WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
+   OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+   Orbital positions are computed from public catalogue data and are provided
+   for informational purposes only. They must not be relied upon for
+   navigation, collision avoidance, or any safety-critical purpose.
+
+8. ENQUIRIES
+
+   Licensing enquiries: orbitaltraffic@outlook.com

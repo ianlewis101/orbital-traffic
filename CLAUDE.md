@@ -800,6 +800,55 @@ instead. Add a new surface to that test in the same change.
   deploy-worker.yml needs no change and no GitHub secret). When the
   binding is absent the Worker behaves exactly as before — the key
   is optional, not required.
+- Production sourcemaps must stay OFF (apps/web/vite.config.js's
+  `build.sourcemap: false`). `true` emits .js.map files carrying
+  `sourcesContent` — the full *commented* original of every bundled
+  module — and Pages serves them publicly beside the code. Measured
+  2026-09-17 against the live site before this was fixed:
+  main-*.js.map returned HTTP 200, 682 KB, reconstructing 69 files
+  verbatim including packages/catalog/src/classify.js and
+  reclassify.js. Nothing in this project reports errors to a service
+  that needs maps to symbolicate, so there is no cost to leaving
+  them off; debug a release build locally with
+  `vite build --sourcemap` instead of flipping the committed value.
+- The Worker's CORS must stay an allowlist, never back to
+  `Access-Control-Allow-Origin: "*"` (isAllowedOrigin() in
+  worker/src/index.js). Three properties are load-bearing:
+  (1) the grant is applied by withCors() at the request boundary,
+  NOT inside jsonResponse() — cached() keys caches.default on the
+  path alone, so an origin-specific header baked into a cached body
+  would be replayed to every later caller whatever their origin was;
+  (2) the native shells are matched on SCHEME (capacitor:/ionic:),
+  never on host — an already-shipped App Store build can't be
+  repaired without another review cycle if that list is wrong;
+  (3) a request with NO Origin header is still served, just without
+  an ACAO header — non-browser clients don't enforce CORS anyway,
+  and this is what keeps the verification curls below working.
+  Be clear-eyed about what it buys: CORS is enforced by browsers and
+  nothing else, so it stops another site's web app from pointing at
+  this Worker and does not stop curl, a server-side proxy, or a
+  native HTTP client. The licence covers the rest.
+
+── LICENSING ─────────────────────────────────────────────────
+
+The project is PROPRIETARY (LICENSE, all rights reserved) — it was
+MIT until 2026-09-17 and must not drift back. The repo stays public
+for transparency, which is not a licence grant; README.md's License
+section and CONTRIBUTING.md's header both say so and should keep
+saying so. LICENSE §3 separately claims the curated layer
+(descriptions.json, neo-descriptions.json, photos.json,
+hotlist.json, reclassify.js) as hand-compiled original work, since
+that — not the TLE maths, which is public — is the part a competitor
+cannot rebuild. §5 disclaims the vendored third-party components
+(three.js, satellite.js, Capacitor, the three OFL fonts); keep that
+list accurate when dependencies change, and never let §1–§4 read as
+claiming them.
+
+One limit worth remembering rather than rediscovering: relicensing
+is not retroactive. Anyone who obtained a copy under MIT keeps MIT
+rights to THAT snapshot forever. The repo had 0 forks and 0 stars
+when this changed, so the practical exposure was nil — but it is not
+a reason to treat any future licence question as reversible.
 
 ── DEPLOY COMMANDS (reference) ───────────────────────────────
 

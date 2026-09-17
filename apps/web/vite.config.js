@@ -92,7 +92,18 @@ export default defineConfig({
   },
   build: {
     target: "es2020",
-    sourcemap: true,
+    // Deliberately off. `true` emits .js.map files carrying `sourcesContent`
+    // — the complete, *commented* original of every module in the bundle —
+    // and Pages serves them publicly next to the code. Measured 2026-09-17
+    // against the live site: main-*.js.map was 682 KB and reconstructed 69
+    // files verbatim, packages/catalog/src/classify.js and reclassify.js
+    // among them. That published every researched category verdict and every
+    // comment explaining *why* a threshold is what it is, which is the part
+    // of this project that took real time to build (see LICENSE §1, §3).
+    // Nothing here reports errors to a service that would need maps to
+    // symbolicate, so there is no cost to omitting them; debug a release
+    // build locally with `vite build --sourcemap` instead of turning this on.
+    sourcemap: false,
     rollupOptions: {
       // Two-page build: the app itself, plus the marketing landing page.
       // welcome.html needs to go through Vite (not sit in public/ like

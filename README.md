@@ -75,8 +75,25 @@ something changed.
 | Crew roster | [Launch Library 2 (The Space Devs)](https://thespacedevs.com) | 1 h edge cache |
 | ISS activity | [NASA space station blog](https://blogs.nasa.gov/spacestation/) | daily |
 
-Orbital data is for informational use only.
+Orbital elements come from the public catalogues above and remain subject to those
+providers' terms. Positions shown are for informational use only — not for navigation,
+collision avoidance, or any safety-critical purpose.
+
+The **curated layer** on top of that data — the 2,800+ hand-written object descriptions,
+agency attributions, researched category verdicts, photo selections and highlight lists
+(`apps/web/public/data/descriptions.json`, `neo-descriptions.json`, `photos.json`,
+`hotlist.json`, `packages/catalog/src/reclassify.js`) — is original work compiled by hand,
+not redistributable, and not derived from any of those feeds.
 
 ## License
 
-[MIT](LICENSE)
+**Proprietary — all rights reserved.** See [LICENSE](LICENSE).
+
+This repository is public for transparency and reference. Viewing it does not grant
+permission to use, copy, modify, or redistribute the code or the curated data, or to
+publish a derived application to any app store. Third-party components (three.js,
+satellite.js, Capacitor, the three bundled OFL fonts) remain under their own licences —
+see LICENSE §5.
+
+The Worker endpoints are not a public API; they exist to serve Orbital Traffic. Licensing
+enquiries: orbitaltraffic@outlook.com
