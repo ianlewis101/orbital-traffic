@@ -9,6 +9,16 @@
   <!-- PWA manifest -->
   <link rel="manifest" href="/manifest.json">
 
+  <!-- Apple Smart App Banner. Browser chrome rather than page content: Safari
+       on iOS/iPadOS draws it itself, and because it alone knows whether the app
+       is installed it offers OPEN (deep-linking straight into the app) instead
+       of GET — something no web API can detect. It never renders in a WKWebView,
+       so the Capacitor build can't show it, and it's absent in every non-Safari
+       iOS browser. #app-banner covers exactly those; see src/ui/app-banner.js
+       for why the two can never appear together. App ID is duplicated there —
+       test/app-banner.test.js keeps them in step. -->
+  <meta name="apple-itunes-app" content="app-id=6788125984">
+
   <!-- iOS PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -64,6 +74,24 @@
   </div>
   <div class="ld"><i></i></div>
   <div class="msg" id="splash-msg">Loading your orbital catalog&hellip;</div>
+</div>
+
+<!-- App Store banner, for the iOS browsers Apple's Smart App Banner above
+     skips. Hidden until src/ui/app-banner.js decides it belongs here, and
+     removed from the DOM entirely when it doesn't. Deliberately outside .hud:
+     that's a z-index:10 stacking context, so a child of it can never sit above
+     the sheets and tooltips inside it, and this bar has to be the topmost
+     thing on screen after the splash. -->
+<div id="app-banner" role="complementary" aria-label="Get Orbital Traffic on the App Store">
+  <a class="ab-main" href="https://apps.apple.com/us/app/orbital-traffic/id6788125984" target="_blank" rel="noopener">
+    <img class="ab-icon" src="/icons/icon-120.png" alt="" width="38" height="38">
+    <span class="ab-txt">
+      <span class="ab-nm">Orbital Traffic</span>
+      <span class="ab-sub">Free on the App&nbsp;Store</span>
+    </span>
+    <span class="ab-cta">Get</span>
+  </a>
+  <button type="button" id="app-banner-x" aria-label="Dismiss App Store banner">&#10005;</button>
 </div>
 
 <div class="hud">

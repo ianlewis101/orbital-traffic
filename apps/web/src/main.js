@@ -32,6 +32,7 @@ import { initSearch } from "./ui/search.js";
 import { initShare } from "./ui/share.js";
 import { initOverhead } from "./ui/overhead.js";
 import { initSettings } from "./ui/settings.js";
+import { initAppBanner } from "./ui/app-banner.js";
 import { applyReduceMotion } from "./util/motion.js";
 import { initTimeMachine, updateClockMode } from "./ui/time.js";
 import { updateCount } from "./ui/status.js";
@@ -146,6 +147,13 @@ function newestCatalogEpoch(sats) {
 }
 
 async function boot() {
+  // Ahead of the renderer and data checks below, both of which bail out early:
+  // this depends on neither, and a visitor who gets "WebGL unavailable" or a
+  // failed catalog load is precisely who most wants the native app. It also
+  // means the bar is already in place when the splash lifts, so it needs no
+  // entrance animation of its own.
+  initAppBanner();
+
   if (!initRenderer($("#scene"))) {
     fatal("WebGL unavailable — try a different browser");
     return;

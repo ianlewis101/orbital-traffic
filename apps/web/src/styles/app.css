@@ -50,6 +50,10 @@
     --serif:'Bricolage Grotesque',ui-sans-serif,system-ui,sans-serif;
     --mono:'Oxanium',ui-sans-serif,system-ui,sans-serif;
     --logo:'Orbitron',ui-sans-serif,system-ui,sans-serif; /* wordmark only — --serif stays on object-name display */
+    /* Height of the App Store banner, or 0 when there isn't one. Written by
+       ui/app-banner.js from the rendered bar and read by every fixed element
+       anchored to the top edge, so they shift as one. */
+    --app-banner-h:0px;
   }
   *{margin:0;padding:0;box-sizing:border-box}
   html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
@@ -105,8 +109,56 @@
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.35}}
   .lab{font-size:9px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);font-weight:500}
 
+  /* ---------- App Store banner ----------
+     Shown only in the iOS browsers Apple's own Smart App Banner never reaches
+     (see ui/app-banner.js). Full-bleed and square-cornered rather than another
+     floating .plate: it's chrome above the instrument panel, not part of it,
+     and reading as a rounded card would put it in the same visual class as the
+     readouts it sits over. Keeps the plates' translucency, hairline and
+     spectrum rule so it still belongs to the same surface family.
+
+     z-index 20 clears .hud (10) and #tip (13) while staying under #splash (50)
+     — the bar is already in place when the splash lifts, which is why it needs
+     no entrance animation of its own. */
+  #app-banner{display:none;position:fixed;top:0;left:0;right:0;z-index:20;
+    align-items:center;gap:8px;
+    /* env() resolves to 0 without viewport-fit=cover, which this app doesn't
+       set — the max() is there so an edge-to-edge webview can't tuck the icon
+       under a notch. */
+    padding:max(8px,env(safe-area-inset-top,0px)) 10px 8px 12px;
+    background:rgba(13,17,34,0.88);
+    backdrop-filter:blur(18px) saturate(1.2);-webkit-backdrop-filter:blur(18px) saturate(1.2);
+    border-bottom:1px solid var(--line);
+    box-shadow:0 10px 30px rgba(0,0,0,0.45);
+    transition:transform .24s cubic-bezier(.22,.7,.2,1),opacity .24s ease}
+  #app-banner.show{display:flex}
+  #app-banner.dismissed{transform:translateY(-100%);opacity:0;pointer-events:none}
+  #app-banner::after{content:"";position:absolute;bottom:-1px;left:14px;right:14px;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(94,234,212,0.5),rgba(167,139,250,0.5),transparent);opacity:0.6}
+  /* The whole row is the tap target, not just the pill. */
+  #app-banner .ab-main{flex:1;min-width:0;display:flex;align-items:center;gap:10px;
+    min-height:44px;text-decoration:none;color:inherit;
+    touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+  #app-banner .ab-icon{flex:0 0 auto;width:38px;height:38px;border-radius:9px;
+    border:1px solid rgba(255,255,255,0.14)}
+  /* flex:1 on the text, not the pill: it absorbs the free space so the CTA
+     anchors to the right of the row instead of floating mid-bar with a gap
+     between it and the dismiss button. */
+  #app-banner .ab-txt{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+  #app-banner .ab-nm{font-family:var(--serif);font-weight:700;font-size:13.5px;line-height:1.1;
+    color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #app-banner .ab-sub{font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint)}
+  #app-banner .ab-cta{flex:0 0 auto;font-size:10px;font-weight:700;letter-spacing:0.16em;
+    text-transform:uppercase;color:#06122a;background:var(--amber);border-radius:20px;padding:7px 15px}
+  /* 44x44 for the hit area; with no background of its own the button still
+     reads as just the glyph. */
+  #app-banner-x{flex:0 0 auto;width:44px;height:44px;display:flex;align-items:center;justify-content:center;
+    border-radius:50%;color:var(--ink-faint);font-size:11px;line-height:1;cursor:pointer;
+    touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+  #app-banner-x:hover{color:var(--ink)}
+
   /* ---------- wordmark ---------- */
-  #brand{top:22px;left:24px;animation:rise .8s both .05s;display:flex;align-items:center;gap:6px}
+  #brand{top:calc(22px + var(--app-banner-h));left:24px;animation:rise .8s both .05s;display:flex;align-items:center;gap:6px}
   #brand .mark{width:68px;height:68px;flex-shrink:0}
   #brand .wm{font-family:var(--logo);font-weight:800;font-size:28px;line-height:0.92;letter-spacing:0.01em;
     background:linear-gradient(95deg,#eef1f8 12%,#5eead4 55%,#a78bfa 92%);-webkit-background-clip:text;
@@ -118,7 +170,7 @@
   #brand .wm-sub{font-size:8.5px;letter-spacing:0.4em;text-transform:uppercase;color:var(--ink-faint);margin-top:8px;padding-left:2px}
 
   /* ---------- clock ---------- */
-  #clock{top:18px;right:24px;min-width:236px;max-width:300px;animation-delay:.1s}
+  #clock{top:calc(18px + var(--app-banner-h));right:24px;min-width:236px;max-width:300px;animation-delay:.1s}
   #clock .body{padding:9px 13px 11px}
   .utc-compact{display:none}
   .utc-full{display:inline}
@@ -132,7 +184,7 @@
   #count b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
 
   /* ---------- search command bar ---------- */
-  #search-wrap{top:72px;left:50%;transform:translateX(-50%);width:360px;max-width:42vw;animation:rise .8s both .16s}
+  #search-wrap{top:calc(72px + var(--app-banner-h));left:50%;transform:translateX(-50%);width:360px;max-width:42vw;animation:rise .8s both .16s}
   #search{display:flex;align-items:center;gap:10px;padding:10px 14px}
   #search svg{flex:0 0 auto;color:var(--ink-faint)}
   #search input{flex:1;background:none;border:none;outline:none;color:var(--ink);font-family:var(--mono);
@@ -310,7 +362,7 @@
      the openers(12)/#tip(13)/#overhead,#settings(15), so this doesn't
      reorder anything else in the .hud stack — it only lifts #info above
      #meta's implicit auto(0) level. */
-  #info{top:104px;right:24px;width:300px;overflow:hidden;display:none;z-index:5}
+  #info{top:calc(104px + var(--app-banner-h));right:24px;width:300px;overflow:hidden;display:none;z-index:5}
   #info.show{display:block;animation:slidein .32s cubic-bezier(.2,.7,.2,1)}
   /* mobile-only swipe-to-collapse handle + mini-card — hidden on desktop */
   #info-drag,#mini-card{display:none}
@@ -536,7 +588,10 @@
   #brand,#search-wrap,#meta{position:fixed}
 
   /* object card: aurora frosted glass + illustration banner */
-  #info{max-height:calc(100vh - 132px);overflow-y:auto;overflow-x:hidden;border-radius:16px}
+  /* The banner term keeps the card's bottom edge where it was when its top
+     moved down — without it a right-hand panel runs off the bottom of the
+     screen instead. Both go 0 on mobile, where these become bottom sheets. */
+  #info{max-height:calc(100vh - 132px - var(--app-banner-h));overflow-y:auto;overflow-x:hidden;border-radius:16px}
   #info-figure{margin:0;height:116px;display:flex;align-items:center;justify-content:center;position:relative;
     overflow:hidden;border-bottom:1px solid var(--line);background:
       radial-gradient(120% 120% at 28% 18%,rgba(94,234,212,0.22),transparent 55%),
@@ -593,7 +648,8 @@
      below toast (30) so a "catalog refreshed" message still reads over the
      top. Without this the boot hint prints straight through the panel header
      and the openers float over the list rows. */
-  #overhead,#settings,#chain{top:104px;right:24px;width:320px;max-height:calc(100vh - 150px);
+  #overhead,#settings,#chain{top:calc(104px + var(--app-banner-h));right:24px;width:320px;
+    max-height:calc(100vh - 150px - var(--app-banner-h));
     z-index:15;display:none;flex-direction:column;overflow:hidden}
   #overhead.show,#settings.show,#chain.show{display:flex}
   /* An open sheet covers the area both openers sit in, at every breakpoint,
@@ -793,7 +849,7 @@
        the card wide and leaving dead space under it. Dropping the redundant "· UTC"
        suffix (the time row already labels itself "UTC") lets the header, and so the
        whole card, shrink to roughly match the compact content. */
-    #clock{top:10px;right:10px;width:fit-content;min-width:0;max-width:200px;animation:none}
+    #clock{top:calc(10px + var(--app-banner-h));right:10px;width:fit-content;min-width:0;max-width:200px;animation:none}
     #clock .body{padding:7px 11px 8px}
     #clock .utc{font-size:26px;letter-spacing:0.01em;text-align:center;margin-top:4px}
     #clock .utc small{font-size:10px}
@@ -810,7 +866,8 @@
     /* 46px, not 44: #search sits at inset:0 with a 1px border, so its content
        box — and therefore the toggle button filling it — is 2px smaller than
        the wrap. 46 makes the actual tappable button measure a true 44x44. */
-    #search-wrap{top:10px;left:10px;right:auto;transform:none;width:46px;height:46px;max-width:none;animation:none;
+    #search-wrap{top:calc(10px + var(--app-banner-h));left:10px;right:auto;transform:none;width:46px;height:46px;
+      max-width:none;animation:none;
       transition:width .28s cubic-bezier(.22,.7,.2,1)}
     #search-wrap.expanded{width:calc(100vw - 220px);max-width:520px}
     #search{position:absolute;inset:0;padding:0;justify-content:center;border-radius:50%;overflow:hidden;
@@ -830,7 +887,7 @@
        only blurs the field rather than resetting page scale. Keeping this
        at/above 16px stops the zoom from triggering at all. */
     #search input{min-height:44px;font-size:16px}
-    #results{top:52px;left:10px;right:10px;width:auto;max-width:none;transform:none}
+    #results{top:calc(52px + var(--app-banner-h));left:10px;right:10px;width:auto;max-width:none;transform:none}
 
     /* Left stack — repositioned, no time machine */
     #leftstack{left:10px;bottom:10px;width:185px;gap:8px;animation:none}

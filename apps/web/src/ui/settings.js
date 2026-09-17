@@ -29,8 +29,10 @@ import { locationStatus, clearLocationDenied } from "../data/location.js";
 import { fetchLive } from "../data/live.js";
 import { formatRelativeTime } from "../util/relative-time.js";
 import { applyReduceMotion } from "../util/motion.js";
+import { isNativeWrapper } from "../util/platform.js";
 import { esc } from "../util/html.js";
 import { getGlobeStyle, setGlobeStyle } from "../scene/earth.js";
+import { APP_STORE_URL } from "./app-banner.js";
 import { savedIds } from "./favorites.js";
 import { refreshInfo, select } from "./info.js";
 import { toast, flash } from "./status.js";
@@ -61,6 +63,10 @@ const ICONS = {
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.4 9.3a2.7 2.7 0 0 1 5.2 1c0 1.9-2.6 2.1-2.6 3.7"/><circle cx="12" cy="16.3" r="0.9" fill="currentColor" stroke="none"/></svg>',
   issue:
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="7.5" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.9" fill="currentColor" stroke="none"/></svg>',
+  // A plain download glyph, not an Apple logo — the mark is Apple's and
+  // "Download on the App Store" badge artwork comes with its own usage rules.
+  appstore:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="4" x2="12" y2="14.2"/><path d="m8.2 10.4 3.8 3.8 3.8-3.8"/><path d="M5 17.5V19a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 19v-1.5"/></svg>',
 };
 
 /**
@@ -582,6 +588,13 @@ function buildAbout() {
 
   const links = document.createElement("div");
   links.className = "set-links";
+  // The App Store listing's permanent home, and the only route left to it once
+  // the banner has been dismissed — which is what makes that dismissal safe to
+  // persist forever. Omitted inside the native app, where offering to install
+  // it would be nonsense.
+  if (!isNativeWrapper()) {
+    links.appendChild(linkChip(APP_STORE_URL, "appstore", "Get the iOS app"));
+  }
   links.append(
     linkChip(`${GITHUB}/blob/main/CHANGELOG.md`, "changelog", "What's new"),
     linkChip("/support.html", "support", "Get Support"),
