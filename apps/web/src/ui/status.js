@@ -27,6 +27,7 @@ const TONES = {
 export function toast(msg, tone = "ok") {
   const c = TONES[tone] || TONES.ok;
   const t = document.createElement("div");
+  t.className = "toast";
   t.textContent = msg;
   t.style.cssText =
     "position:fixed;bottom:60px;left:50%;transform:translateX(-50%);z-index:30;font-family:var(--mono);font-size:11px;letter-spacing:.06em;padding:10px 16px;" +
