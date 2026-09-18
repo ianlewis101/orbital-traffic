@@ -133,6 +133,63 @@ describe("refreshEvents / renderEvents", () => {
     expect(text).toContain("Launched · LINK");
   });
 
+  it("times a launch row by launchedAt, not by when the catalog first saw it", async () => {
+    // The bug this covers: CelesTrak catalogued Qianfan 15 three days after
+    // liftoff, so the row read "8h ago" — the age of the TLE refresh that
+    // found it, not of the launch. `at` stays the feed's window/sort key.
+    const { mod } = await load();
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            events: [
+              {
+                type: "launch",
+                ids: ["100693"],
+                count: 1,
+                name: "QIANFAN 15 OBJECT B",
+                cat: "communications",
+                at: new Date().toISOString(),
+                launchedAt: threeDaysAgo,
+              },
+            ],
+          })
+        )
+      )
+    );
+    await mod.refreshEvents();
+    const text = document.getElementById("events-list").textContent;
+    expect(text).toContain("3d ago");
+    expect(text).not.toContain("just now");
+  });
+
+  it("falls back to at for launch rows logged before launchedAt existed", async () => {
+    const { mod } = await load();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            events: [
+              {
+                type: "launch",
+                ids: ["60001"],
+                count: 1,
+                name: "STARLINK-31001",
+                cat: "starlink",
+                at: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+              },
+            ],
+          })
+        )
+      )
+    );
+    await mod.refreshEvents();
+    expect(document.getElementById("events-list").textContent).toContain("2h ago");
+  });
+
   it("renders a reentry event as inert (no selectable object) when the object is already gone locally", async () => {
     const { mod } = await load();
     vi.stubGlobal(

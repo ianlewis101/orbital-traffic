@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { diffLaunchesReentries, diffCrewRoster } from "../src/events.js";
+import { diffLaunchesReentries, diffCrewRoster, annotateLaunchDates } from "../src/events.js";
 
 const NOW = "2026-08-20T06:00:00.000Z";
 
@@ -151,5 +151,73 @@ describe("diffCrewRoster", () => {
     const { events } = diffCrewRoster(prev, fresh, NOW);
     expect(events).toHaveLength(2);
     expect(events.map((e) => e.direction).sort()).toEqual(["arrived", "departed"]);
+  });
+});
+
+describe("annotateLaunchDates", () => {
+  const launchEvents = () =>
+    diffLaunchesReentries(
+      [],
+      [
+        rec("QIANFAN 15 OBJECT B", "100693", "communications", "26210B"),
+        rec("QIANFAN 15 OBJECT C", "100694", "communications", "26210C"),
+        rec("GUOWANG 25 OBJECT A", "100714", "communications", "26213A"),
+      ],
+      NOW
+    );
+
+  it("stamps launchedAt from the resolver without touching at", async () => {
+    const events = await annotateLaunchDates(launchEvents(), async () => "2026-09-15");
+    expect(events).toHaveLength(2);
+    for (const e of events) {
+      expect(e.launchedAt).toBe("2026-09-15T00:00:00.000Z");
+      // `at` is the discovery instant and stays the window/sort key — see the
+      // function's own comment for why overwriting it would drop real events.
+      expect(e.at).toBe(NOW);
+    }
+  });
+
+  it("resolves one lookup per launch batch, not one per object", async () => {
+    const asked = [];
+    await annotateLaunchDates(launchEvents(), async (id) => {
+      asked.push(id);
+      return "2026-09-15";
+    });
+    // Two batches (26210, 26213) across three objects.
+    expect(asked).toHaveLength(2);
+    expect(new Set(asked).size).toBe(2);
+  });
+
+  it("leaves the event unannotated when the lookup misses or throws", async () => {
+    const missing = await annotateLaunchDates(launchEvents(), async () => null);
+    expect(missing.every((e) => e.launchedAt === undefined)).toBe(true);
+
+    const throwing = await annotateLaunchDates(launchEvents(), async () => {
+      throw new Error("CelesTrak 503");
+    });
+    expect(throwing.every((e) => e.launchedAt === undefined)).toBe(true);
+  });
+
+  it("rejects a malformed launch date rather than emitting an Invalid Date", async () => {
+    for (const bad of ["", "not-a-date", "2026-09", "15/09/2026", 20260915, null, undefined]) {
+      const events = await annotateLaunchDates(launchEvents(), async () => bad);
+      expect(events.every((e) => e.launchedAt === undefined)).toBe(true);
+    }
+  });
+
+  it("ignores reentry events, which have no launch to date", async () => {
+    const events = diffLaunchesReentries(
+      [rec("STARLINK-1067", "44771", "starlink", "19074A")],
+      [],
+      NOW
+    );
+    let called = false;
+    await annotateLaunchDates(events, async () => {
+      called = true;
+      return "2026-09-15";
+    });
+    expect(called).toBe(false);
+    expect(events[0]).toMatchObject({ type: "reentry", at: NOW });
+    expect(events[0].launchedAt).toBeUndefined();
   });
 });

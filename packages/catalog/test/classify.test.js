@@ -254,6 +254,36 @@ describe("correctOtherCat", () => {
     expect(correctOtherCat("14", "KUIPER-00008", "other")).toBe("kuiper");
   });
 
+  it("rescues the Chinese broadband megaconstellations by name (2026-09-18)", () => {
+    // Guowang/SatNet: CelesTrak renamed this series from HULIANWANG (already
+    // matched, 191 records) to GUOWANG, stranding the newer batches in "other"
+    // while their older siblings stayed "communications".
+    expect(correctOtherCat("100714", "GUOWANG 25 OBJECT A", "other")).toBe("communications");
+    expect(correctOtherCat("100356", "GUOWANG 24 OBJECT A", "other")).toBe("communications");
+    expect(correctOtherCat("69321", "GUOWANG TEST OBJECT B", "other")).toBe("communications");
+    // Qianfan/Thousand Sails (G60): 36 records were already "communications"
+    // via reclassify.js's researched overrides against 220 left in "other".
+    expect(correctOtherCat("100693", "QIANFAN 15 OBJECT B", "other")).toBe("communications");
+    expect(correctOtherCat("100702", "QIANFAN 16 OBJECT A", "other")).toBe("communications");
+    expect(correctOtherCat("60379", "QIANFAN-1", "other")).toBe("communications");
+  });
+
+  it("keeps the ID allowlists ahead of the new constellation patterns", () => {
+    // DEBRIS_IDS is checked before every name regex, so the one researched
+    // Guowang test object stays debris even though its name now matches
+    // COMMS_NAME_RE. This is the guarantee that lets a constellation pattern
+    // be added without re-litigating the hand-verified verdicts.
+    expect(correctOtherCat("69320", "GUOWANG TEST OBJECT A", "other")).toBe("debris");
+  });
+
+  it("rescues Spacety's Tianyi smallsat series into science (2026-09-18)", () => {
+    // Commercial remote-sensing / tech-demo smallsats, so they sit with the
+    // sibling TIAN* imaging series rather than with the broadband
+    // constellations above.
+    expect(correctOtherCat("100741", "TIANYI OBJECT A", "other")).toBe("science");
+    expect(correctOtherCat("64048", "TIANYI A", "other")).toBe("science");
+  });
+
   it("rescues Starlink satellites by name when the dedicated group's own fetch failed (2026-09-03)", () => {
     // Starlink normally arrives already tagged "starlink" via groups.js and
     // never reaches correctOtherCat() at all — this only matters when the

@@ -647,7 +647,22 @@ export async function buildEvents() {
   }));
   const launchReentry = launchReentryEvents.map((e) =>
     e.type === "launch"
-      ? { type: "launch", at: e.at, ids: e.ids, count: e.count, name: e.name, cat: e.cat }
+      ? {
+          type: "launch",
+          at: e.at,
+          // When the batch actually left the pad, where the log has it (see
+          // annotateLaunchDates()). Carried alongside `at`, never instead of
+          // it: the window and sort below stay on `at` — the instant this
+          // pipeline first saw the objects — so a batch CelesTrak catalogs
+          // days after liftoff still reaches the feed. The client prefers
+          // `launchedAt` for the row's timestamp text, and falls back to `at`
+          // for older log entries that predate the field.
+          launchedAt: e.launchedAt,
+          ids: e.ids,
+          count: e.count,
+          name: e.name,
+          cat: e.cat,
+        }
       : { type: "reentry", at: e.at, id: e.id, name: e.name, cat: e.cat }
   );
   const crew = crewEvents.map((e) => ({
