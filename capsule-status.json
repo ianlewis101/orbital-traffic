@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-18T19:23:08.918Z",
+  "updated": "2026-09-18T22:10:37.024Z",
   "capsules": {
     "67796": {
       "name": "CREW DRAGON 12",
@@ -97,7 +97,7 @@
       "phase": "free-flying",
       "stationKey": "iss",
       "since": "2026-09-17T17:31:02.748Z",
-      "distanceKm": 11403.9,
+      "distanceKm": 10007.9,
       "altitudeKm": 293.5,
       "inclinationDeg": 51.633,
       "l1": "1 A0712U 26212A   26261.30770221  .00083399  14024-4  20515-3 0  9995",
