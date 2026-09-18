@@ -393,6 +393,22 @@ Monorepo (npm workspaces):
       (actively wrong — it didn't burn up). Written to
       launch-reentry-log.json (repo root, MAX_LAUNCH_REENTRY_EVENTS
       cap), committed alongside satellites.json in the same commit.
+
+      TWO TIMESTAMPS ON A LAUNCH EVENT, AND THEY ARE NOT
+      INTERCHANGEABLE: `at` is when this pipeline first SAW the
+      objects (the refresh run's own clock) and is the only key
+      /events windows and sorts on; `launchedAt` is when the batch
+      actually left the pad, stamped by annotateLaunchDates() in
+      events.js from SATCAT's LAUNCH_DATE, one lookup per batch.
+      The client prints `launchedAt` and falls back to `at`. Never
+      "simplify" this by writing the launch time into `at`:
+      CelesTrak routinely catalogs a batch one to three days after
+      liftoff (Qianfan 15 launched 2026-09-15 and arrived across
+      the 17th and 18th), so a launch-time `at` drops straight out
+      of the 48h window and the event never renders at all. A
+      missing launch date is routine, not an error — a brand-new
+      object often has no SATCAT record for a few hours — and
+      leaves the row on its `at` fallback.
     - Crew changes: update-iss-today.mjs (update-iss-today.yml,
       daily) best-effort-fetches the Worker's own public /crew
       route (never LL2 directly — LL2_API_KEY is a Worker secret,

@@ -298,12 +298,43 @@ export const STARLINK_NAME_RE = /STARLINK/;
 export const KUIPER_NAME_RE = /KUIPER/;
 export const WEATHER_NAME_RE = /GOES|METEOSAT|HIMAWARI|NOAA|METOP|METEOR|DMSP|ELEKTRO|FENGYUN/;
 export const EO_NAME_RE = /LANDSAT|SENTINEL|TERRA|AQUA|WORLDVIEW|SPOT|DOVE|ICEYE|PLEIADES/;
-/** Major LEO/MEO comms and IoT/AIS constellations with no dedicated CelesTrak group. */
+/**
+ * Major LEO/MEO comms and IoT/AIS constellations with no dedicated CelesTrak
+ * group.
+ *
+ * QIANFAN and GUOWANG are the two Chinese broadband megaconstellations, added
+ * 2026-09-18 after four launch batches in three days surfaced in "Today in
+ * Space" as "LAUNCHED · N NEW OTHER SATELLITES" — the feed's generic bucket,
+ * which the app also hides by default. Both were already half-classified by
+ * other means, which is what makes the name pattern the right fix rather than
+ * a judgement call:
+ *   - GUOWANG (SatNet, the state broadband network) is the same constellation
+ *     CelesTrak used to catalog as HULIANWANG — already matched on the line
+ *     below, 191 records strong. The rename left 22 records stranded in
+ *     "other" while their older siblings stayed "communications".
+ *   - QIANFAN (Thousand Sails / G60, Shanghai Spacecom) had 36 records already
+ *     in "communications" via reclassify.js's researched CATEGORY_OVERRIDES,
+ *     against 220 left in "other" — the same verdict, reached object by
+ *     object, that this pattern now reaches for the whole series.
+ *
+ * Neither pattern can undo a researched verdict or an ID allowlist: both are
+ * checked ahead of every name regex in correctOtherCat(), which is why
+ * GUOWANG TEST OBJECT A (69320, DEBRIS_IDS) stays "debris".
+ */
 export const COMMS_NAME_RE =
-  /IRIDIUM|GLOBALSTAR|ORBCOMM|O3B|HULIANWANG|GEESAT|SITRO-AIS|GONETS-M|CONNECTA|RASSVET-3|APRIZESAT|NINGXIA-1|SCS-01|LEMUR|MERIDIAN/;
-/** Earth-observation/imaging constellations and tech-demo cubesats beyond the weather/EO sets. */
+  /IRIDIUM|GLOBALSTAR|ORBCOMM|O3B|HULIANWANG|GUOWANG|QIANFAN|GEESAT|SITRO-AIS|GONETS-M|CONNECTA|RASSVET-3|APRIZESAT|NINGXIA-1|SCS-01|LEMUR|MERIDIAN/;
+/**
+ * Earth-observation/imaging constellations and tech-demo cubesats beyond the
+ * weather/EO sets.
+ *
+ * TIANYI is Spacety's commercial remote-sensing/tech-demo smallsat series —
+ * added alongside the two comms constellations above, and the third series in
+ * that same "OTHER SATELLITES" run. It sits with its sibling TIAN* series
+ * (TIANMU, TIANHUI) rather than in COMMS_NAME_RE: these are imaging and
+ * technology-demonstration payloads, not a broadband constellation.
+ */
 export const SCI_CONSTELLATION_RE =
-  /FLOCK|JILIN-1|TIANMU|YUNHAI|TIANHUI|SUPERVIEW|AEROCUBE|WILDFIRE|CHUANGXIN|CARTOSAT|KOMPSAT|ARIRANG|PROBA|RADARSAT|RESOURCESAT|CBERS/;
+  /FLOCK|JILIN-1|TIANMU|YUNHAI|TIANHUI|TIANYI|SUPERVIEW|AEROCUBE|WILDFIRE|CHUANGXIN|CARTOSAT|KOMPSAT|ARIRANG|PROBA|RADARSAT|RESOURCESAT|CBERS/;
 /**
  * Known military/intelligence naming schemes, surfaced as their own
  * "classified" category instead of "other". Deliberately no generic

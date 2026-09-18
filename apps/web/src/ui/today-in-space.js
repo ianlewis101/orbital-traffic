@@ -133,7 +133,12 @@ export function renderEvents() {
     const { text, detail, target, open } = describeEvent(e);
     const hex = e.type === "chain" ? catColorHex(e.cat) : eventColorHex(e.type);
     const icon = eventIconSvg(e.type);
-    const sub = detail || formatRelativeTime(new Date(e.at)) || "";
+    // A launch row says when the batch launched; every other row's `at` is
+    // already the moment the thing happened. `launchedAt` is absent on log
+    // entries written before it existed, and on batches SATCAT hasn't
+    // catalogued yet, so `at` stays the fallback.
+    const when = e.launchedAt || e.at;
+    const sub = detail || formatRelativeTime(when ? new Date(when) : null) || "";
     const act = open || (target ? () => select(target) : null);
 
     const el = document.createElement("button");

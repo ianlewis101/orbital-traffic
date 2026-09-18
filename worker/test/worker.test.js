@@ -626,6 +626,49 @@ describe("worker routes", () => {
     expect(body.windowHours).toBe(48);
   });
 
+  it("/events carries launchedAt through and still windows on the discovery time", async () => {
+    // A batch catalogued 5h ago but launched 3 days before that. The window
+    // and sort key stay `at`, so the row survives; `launchedAt` rides along
+    // for the client to print. Windowing on the launch time instead would
+    // drop this event entirely — CelesTrak routinely catalogs a batch days
+    // after liftoff.
+    const hoursAgo = (h) => new Date(Date.now() - h * 3600 * 1000).toISOString();
+    const launched = hoursAgo(77);
+    globalThis.fetch = vi.fn((req) => {
+      const url = typeof req === "string" ? req : req.url;
+      if (url.includes("launch-reentry-log.json")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              events: [
+                {
+                  type: "launch",
+                  ids: ["100693"],
+                  count: 6,
+                  name: "QIANFAN 15 OBJECT B",
+                  cat: "communications",
+                  at: hoursAgo(5),
+                  launchedAt: launched,
+                },
+              ],
+            })
+          )
+        );
+      }
+      return Promise.resolve(new Response(JSON.stringify({ events: [], crewEvents: [] })));
+    });
+
+    const res = await worker.fetch(new Request("https://x/events"), {}, ctx);
+    const body = await res.json();
+    expect(body.events).toHaveLength(1);
+    expect(body.events[0]).toMatchObject({
+      type: "launch",
+      count: 6,
+      cat: "communications",
+      launchedAt: launched,
+    });
+  });
+
   it("/events drops events older than the display window", async () => {
     const tooOld = new Date(Date.now() - 72 * 3600 * 1000).toISOString();
     fetch.mockImplementation((url) => {

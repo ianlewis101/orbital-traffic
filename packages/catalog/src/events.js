@@ -82,6 +82,67 @@ export function diffLaunchesReentries(previousRecords, currentRecords, nowIso) {
 }
 
 /**
+ * SATCAT gives a launch date but no time of day, so a `launchedAt` is only
+ * ever accurate to the day it names. Anchored at UTC midnight, which is what
+ * the bare date string already parses to.
+ */
+function launchDateToIso(launchDate) {
+  if (typeof launchDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(launchDate)) return null;
+  const ms = Date.parse(launchDate + "T00:00:00.000Z");
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+}
+
+/**
+ * Stamps each launch event with `launchedAt` — when the batch actually left
+ * the pad — looked up once per batch through an injected resolver.
+ *
+ * WHY THIS IS A SECOND FIELD AND NOT A CORRECTED `at`: the two timestamps
+ * answer different questions and the feed needs both. `at` is when this
+ * pipeline first *saw* the objects, and it is what /events windows and sorts
+ * on; `launchedAt` is when the launch happened, and it is what the row should
+ * say out loud. Overwriting `at` would silently drop real events: CelesTrak
+ * routinely catalogs a batch one to three days after liftoff (Qianfan 15
+ * launched 2026-09-15 and landed in the catalog on the 17th and 18th), so a
+ * launch-time `at` would fall straight out of the 48-hour window the feed is
+ * built around and never render at all. Keeping `at` as the discovery instant
+ * preserves the window; `launchedAt` makes the copy honest.
+ *
+ * Best-effort by construction. A resolver that returns null, returns a
+ * malformed date or throws leaves the event unannotated, and the UI falls
+ * back to `at` — the pre-2026-09-18 behavior. A brand-new object often has no
+ * SATCAT record for a few hours after its first elset appears, so "no launch
+ * date yet" is an ordinary outcome, not a failure worth aborting a catalog
+ * refresh over.
+ *
+ * Batches are resolved one at a time rather than in parallel: the resolver
+ * talks to CelesTrak, and every other CelesTrak caller in this project paces
+ * itself (see fetch-tles.mjs's POLITE_DELAY_MS). Any pacing lives in the
+ * injected resolver, which keeps this module free of timers and testable
+ * with a plain function.
+ *
+ * @param {Array} events              events from diffLaunchesReentries()
+ * @param {(id:string) => Promise<string|null|undefined>} lookupLaunchDate
+ *   resolves one NORAD ID to a "YYYY-MM-DD" launch date (SATCAT's LAUNCH_DATE)
+ * @returns {Promise<Array>} the same event objects, launch ones annotated in place
+ */
+export async function annotateLaunchDates(events, lookupLaunchDate) {
+  for (const e of events) {
+    if (e.type !== "launch") continue;
+    const id = e.ids?.[0];
+    if (!id) continue;
+    let launchDate = null;
+    try {
+      launchDate = await lookupLaunchDate(id);
+    } catch {
+      launchDate = null;
+    }
+    const iso = launchDateToIso(launchDate);
+    if (iso) e.launchedAt = iso;
+  }
+  return events;
+}
+
+/**
  * Diffs a persisted crew roster snapshot against a fresh /crew read,
  * matched by astronaut id (falling back to name when id is absent — the
  * Worker's own buildCrew() dedupe uses the same fallback). Returns the

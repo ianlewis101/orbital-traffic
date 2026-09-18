@@ -19,6 +19,7 @@ import {
   FETCH_HEADERS,
   noradId,
   diffLaunchesReentries,
+  annotateLaunchDates,
   MAX_LAUNCH_REENTRY_EVENTS,
 } from "@orbital-traffic/catalog";
 
@@ -45,6 +46,35 @@ export function countWideCatalogNumbers(records) {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Same SATCAT endpoint the Worker's /satcat route uses. Queried here only for
+ * the handful of objects that appeared in the catalog since the last run — one
+ * request per launch batch, so a busy day is a few requests, not thousands.
+ */
+const SATCAT_URL = "https://celestrak.org/satcat/records.php?FORMAT=JSON&CATNR=";
+
+/**
+ * One object's SATCAT LAUNCH_DATE ("YYYY-MM-DD"), or null.
+ *
+ * Degrades to null on every failure — HTTP error, malformed body, no record
+ * yet — because this only enriches the event feed's copy. A missing launch
+ * date costs a row its true timestamp (it falls back to the discovery time);
+ * an exception here would cost the whole refresh. Paces itself against
+ * CelesTrak like every other fetch in this file.
+ */
+export async function fetchLaunchDate(catnr) {
+  try {
+    await sleep(POLITE_DELAY_MS);
+    const res = await fetch(SATCAT_URL + encodeURIComponent(catnr), { headers: FETCH_HEADERS });
+    if (!res.ok) return null;
+    const arr = await res.json();
+    const rec = Array.isArray(arr) && arr.length ? arr[0] : null;
+    return rec?.LAUNCH_DATE || null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * How far the merged catalog may shrink against the last committed one
@@ -220,6 +250,17 @@ export async function main() {
     console.log(
       `\n  Launch/reentry diff: ${newEvents.filter((e) => e.type === "launch").length} launch batch(es), ` +
         `${newEvents.filter((e) => e.type === "reentry").length} reentry/decay event(s)`
+    );
+
+    // Real launch times for the launch rows, one SATCAT lookup per batch. See
+    // annotateLaunchDates() for why this is a separate field from `at` and why
+    // a miss is routine rather than an error.
+    await annotateLaunchDates(newEvents, fetchLaunchDate);
+    const launches = newEvents.filter((e) => e.type === "launch");
+    const dated = launches.filter((e) => e.launchedAt);
+    console.log(
+      `  Launch dates from SATCAT: ${dated.length}/${launches.length} batch(es)` +
+        dated.map((e) => `\n    ${e.name} — launched ${e.launchedAt.slice(0, 10)}`).join("")
     );
     const existingLog = await loadExistingLog();
     const mergedEvents = [...(existingLog?.events || []), ...newEvents].slice(
