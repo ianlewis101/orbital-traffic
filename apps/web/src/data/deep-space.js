@@ -134,7 +134,7 @@ export const DEEP_SPACE = [
     distKm: 1.5e6,
     blurb:
       "Not in orbit around Earth at all — Webb loops around the Sun-Earth L2 point, roughly four times further away than the Moon, with its sunshield permanently between its mirrors and the Sun.",
-    why: "Webb orbits a gravitational balance point 1.5 million km beyond Earth, not Earth itself. CelesTrak lists it with an orbit centre of EL2 and no elements.",
+    why: "Webb orbits a gravitational balance point 930,000 miles beyond Earth, not Earth itself. CelesTrak lists it with an orbit centre of EL2 and no elements.",
   },
   {
     key: "parker",
@@ -154,7 +154,7 @@ export const DEEP_SPACE = [
       epoch: DEEP_SPACE_EPOCH,
     },
     blurb:
-      "The fastest object humans have ever built, and the closest to the Sun. At its record perihelion it passed 6.1 million km above the surface at about 690,000 km/h, protected by a carbon-composite heat shield.",
+      "The fastest object humans have ever built, and the closest to the Sun. At its record perihelion it passed 3.8 million miles above the surface at about 430,000 mph, protected by a carbon-composite heat shield.",
     why: "Parker orbits the Sun on a steep 88-day ellipse, dipping inside Mercury's orbit. Its orbit is heliocentric, so there is no Earth-relative track to draw.",
   },
   {

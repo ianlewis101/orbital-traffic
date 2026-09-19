@@ -9,6 +9,9 @@ import { DATA } from "../data/store.js";
 import { orbital, orbitClass } from "../astro/orbital.js";
 import { EARTH_KM } from "../config.js";
 
+/** Miles per kilometre, for the curated imperial prose below. */
+const MI_PER_KM = 0.621371;
+
 /** Fine-grained display type used to choose descriptions and artwork. */
 export function classify(s) {
   const n = " " + s.name.toUpperCase() + " ",
@@ -125,8 +128,15 @@ export function describe(s) {
   if (s._neo) {
     const neo = s._neo;
     const cls = neo.orbit_class || "Apollo";
+    // SBDB diameters are kilometres; this file's prose is imperial (see the
+    // scope note in util/units.js), so they're converted here rather than
+    // routed through the unit-aware formatters. Below half a mile the figure
+    // reads better in feet — "1,120 feet" rather than "0.2 miles" — and feet
+    // round to the nearest ten so a two-significant-figure SBDB diameter
+    // doesn't come out looking surveyed.
+    const diamMi = parseFloat(neo.diameter) * MI_PER_KM;
     const diam = neo.diameter
-      ? `${parseFloat(neo.diameter) < 1 ? (parseFloat(neo.diameter) * 1000).toFixed(0) + " metres" : parseFloat(neo.diameter).toFixed(1) + " km"} wide`
+      ? `${diamMi < 0.5 ? (Math.round((diamMi * 5280) / 10) * 10).toLocaleString() + " feet" : diamMi.toFixed(1) + " miles"} wide`
       : "size unknown";
     const disc = neo.discovered ? `, discovered in ${neo.discovered}` : "";
     const fname = neo.full_name || s.name;
@@ -142,15 +152,15 @@ export function describe(s) {
     if (/GEOGRAPHOS/.test(n))
       return `Geographos is a large Apollo-class asteroid ${diam}${disc}. It has one of the most elongated shapes of any known asteroid — nearly 5:1 length-to-width. Radar observations in 1994 revealed its dramatic cigar-like form.${approach}`;
     if (/TOUTATIS/.test(n))
-      return `Toutatis is a large Apollo-class asteroid ${diam}${disc}. China's Chang'e 2 spacecraft flew past it in 2012 at just 3.2 km distance, returning the closest images ever taken of a PHA. It tumbles chaotically rather than spinning.${approach}`;
+      return `Toutatis is a large Apollo-class asteroid ${diam}${disc}. China's Chang'e 2 spacecraft flew past it in 2012 at just 2 miles distance, returning the closest images ever taken of a PHA. It tumbles chaotically rather than spinning.${approach}`;
     if (/PHAETHON/.test(n))
       return `Phaethon is a ${cls}-class asteroid ${diam}${disc} and the parent body of the annual Geminid meteor shower. Unusually, it behaves like a comet near perihelion, releasing dust as it heats up. Japan's DESTINY+ mission will fly past it.${approach}`;
     if (/FLORENCE/.test(n))
-      return `Florence is an Amor-class asteroid ${diam}${disc}. When it passed Earth in 2017 at 7 million km, radar revealed it has two small moons orbiting it — a rare triple system among near-Earth asteroids.${approach}`;
+      return `Florence is an Amor-class asteroid ${diam}${disc}. When it passed Earth in 2017 at 4.3 million miles, radar revealed it has two small moons orbiting it — a rare triple system among near-Earth asteroids.${approach}`;
     if (/APOLLO/.test(n) && s.name.toUpperCase() === "APOLLO")
       return `Apollo is the namesake of the entire Apollo class of Earth-crossing asteroids ${diam}${disc}. Discovered in 1932, lost, and rediscovered in 1973, it was the first asteroid known to cross Earth's orbit.${approach}`;
     if (/ICARUS/.test(n))
-      return `Icarus is an Apollo-class asteroid ${diam}${disc}. With a perihelion closer to the Sun than Mercury, it gets scorching hot on approach. It made a famous close pass of just 6.4 million km in 1968.${approach}`;
+      return `Icarus is an Apollo-class asteroid ${diam}${disc}. With a perihelion closer to the Sun than Mercury, it gets scorching hot on approach. It made a famous close pass of just 4 million miles in 1968.${approach}`;
     if (/HATHOR/.test(n))
       return `Hathor is a tiny Aten-class asteroid ${diam}${disc}. It belongs to the rare Aten group whose orbits lie mostly inside Earth's. Despite its small size it qualifies as potentially hazardous due to its orbital geometry.${approach}`;
     if (/GOLEVKA/.test(n))
@@ -197,7 +207,7 @@ export function describe(s) {
     return "DSCOVR — the Deep Space Climate Observatory, sitting at the Sun-Earth L1 point 1 million miles away. Monitors the solar wind 15–60 minutes before it hits Earth and returns the iconic 'EPIC' daily images of the full sunlit Earth.";
   // --- Starlink / OneWeb / Kuiper ---
   if (n.includes("STARLINK"))
-    return "One of SpaceX's Starlink broadband satellites — over 10,000 now in orbit at roughly 550 km, more than every other satellite type combined, forming a laser-linked mesh network that also powers Direct-to-Cell texting in dead zones with no towers.";
+    return "One of SpaceX's Starlink broadband satellites — over 10,000 now in orbit at roughly 340 miles, more than every other satellite type combined, forming a laser-linked mesh network that also powers Direct-to-Cell texting in dead zones with no towers.";
   if (n.includes("ONEWEB"))
     return "A OneWeb satellite — part of a roughly 600-satellite polar broadband constellation now run by Eutelsat OneWeb, flying nearly three times higher than Starlink to reach pole-to-pole coverage for maritime, aviation, and government customers.";
   if (n.includes("KUIPER"))
